@@ -1,0 +1,467 @@
+package vault
+
+import (
+	"bytes"
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+
+	"github.com/inovacc/profile/internal/crypto"
+	"github.com/inovacc/profile/internal/store/vaultdb"
+)
+
+// Vault provides encrypted secret storage organized by profiles.
+type Vault struct {
+	store     *vaultdb.Store
+	masterKey []byte
+	dbPath    string
+}
+
+func defaultDBPath() string {
+	var configDir string
+
+	switch runtime.GOOS {
+	case "windows":
+		configDir = os.Getenv("APPDATA")
+		if configDir == "" {
+			configDir = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Roaming")
+		}
+	default:
+		configDir = os.Getenv("XDG_CONFIG_HOME")
+		if configDir == "" {
+			home, _ := os.UserHomeDir()
+			configDir = filepath.Join(home, ".config")
+		}
+	}
+
+	return filepath.Join(configDir, "profile", "vault.db")
+}
+
+// Init initializes a new vault, generating a master key sealed to this machine.
+func Init(opts *Options) error {
+	dbPath := defaultDBPath()
+	if opts != nil && opts.DBPath != "" {
+		dbPath = opts.DBPath
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+
+	store, err := vaultdb.Open(dbPath)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	has, err := store.HasSealedKey()
+	if err != nil {
+		return fmt.Errorf("check sealed key: %w", err)
+	}
+	if has {
+		return ErrAlreadyInitialized
+	}
+
+	machineID, err := crypto.MachineID()
+	if err != nil {
+		return fmt.Errorf("get machine ID: %w", err)
+	}
+
+	machineIDHash, err := crypto.MachineIDHash()
+	if err != nil {
+		return fmt.Errorf("hash machine ID: %w", err)
+	}
+
+	masterKey, err := crypto.GenerateKey()
+	if err != nil {
+		return fmt.Errorf("generate master key: %w", err)
+	}
+
+	salt, err := crypto.GenerateSalt()
+	if err != nil {
+		return fmt.Errorf("generate salt: %w", err)
+	}
+
+	sealed, nonce, err := crypto.SealMasterKey(masterKey, machineID, salt)
+	if err != nil {
+		return fmt.Errorf("seal master key: %w", err)
+	}
+
+	if err := store.UpsertSealedKey(sealed, nonce, salt, machineIDHash, 1); err != nil {
+		return fmt.Errorf("save sealed key: %w", err)
+	}
+
+	return nil
+}
+
+// Open opens an existing vault, unsealing the master key with the machine identity.
+func Open(opts *Options) (*Vault, error) {
+	dbPath := defaultDBPath()
+	if opts != nil && opts.DBPath != "" {
+		dbPath = opts.DBPath
+	}
+
+	store, err := vaultdb.Open(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
+
+	has, err := store.HasSealedKey()
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("check sealed key: %w", err)
+	}
+	if !has {
+		_ = store.Close()
+		return nil, ErrNotInitialized
+	}
+
+	sk, err := store.GetSealedKey()
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("get sealed key: %w", err)
+	}
+
+	machineIDHash, err := crypto.MachineIDHash()
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("hash machine ID: %w", err)
+	}
+
+	if !bytes.Equal(sk.MachineIDHash, machineIDHash) {
+		_ = store.Close()
+		return nil, ErrMachineMismatch
+	}
+
+	machineID, err := crypto.MachineID()
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("get machine ID: %w", err)
+	}
+
+	masterKey, err := crypto.UnsealMasterKey(sk.SealedData, sk.Nonce, machineID, sk.KeySalt)
+	if err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("unseal master key: %w", err)
+	}
+
+	return &Vault{
+		store:     store,
+		masterKey: masterKey,
+		dbPath:    dbPath,
+	}, nil
+}
+
+// Close closes the vault.
+func (v *Vault) Close() error {
+	return v.store.Close()
+}
+
+// DBPath returns the database file path.
+func (v *Vault) DBPath() string {
+	return v.dbPath
+}
+
+// === Profile operations ===
+
+// CreateProfile creates a new vault profile.
+func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
+	exists, err := v.store.ProfileExists(name)
+	if err != nil {
+		return fmt.Errorf("check profile: %w", err)
+	}
+	if exists {
+		return ErrProfileExists
+	}
+
+	return v.store.CreateProfile(name, description, isDefault)
+}
+
+// DeleteProfile deletes a profile and all its secrets.
+func (v *Vault) DeleteProfile(name string) error {
+	exists, err := v.store.ProfileExists(name)
+	if err != nil {
+		return fmt.Errorf("check profile: %w", err)
+	}
+	if !exists {
+		return ErrProfileNotFound
+	}
+
+	return v.store.DeleteProfile(name)
+}
+
+// UseProfile sets a profile as the default.
+func (v *Vault) UseProfile(name string) error {
+	exists, err := v.store.ProfileExists(name)
+	if err != nil {
+		return fmt.Errorf("check profile: %w", err)
+	}
+	if !exists {
+		return ErrProfileNotFound
+	}
+
+	return v.store.SetDefaultProfile(name)
+}
+
+// ListProfiles returns all vault profiles with secret counts.
+func (v *Vault) ListProfiles() ([]ProfileInfo, error) {
+	rows, err := v.store.ListProfiles()
+	if err != nil {
+		return nil, fmt.Errorf("list profiles: %w", err)
+	}
+
+	profiles := make([]ProfileInfo, 0, len(rows))
+	for _, row := range rows {
+		count, err := v.store.CountSecrets(row.Name)
+		if err != nil {
+			return nil, fmt.Errorf("count secrets: %w", err)
+		}
+
+		info := ProfileInfo{
+			Name:        row.Name,
+			SecretCount: count,
+			CreatedAt:   row.CreatedAt,
+		}
+		if row.Description != nil {
+			info.Description = *row.Description
+		}
+		if row.IsDefault != nil {
+			info.IsDefault = *row.IsDefault == 1
+		}
+
+		profiles = append(profiles, info)
+	}
+
+	return profiles, nil
+}
+
+// resolveProfile returns the profile name to use: explicit or default.
+func (v *Vault) resolveProfile(profileName string) (string, error) {
+	if profileName != "" {
+		exists, err := v.store.ProfileExists(profileName)
+		if err != nil {
+			return "", fmt.Errorf("check profile: %w", err)
+		}
+		if !exists {
+			return "", ErrProfileNotFound
+		}
+		return profileName, nil
+	}
+
+	row, err := v.store.GetDefaultProfile()
+	if err == sql.ErrNoRows {
+		return "", ErrNoDefaultProfile
+	}
+	if err != nil {
+		return "", fmt.Errorf("get default profile: %w", err)
+	}
+
+	return row.Name, nil
+}
+
+// === Secret operations ===
+
+// Set encrypts and stores a secret in the given profile (or default).
+func (v *Vault) Set(key, value, profileName, description string) error {
+	profile, err := v.resolveProfile(profileName)
+	if err != nil {
+		return err
+	}
+
+	ciphertext, nonce, err := crypto.Encrypt(v.masterKey, []byte(value))
+	if err != nil {
+		return fmt.Errorf("encrypt: %w", err)
+	}
+
+	return v.store.UpsertSecret(profile, key, ciphertext, nonce, description)
+}
+
+// Get decrypts and returns a secret value.
+func (v *Vault) Get(key, profileName string) (string, error) {
+	profile, err := v.resolveProfile(profileName)
+	if err != nil {
+		return "", err
+	}
+
+	row, err := v.store.GetSecret(profile, key)
+	if err == sql.ErrNoRows {
+		return "", ErrSecretNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("get secret: %w", err)
+	}
+
+	plaintext, err := crypto.Decrypt(v.masterKey, row.EncryptedValue, row.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("decrypt: %w", err)
+	}
+
+	return string(plaintext), nil
+}
+
+// Delete removes a secret.
+func (v *Vault) Delete(key, profileName string) error {
+	profile, err := v.resolveProfile(profileName)
+	if err != nil {
+		return err
+	}
+
+	exists, err := v.store.SecretExists(profile, key)
+	if err != nil {
+		return fmt.Errorf("check secret: %w", err)
+	}
+	if !exists {
+		return ErrSecretNotFound
+	}
+
+	return v.store.DeleteSecret(profile, key)
+}
+
+// List returns metadata for all secrets in a profile.
+func (v *Vault) List(profileName string) ([]SecretInfo, error) {
+	profile, err := v.resolveProfile(profileName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := v.store.ListSecrets(profile)
+	if err != nil {
+		return nil, fmt.Errorf("list secrets: %w", err)
+	}
+
+	secrets := make([]SecretInfo, 0, len(rows))
+	for _, row := range rows {
+		info := SecretInfo{
+			Key:       row.Key,
+			CreatedAt: row.CreatedAt,
+		}
+		if row.Description != nil {
+			info.Description = *row.Description
+		}
+		if row.UpdatedAt != nil {
+			info.UpdatedAt = *row.UpdatedAt
+		}
+
+		secrets = append(secrets, info)
+	}
+
+	return secrets, nil
+}
+
+// Export decrypts and returns all secrets from a profile.
+func (v *Vault) Export(profileName string) ([]SecretEntry, error) {
+	profile, err := v.resolveProfile(profileName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := v.store.ListSecrets(profile)
+	if err != nil {
+		return nil, fmt.Errorf("list secrets: %w", err)
+	}
+
+	entries := make([]SecretEntry, 0, len(rows))
+	for _, row := range rows {
+		plaintext, err := crypto.Decrypt(v.masterKey, row.EncryptedValue, row.Nonce)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt %q: %w", row.Key, err)
+		}
+
+		entry := SecretEntry{
+			Key:   row.Key,
+			Value: string(plaintext),
+		}
+		if row.Description != nil {
+			entry.Description = *row.Description
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
+// Import encrypts and stores multiple secrets into a profile.
+func (v *Vault) Import(entries []SecretEntry, profileName string) error {
+	profile, err := v.resolveProfile(profileName)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		ciphertext, nonce, err := crypto.Encrypt(v.masterKey, []byte(entry.Value))
+		if err != nil {
+			return fmt.Errorf("encrypt %q: %w", entry.Key, err)
+		}
+
+		if err := v.store.UpsertSecret(profile, entry.Key, ciphertext, nonce, entry.Description); err != nil {
+			return fmt.Errorf("save %q: %w", entry.Key, err)
+		}
+	}
+
+	return nil
+}
+
+// Status returns vault status information.
+func (v *Vault) Status() (*Status, error) {
+	profiles, err := v.store.ListProfiles()
+	if err != nil {
+		return nil, fmt.Errorf("list profiles: %w", err)
+	}
+
+	var totalSecrets int64
+	for _, p := range profiles {
+		count, err := v.store.CountSecrets(p.Name)
+		if err != nil {
+			return nil, fmt.Errorf("count secrets: %w", err)
+		}
+		totalSecrets += count
+	}
+
+	sk, err := v.store.GetSealedKey()
+	if err != nil {
+		return nil, fmt.Errorf("get sealed key: %w", err)
+	}
+
+	var keyVersion int64 = 1
+	if sk.Version != nil {
+		keyVersion = *sk.Version
+	}
+
+	return &Status{
+		Initialized:  true,
+		DBPath:       v.dbPath,
+		ProfileCount: len(profiles),
+		SecretCount:  totalSecrets,
+		KeyVersion:   keyVersion,
+		CreatedAt:    sk.CreatedAt,
+	}, nil
+}
+
+// GetStatus returns vault status without requiring Open (checks if initialized).
+func GetStatus(opts *Options) (*Status, error) {
+	dbPath := defaultDBPath()
+	if opts != nil && opts.DBPath != "" {
+		dbPath = opts.DBPath
+	}
+
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return &Status{
+			Initialized: false,
+			DBPath:      dbPath,
+		}, nil
+	}
+
+	v, err := Open(opts)
+	if err != nil {
+		return &Status{
+			Initialized: false,
+			DBPath:      dbPath,
+		}, nil
+	}
+	defer func() { _ = v.Close() }()
+
+	return v.Status()
+}
