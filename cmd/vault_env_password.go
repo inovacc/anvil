@@ -27,6 +27,29 @@ var vaultEnvPasswordSetCmd = &cobra.Command{
 			return err
 		}
 
+		// Non-interactive mode via --password flag
+		flagPw, _ := cmd.Flags().GetString("password")
+		if flagPw != "" {
+			if has {
+				currentPw, _ := cmd.Flags().GetString("current")
+				if currentPw == "" {
+					return fmt.Errorf("--current is required when updating an existing password")
+				}
+				if err := v.VerifyPassword(currentPw); err != nil {
+					return err
+				}
+			}
+			if len(flagPw) < 8 {
+				return fmt.Errorf("password must be at least 8 characters")
+			}
+			if err := v.SetPassword(flagPw); err != nil {
+				return err
+			}
+			fmt.Println("Password set successfully.")
+			return nil
+		}
+
+		// Interactive mode
 		if has {
 			current, err := readPassword("Current password: ")
 			if err != nil {
@@ -102,6 +125,8 @@ var vaultEnvPasswordResetCmd = &cobra.Command{
 }
 
 func init() {
+	vaultEnvPasswordSetCmd.Flags().String("password", "", "Password (non-interactive mode)")
+	vaultEnvPasswordSetCmd.Flags().String("current", "", "Current password when updating (non-interactive mode)")
 	vaultEnvPasswordCmd.AddCommand(vaultEnvPasswordSetCmd)
 	vaultEnvPasswordCmd.AddCommand(vaultEnvPasswordResetCmd)
 	vaultEnvCmd.AddCommand(vaultEnvPasswordCmd)
