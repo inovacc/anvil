@@ -35,7 +35,12 @@ var vaultImportCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Imported %d secrets.\n", len(entries))
+		outputResult(cmd, struct {
+			Count   int    `json:"count"`
+			Message string `json:"message"`
+		}{len(entries), fmt.Sprintf("Imported %d secrets.", len(entries))}, func() {
+			fmt.Printf("Imported %d secrets.\n", len(entries))
+		})
 		return nil
 	},
 }

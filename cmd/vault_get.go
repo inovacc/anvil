@@ -25,7 +25,12 @@ var vaultGetCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Print(value)
+		outputResult(cmd, struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}{args[0], value}, func() {
+			fmt.Print(value)
+		})
 		return nil
 	},
 }

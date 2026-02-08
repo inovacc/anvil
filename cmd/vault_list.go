@@ -24,18 +24,20 @@ var vaultListCmd = &cobra.Command{
 			return err
 		}
 
-		if len(secrets) == 0 {
-			fmt.Println("No secrets found.")
-			return nil
-		}
-
-		for _, s := range secrets {
-			desc := ""
-			if s.Description != "" {
-				desc = fmt.Sprintf(" - %s", s.Description)
+		outputResult(cmd, secrets, func() {
+			if len(secrets) == 0 {
+				fmt.Println("No secrets found.")
+				return
 			}
-			fmt.Printf("  %s%s\n", s.Key, desc)
-		}
+
+			for _, s := range secrets {
+				desc := ""
+				if s.Description != "" {
+					desc = fmt.Sprintf(" - %s", s.Description)
+				}
+				fmt.Printf("  %s%s\n", s.Key, desc)
+			}
+		})
 		return nil
 	},
 }

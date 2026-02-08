@@ -39,7 +39,21 @@ var vaultEnvReleaseCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Secrets released for profile %q. Expires in %s\n", state.ProfileName, state.Remaining.Truncate(time.Second))
+		outputResult(cmd, struct {
+			Profile   string `json:"profile"`
+			SessionID string `json:"session_id"`
+			ExpiresAt string `json:"expires_at"`
+			Remaining string `json:"remaining"`
+			Message   string `json:"message"`
+		}{
+			Profile:   state.ProfileName,
+			SessionID: state.SessionID,
+			ExpiresAt: state.ExpiresAt.Format(time.RFC3339),
+			Remaining: state.Remaining.Truncate(time.Second).String(),
+			Message:   fmt.Sprintf("Secrets released for profile %q. Expires in %s", state.ProfileName, state.Remaining.Truncate(time.Second)),
+		}, func() {
+			fmt.Printf("Secrets released for profile %q. Expires in %s\n", state.ProfileName, state.Remaining.Truncate(time.Second))
+		})
 		return nil
 	},
 }

@@ -40,7 +40,12 @@ func envInlineHandler(key string, cmd *cobra.Command) error {
 		return err
 	}
 
-	fmt.Print(value)
+	outputResult(cmd, struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}{Key: key, Value: value}, func() {
+		fmt.Print(value)
+	})
 	return nil
 }
 
@@ -54,6 +59,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().Bool("json", false, "Output in JSON format")
 	rootCmd.Flags().String("env-inline", "", "Get a single secret value inline (requires active release)")
 	rootCmd.Flags().StringP("profile", "p", "", "Target profile for --env-inline")
 }

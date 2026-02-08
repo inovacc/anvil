@@ -45,7 +45,11 @@ var vaultEnvPasswordSetCmd = &cobra.Command{
 			if err := v.SetPassword(flagPw); err != nil {
 				return err
 			}
-			fmt.Println("Password set successfully.")
+			outputResult(cmd, struct {
+				Message string `json:"message"`
+			}{"Password set successfully."}, func() {
+				fmt.Println("Password set successfully.")
+			})
 			return nil
 		}
 
@@ -80,7 +84,11 @@ var vaultEnvPasswordSetCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Println("Password set successfully.")
+		outputResult(cmd, struct {
+			Message string `json:"message"`
+		}{"Password set successfully."}, func() {
+			fmt.Println("Password set successfully.")
+		})
 		return nil
 	},
 }
@@ -100,7 +108,11 @@ var vaultEnvPasswordResetCmd = &cobra.Command{
 			return err
 		}
 		if !has {
-			fmt.Println("No password is set.")
+			outputResult(cmd, struct {
+				Message string `json:"message"`
+			}{"No password is set."}, func() {
+				fmt.Println("No password is set.")
+			})
 			return nil
 		}
 
@@ -119,7 +131,11 @@ var vaultEnvPasswordResetCmd = &cobra.Command{
 		// Also revoke any active release
 		_ = v.EnvRevoke()
 
-		fmt.Println("Password removed.")
+		outputResult(cmd, struct {
+			Message string `json:"message"`
+		}{"Password removed."}, func() {
+			fmt.Println("Password removed.")
+		})
 		return nil
 	},
 }

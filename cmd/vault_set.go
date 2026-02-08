@@ -25,7 +25,12 @@ var vaultSetCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Secret %q set.\n", args[0])
+		outputResult(cmd, struct {
+			Key     string `json:"key"`
+			Message string `json:"message"`
+		}{args[0], fmt.Sprintf("Secret %q set.", args[0])}, func() {
+			fmt.Printf("Secret %q set.\n", args[0])
+		})
 		return nil
 	},
 }

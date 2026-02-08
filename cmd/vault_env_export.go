@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/inovacc/profile/pkg/vault"
@@ -27,6 +28,12 @@ var vaultEnvExportCmd = &cobra.Command{
 		}
 
 		switch format {
+		case "json":
+			data, err := json.MarshalIndent(entries, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal json: %w", err)
+			}
+			fmt.Println(string(data))
 		case "env":
 			for _, e := range entries {
 				fmt.Printf("%s=%s\n", e.Key, e.Value)
@@ -40,7 +47,7 @@ var vaultEnvExportCmd = &cobra.Command{
 				fmt.Printf("$env:%s=%q\n", e.Key, e.Value)
 			}
 		default:
-			return fmt.Errorf("unsupported format: %s (use env, export, or powershell)", format)
+			return fmt.Errorf("unsupported format: %s (use json, env, export, or powershell)", format)
 		}
 
 		return nil
@@ -49,6 +56,6 @@ var vaultEnvExportCmd = &cobra.Command{
 
 func init() {
 	vaultEnvExportCmd.Flags().StringP("profile", "p", "", "Target profile (default: released profile)")
-	vaultEnvExportCmd.Flags().StringP("format", "f", "env", "Output format (env, export, powershell)")
+	vaultEnvExportCmd.Flags().StringP("format", "f", "env", "Output format (json, env, export, powershell)")
 	vaultEnvCmd.AddCommand(vaultEnvExportCmd)
 }
