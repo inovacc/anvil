@@ -73,7 +73,7 @@ profile/
 ## Conventions
 
 - Use `task` (Taskfile) for all automation
-- Use `glix install` instead of `go install` for CLI tools
+- Use `glix install` instead of `go install` for CLI tools; use `glix install .` to install from a local directory
 - Table-driven tests, 80% coverage minimum
 - Mute unused returns: `_, _ = fmt.Fprintln(w, output)`
 - Use `log/slog` for structured logging
