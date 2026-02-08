@@ -33,7 +33,14 @@ type Status struct {
 	ProfileCount int       `json:"profile_count"`
 	SecretCount  int64     `json:"secret_count"`
 	KeyVersion   int64     `json:"key_version"`
+	PasswordSet  bool      `json:"password_set"`
 	CreatedAt    time.Time `json:"created_at,omitempty"`
+}
+
+// EnvReleaseOptions configures an env release operation.
+type EnvReleaseOptions struct {
+	ProfileName string
+	TTL         time.Duration
 }
 
 // Options configures vault behavior.

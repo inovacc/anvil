@@ -10,6 +10,7 @@ import (
 
 	"github.com/inovacc/profile/internal/crypto"
 	"github.com/inovacc/profile/internal/store/vaultdb"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Vault provides encrypted secret storage organized by profiles.
@@ -430,14 +431,67 @@ func (v *Vault) Status() (*Status, error) {
 		keyVersion = *sk.Version
 	}
 
+	passwordSet, err := v.store.HasPassword()
+	if err != nil {
+		return nil, fmt.Errorf("check password: %w", err)
+	}
+
 	return &Status{
 		Initialized:  true,
 		DBPath:       v.dbPath,
 		ProfileCount: len(profiles),
 		SecretCount:  totalSecrets,
 		KeyVersion:   keyVersion,
+		PasswordSet:  passwordSet,
 		CreatedAt:    sk.CreatedAt,
 	}, nil
+}
+
+// === Password operations ===
+
+// SetPassword hashes and stores a password for env release operations.
+func (v *Vault) SetPassword(password string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	return v.store.UpsertPassword(hash)
+}
+
+// VerifyPassword checks if the provided password matches the stored hash.
+func (v *Vault) VerifyPassword(password string) error {
+	has, err := v.store.HasPassword()
+	if err != nil {
+		return fmt.Errorf("check password: %w", err)
+	}
+	if !has {
+		return ErrPasswordNotSet
+	}
+
+	pw, err := v.store.GetPassword()
+	if err != nil {
+		return fmt.Errorf("get password: %w", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword(pw.PasswordHash, []byte(password)); err != nil {
+		return ErrPasswordMismatch
+	}
+	return nil
+}
+
+// HasPassword returns whether a password has been set.
+func (v *Vault) HasPassword() (bool, error) {
+	return v.store.HasPassword()
+}
+
+// DeletePassword removes the stored password.
+func (v *Vault) DeletePassword() error {
+	return v.store.DeletePassword()
+}
+
+// MasterKey returns the master key for sentinel operations.
+func (v *Vault) MasterKey() []byte {
+	return v.masterKey
 }
 
 // GetStatus returns vault status without requiring Open (checks if initialized).

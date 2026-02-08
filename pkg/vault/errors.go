@@ -23,4 +23,16 @@ var (
 
 	// ErrNoDefaultProfile is returned when no default profile is set.
 	ErrNoDefaultProfile = errors.New("no default profile set, create one with 'profile vault profile create <name> --default'")
+
+	// ErrPasswordNotSet is returned when env operations require a password but none is set.
+	ErrPasswordNotSet = errors.New("vault password not set, run 'profile vault env password set'")
+
+	// ErrPasswordMismatch is returned when the provided password does not match.
+	ErrPasswordMismatch = errors.New("incorrect password")
+
+	// ErrNotReleased is returned when env export is called without an active release.
+	ErrNotReleased = errors.New("secrets not released, run 'profile vault env release'")
+
+	// ErrReleaseExpired is returned when the release session has expired.
+	ErrReleaseExpired = errors.New("release session has expired")
 )

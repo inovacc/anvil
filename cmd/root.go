@@ -1,30 +1,47 @@
 /*
 Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/inovacc/profile/pkg/vault"
 	"github.com/spf13/cobra"
 )
-
-
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "profile",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Machine-bound encrypted vault and profile manager",
+	Long:  "CLI tool for managing encrypted secrets organized by profiles, bound to this machine.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		envInline, _ := cmd.Flags().GetString("env-inline")
+		if envInline != "" {
+			return envInlineHandler(envInline, cmd)
+		}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+		return cmd.Help()
+	},
+}
+
+func envInlineHandler(key string, cmd *cobra.Command) error {
+	v, err := vault.Open(nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = v.Close() }()
+
+	profileName, _ := cmd.Flags().GetString("profile")
+
+	value, err := v.EnvInlineGet(key, profileName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Print(value)
+	return nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -37,15 +54,6 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.profile.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().String("env-inline", "", "Get a single secret value inline (requires active release)")
+	rootCmd.Flags().StringP("profile", "p", "", "Target profile for --env-inline")
 }
-
-

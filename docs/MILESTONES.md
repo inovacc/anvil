@@ -1,0 +1,29 @@
+# Milestones
+
+## v0.1.0 — Foundation (Complete)
+- Machine-bound encrypted vault
+- Profile management
+- Secret CRUD operations
+- Import/Export functionality
+
+## v0.2.0 — Password-Gated Env Release (Complete)
+- Password-gated access to secrets
+- Time-limited release sessions
+- Multi-format env export (env, export, powershell)
+- Inline secret access for shell substitution
+
+## v0.3.0 — Security Hardening (Planned)
+- Master key rotation
+- Audit logging
+- Secret versioning
+
+## v0.4.0 — Shell Integration (Planned)
+- Auto-completion for bash, zsh, fish, powershell
+- Shell profile helpers
+- Docker secrets bridge
+
+## v1.0.0 — Production Ready (Planned)
+- Full test coverage
+- Documentation complete
+- CI/CD pipeline
+- Release automation with goreleaser

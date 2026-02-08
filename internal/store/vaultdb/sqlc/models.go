@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+type VaultPassword struct {
+	ID           int64      `json:"id"`
+	PasswordHash []byte     `json:"password_hash"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at"`
+}
+
 type VaultProfile struct {
 	ID          int64      `json:"id"`
 	Name        string     `json:"name"`

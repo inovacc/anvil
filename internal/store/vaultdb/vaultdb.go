@@ -238,3 +238,38 @@ func (s *Store) DeleteSealedKey() error {
 
 	return s.queries.DeleteSealedKey(context.Background())
 }
+
+// === Password operations ===
+
+// GetPassword retrieves the vault password hash.
+func (s *Store) GetPassword() (sqlc.VaultPassword, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetPassword(context.Background())
+}
+
+// HasPassword checks if a password has been set.
+func (s *Store) HasPassword() (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count, err := s.queries.HasPassword(context.Background())
+	return count > 0, err
+}
+
+// UpsertPassword saves the vault password hash.
+func (s *Store) UpsertPassword(passwordHash []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.UpsertPassword(context.Background(), passwordHash)
+}
+
+// DeletePassword deletes the vault password.
+func (s *Store) DeletePassword() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeletePassword(context.Background())
+}
