@@ -56,7 +56,13 @@ task release:check      # Validate goreleaser config
 ```
 profile/
 ├── cmd/            # CLI commands (Cobra)
+│   ├── output.go   # JSON/text output helper (outputResult)
+│   ├── cmdtree.go  # Command tree visualization
+│   └── aicontext.go # AI context documentation generator
 ├── internal/       # Private application code
+│   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, machine ID
+│   └── sentinel/   # Time-limited release session management
+├── pkg/vault/      # Public vault API (types, errors, operations)
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
@@ -71,3 +77,6 @@ profile/
 - Table-driven tests, 80% coverage minimum
 - Mute unused returns: `_, _ = fmt.Fprintln(w, output)`
 - Use `log/slog` for structured logging
+- All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output
+- Global `--json` persistent flag on rootCmd inherited by all subcommands
+- `visibleSubcommands()` in cmdtree.go filters hidden commands and "help"
