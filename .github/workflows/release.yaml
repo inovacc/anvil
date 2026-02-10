@@ -1,0 +1,16 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  call-release-workflow:
+    uses: inovacc/workflows/.github/workflows/reusable-go-release.yml@main
+    with:
+      run-release: true
+      goreleaser-args: release --clean --skip=validate
+    permissions:
+      contents: write
+    secrets: inherit
