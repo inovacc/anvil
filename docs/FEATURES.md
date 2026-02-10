@@ -34,15 +34,33 @@
 - Inline secret access via `--env-inline` flag
 
 ### Global JSON Output
-- **Status:** Completed
+- **Status:** Completed (v0.2.0)
 - All commands support `--json` flag for structured output
 - Dual output mode: human-readable text or machine-parseable JSON
 
 ### CLI Tooling
-- **Status:** Completed
+- **Status:** Completed (v0.2.0)
 - Command tree visualization (`cmdtree`)
 - AI-readable documentation generator (`aicontext`)
 - Shell completion scripts
+
+### TPM 2.0 Hardware-Backed Key Sealing
+- **Status:** Completed (v0.3.0)
+- Master key sealed to TPM 2.0 hardware via sealbox when available
+- Transparent software fallback (HKDF) for machines without TPM
+- `seal_method` column discriminates TPM vs software unseal path
+- Platform support: Windows (TBS), Linux (`/dev/tpmrm0`); macOS falls back to software
+- `vault status` displays current seal method
+
+### Memory Safety
+- **Status:** Completed (v0.3.0)
+- Master key zeroed on vault close and after init via `sealbox.SecureZero`
+- Master key only lives in memory during the vault lifecycle
+
+### Sentinel Packed Encryption
+- **Status:** Completed (v0.3.0)
+- Sentinel files use `sealbox.Encrypt`/`sealbox.Decrypt` (packed nonce||ciphertext)
+- Binary-compatible with the original manual nonce packing format
 
 ## Proposed
 

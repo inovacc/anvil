@@ -4,14 +4,16 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 
 ## Features
 
-- **Machine-Bound Encryption** — AES-256-GCM with HKDF-SHA256 master key sealed to hardware identity
+- **TPM 2.0 Hardware-Backed Sealing** — Master key sealed to TPM hardware when available, software HKDF fallback otherwise
+- **Machine-Bound Encryption** — AES-256-GCM with HKDF-SHA256, non-portable by design
 - **Profile Management** — Organize secrets into named profiles with default selection
 - **Secret CRUD** — Set, get, delete, list, export, and import encrypted secrets
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
 - **Inline Secret Access** — Single secret retrieval via `--env-inline` flag
 - **Global JSON Output** — Structured JSON output for all commands via `--json`
-- **Cross-Platform** — Windows, Linux, and macOS support
+- **Memory Safety** — Master key zeroed on vault close via `sealbox.SecureZero`
+- **Cross-Platform** — Windows (TPM via TBS), Linux (TPM via `/dev/tpmrm0`), macOS (software fallback)
 
 ## Installation
 
@@ -140,12 +142,15 @@ profile
 
 ## Security
 
+- **TPM 2.0 sealing** — master key hardware-bound via [sealbox](https://github.com/inovacc/sealbox); cannot be extracted even with full disk access
+- **Software fallback** — HKDF-SHA256 key derivation for machines without TPM (macOS, VMs)
 - **AES-256-GCM** encryption for all stored secrets
-- **HKDF-SHA256** key derivation bound to machine hardware identity
 - **bcrypt** password hashing for env release gate
 - **Time-limited sessions** with automatic expiry for env release
+- **Memory zeroing** — master key wiped from memory on vault close
 - Secrets are **never cached on disk** in plaintext
 - Database is **non-portable** — only works on the originating machine
+- `vault status` shows current seal method (`tpm` or `software`)
 
 ## Development
 

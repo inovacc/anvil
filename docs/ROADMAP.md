@@ -1,7 +1,7 @@
 # Project Roadmap
 
 ## Current Status
-**Overall Progress:** 40% Complete
+**Overall Progress:** 50% Complete
 
 ## Phases
 
@@ -28,19 +28,28 @@
 - [x] Inline secret access (`--env-inline`)
 - [x] Auto-expiry and manual revoke
 
-### Phase 4: Enhanced Security [NOT STARTED]
+### Phase 4: TPM Hardware Security [COMPLETE]
+- [x] TPM 2.0 hardware-backed master key sealing via sealbox
+- [x] TPM-first init with transparent software fallback
+- [x] `seal_method` discriminator in database (`tpm` or `software`)
+- [x] Sentinel encryption migrated to sealbox packed format
+- [x] Memory zeroing on vault close and after init
+- [x] Idempotent database migration for `seal_method` column
+- [x] Vault status displays seal method
+
+### Phase 5: Enhanced Security [NOT STARTED]
 - [ ] Master key rotation
 - [ ] Audit logging (access history)
 - [ ] Secret versioning
 - [ ] Backup and restore
 
-### Phase 5: Integration [NOT STARTED]
+### Phase 6: Integration [NOT STARTED]
 - [ ] Shell integration helpers (bash, zsh, fish, powershell)
 - [ ] Docker secrets bridge
 - [ ] CI/CD pipeline integration
 - [ ] Secret sharing between machines (encrypted export)
 
-### Phase 6: Polish [NOT STARTED]
+### Phase 7: Polish [NOT STARTED]
 - [ ] Interactive TUI mode
 - [ ] Auto-completion for shells
 - [ ] Secret templates
@@ -48,13 +57,14 @@
 
 ## Test Coverage
 
-**Current:** 13.6%  |  **Target:** 80%
+**Current:** 15.0%  |  **Target:** 80%
 
 | Package | Coverage | Status |
 |---------|----------|--------|
-| internal/crypto | 72.9% | Needs improvement |
-| internal/sentinel | 70.7% | Needs improvement |
-| internal/store/vaultdb | 0.0% | No tests |
-| internal/store/vaultdb/sqlc | 0.0% | No tests (generated code) |
+| internal/crypto | 73.7% | Good |
+| internal/sentinel | 72.4% | Good |
+| internal/store | 0.0% | No tests |
+| internal/store/sqlc | 0.0% | No tests (generated code) |
+| internal/application | 0.0% | No tests |
 | pkg/vault | 0.0% | No tests |
 | cmd | 0.0% | No tests |

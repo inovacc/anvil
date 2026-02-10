@@ -50,8 +50,9 @@
 
 ### Technical Debt
 - **Priority:** P1
-- **Description:** Increase test coverage to 80%+ across all packages
+- **Description:** Increase test coverage to 80%+ across all packages (currently 15.0%)
 - **Effort:** Medium
+- **Details:** `internal/store` (0%), `pkg/vault` (0%), `cmd` (0%) need tests; `crypto` (73.7%) and `sentinel` (72.4%) need improvement
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands
@@ -59,4 +60,8 @@
 
 - **Priority:** P3
 - **Description:** Benchmark encryption/decryption performance
+- **Effort:** Small
+
+- **Priority:** P2
+- **Description:** Populate LICENSE file (currently empty)
 - **Effort:** Small

@@ -5,7 +5,7 @@
 Go CLI application built with Cobra.
 
 - **Module**: `github.com/inovacc/profile`
-- **Go version**: 1.25.5
+- **Go version**: 1.25
 - **Architecture**: Hexagonal/Clean (cmd/, internal/, pkg/)
 
 ## Build & Run
