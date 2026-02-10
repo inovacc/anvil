@@ -62,6 +62,12 @@
 - Sentinel files use `sealbox.Encrypt`/`sealbox.Decrypt` (packed nonce||ciphertext)
 - Binary-compatible with the original manual nonce packing format
 
+### CI/CD Release Automation
+- **Status:** Completed (v0.3.0)
+- GitHub Actions release workflow triggers goreleaser on tag push
+- Test workflow runs lint, tests, and vulncheck on PRs
+- Build workflow validates Linux and Windows builds on develop branch
+
 ## Proposed
 
 ### Master Key Rotation

@@ -22,6 +22,8 @@
 - Memory zeroing on vault close and after init (`sealbox.SecureZero`)
 - Idempotent migration for existing databases
 - Vault status displays seal method
+- GitHub Actions CI/CD: release workflow (goreleaser on tag push), test workflow (lint + vuln on PR), build workflow (Linux + Windows)
+- **Released:** v0.3.0
 - **Test Coverage:** 15.0% (crypto 73.7%, sentinel 72.4%, store 0%, vault 0%, cmd 0%)
 
 ## v0.4.0 — Security Hardening (Planned)
@@ -38,5 +40,5 @@
 ## v1.0.0 — Production Ready (Planned)
 - Full test coverage (80%+ all packages)
 - Documentation complete
-- CI/CD pipeline
-- Release automation with goreleaser
+- CI/CD pipeline (release workflow done; expand test/build coverage)
+- Release automation with goreleaser (done)

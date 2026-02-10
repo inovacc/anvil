@@ -60,15 +60,18 @@ profile/
 │   ├── cmdtree.go  # Command tree visualization
 │   └── aicontext.go # AI context documentation generator
 ├── internal/       # Private application code
+│   ├── application/ # Application directory resolution (cross-platform)
 │   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID
 │   ├── sentinel/   # Time-limited release session management (sealbox packed encrypt)
-│   └── store/
-│       └── vaultdb/ # SQLite database store (sqlc-generated queries, mutex-protected ops)
+│   └── store/      # SQLite database store (mutex-protected ops)
+│       ├── sqlc/   # Generated query code (sqlc generate)
+│       └── vaultdb.go # Database operations wrapper
 ├── pkg/vault/      # Public vault API (types, errors, TPM-first init/open)
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
 ├── .goreleaser.yaml # Release configuration
+├── .github/workflows/ # CI/CD (release on tag, test on PR, build on develop)
 └── main.go         # Entry point
 ```
 

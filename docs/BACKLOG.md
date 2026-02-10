@@ -43,6 +43,7 @@
 - **Priority:** P2
 - **Description:** CI/CD pipeline integration (GitHub Actions, GitLab CI)
 - **Effort:** Medium
+- **Status:** Partially done — release workflow (goreleaser on tag) and test workflow (lint + vulncheck on PR) are in place. Build workflow targets `develop` branch (not yet created).
 
 - **Priority:** P3
 - **Description:** Encrypted secret export for machine-to-machine transfer

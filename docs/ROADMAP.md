@@ -43,10 +43,10 @@
 - [ ] Secret versioning
 - [ ] Backup and restore
 
-### Phase 6: Integration [NOT STARTED]
+### Phase 6: Integration [IN PROGRESS]
 - [ ] Shell integration helpers (bash, zsh, fish, powershell)
 - [ ] Docker secrets bridge
-- [ ] CI/CD pipeline integration
+- [x] CI/CD pipeline integration (GitHub Actions: release on tag, test on PR, build on develop)
 - [ ] Secret sharing between machines (encrypted export)
 
 ### Phase 7: Polish [NOT STARTED]
@@ -54,6 +54,7 @@
 - [ ] Auto-completion for shells
 - [ ] Secret templates
 - [ ] Plugin system
+- [x] Release automation with goreleaser (GitHub Actions workflow)
 
 ## Test Coverage
 
