@@ -27,6 +27,11 @@ graph TB
         App["application/"]
     end
 
+    subgraph External["External"]
+        Sealbox["sealbox<br/>(TPM 2.0 + AES-GCM)"]
+        TPM["TPM 2.0 Hardware"]
+    end
+
     subgraph Storage["Storage"]
         DB[(SQLite)]
         FS["Sentinel File"]
@@ -41,7 +46,9 @@ graph TB
     Vault --> Crypto
     Vault --> Store
     EnvOps --> Sentinel
-    Sentinel --> Crypto
+    Sentinel --> Sealbox
+    Crypto --> Sealbox
+    Sealbox -.-> TPM
     Store --> DB
     Sentinel --> FS
     App --> Store
@@ -94,6 +101,7 @@ graph TD
     sentinel["internal/sentinel/"]
     app["internal/application/"]
     sqlc["internal/store/sqlc/"]
+    sealbox["sealbox<br/>(external)"]
 
     cmd --> vault
     vault --> store
@@ -101,7 +109,9 @@ graph TD
     vault --> sentinel
     vault --> app
     sentinel --> crypto
+    sentinel --> sealbox
     sentinel --> app
+    crypto --> sealbox
     store --> sqlc
     store --> app
 ```
@@ -112,11 +122,12 @@ graph TD
 erDiagram
     vault_sealed_key {
         int id PK "CHECK (id = 1)"
-        blob sealed_data "encrypted master key"
-        blob nonce "GCM nonce"
-        blob key_salt "HKDF salt"
+        blob sealed_data "encrypted master key or TPM SealedData JSON"
+        blob nonce "GCM nonce (software) or NULL (TPM)"
+        blob key_salt "HKDF salt (software) or NULL (TPM)"
         int version "key version"
         blob machine_id_hash "SHA-256 of machine ID"
+        text seal_method "tpm or software (default)"
         datetime created_at
         datetime updated_at
     }
@@ -159,6 +170,8 @@ sequenceDiagram
     participant CLI as vault init
     participant V as pkg/vault
     participant C as crypto
+    participant SB as sealbox
+    participant TPM as TPM 2.0
     participant S as store
     participant DB as SQLite
 
@@ -171,22 +184,43 @@ sequenceDiagram
     V->>S: HasSealedKey()
     S-->>V: false
 
-    V->>C: MachineID()
-    C-->>V: "GUID-1234..."
     V->>C: MachineIDHash()
     C-->>V: SHA-256(machineID)
 
     V->>C: GenerateKey()
     C-->>V: masterKey (32 random bytes)
-    V->>C: GenerateSalt()
-    C-->>V: salt (32 random bytes)
 
-    V->>C: SealMasterKey(masterKey, machineID, salt)
-    Note over C: HKDF-SHA256(machineID, salt, "profile-vault-v1")<br/>AES-256-GCM encrypt masterKey
-    C-->>V: sealedData, nonce
+    V->>C: IsTPMAvailable()
 
-    V->>S: UpsertSealedKey(sealedData, nonce, salt, machineIDHash, 1)
-    S->>DB: INSERT INTO vault_sealed_key
+    alt TPM available
+        V->>C: SealMasterKeyTPM(masterKey)
+        C->>SB: NewKeyManager()
+        SB->>TPM: Open TPM device
+        TPM-->>SB: handle
+        C->>SB: km.SealKey(masterKey)
+        SB->>TPM: Create sealed object
+        TPM-->>SB: SealedData
+        SB-->>C: *SealedData
+        C->>C: json.Marshal(SealedData)
+        C->>SB: km.Close()
+        C-->>V: sealedJSON
+
+        V->>S: UpsertSealedKey(sealedJSON, nil, nil, hash, 1, "tpm")
+        S->>DB: INSERT INTO vault_sealed_key
+    else TPM unavailable or seal failed
+        V->>C: MachineID()
+        C-->>V: "GUID-1234..."
+        V->>C: GenerateSalt()
+        C-->>V: salt (32 random bytes)
+        V->>C: SealMasterKey(masterKey, machineID, salt)
+        Note over C: HKDF-SHA256(machineID, salt)<br/>AES-256-GCM encrypt masterKey
+        C-->>V: sealedData, nonce
+
+        V->>S: UpsertSealedKey(sealedData, nonce, salt, hash, 1, "software")
+        S->>DB: INSERT INTO vault_sealed_key
+    end
+
+    V->>C: ZeroBytes(masterKey)
     V->>S: Close()
     V-->>CLI: nil
     CLI-->>User: Vault initialized
@@ -199,6 +233,8 @@ sequenceDiagram
     participant CLI
     participant V as pkg/vault
     participant C as crypto
+    participant SB as sealbox
+    participant TPM as TPM 2.0
     participant S as store
     participant DB as SQLite
 
@@ -213,24 +249,53 @@ sequenceDiagram
     V->>S: GetSealedKey()
     S->>DB: SELECT * FROM vault_sealed_key WHERE id = 1
     DB-->>S: row
-    S-->>V: VaultSealedKey{sealedData, nonce, salt, machineIDHash}
+    S-->>V: VaultSealedKey{sealedData, nonce, salt, machineIDHash, sealMethod}
 
-    V->>C: MachineIDHash()
-    C-->>V: currentHash
-
-    Note over V: Compare currentHash == stored machineIDHash
-    alt mismatch
-        V-->>CLI: ErrMachineMismatch
+    alt sealMethod == "tpm"
+        V->>C: UnsealMasterKeyTPM(sealedData)
+        C->>C: json.Unmarshal → SealedData
+        C->>SB: NewKeyManager()
+        SB->>TPM: Open TPM device
+        C->>SB: km.UnsealKey(&sealed)
+        SB->>TPM: Unseal object
+        TPM-->>SB: masterKey
+        SB-->>C: masterKey
+        C->>SB: km.Close()
+        C-->>V: masterKey
+    else sealMethod == "software" (default)
+        V->>C: MachineIDHash()
+        C-->>V: currentHash
+        Note over V: Compare currentHash == stored machineIDHash
+        alt mismatch
+            V-->>CLI: ErrMachineMismatch
+        end
+        V->>C: MachineID()
+        C-->>V: machineID
+        V->>C: UnsealMasterKey(sealedData, nonce, machineID, salt)
+        Note over C: DeriveKey(machineID, salt) via HKDF<br/>AES-256-GCM decrypt sealedData
+        C-->>V: masterKey
     end
 
-    V->>C: MachineID()
-    C-->>V: machineID
-
-    V->>C: UnsealMasterKey(sealedData, nonce, machineID, salt)
-    Note over C: DeriveKey(machineID, salt) via HKDF<br/>AES-256-GCM decrypt sealedData
-    C-->>V: masterKey
-
     V-->>CLI: &Vault{store, masterKey, dbPath}
+```
+
+## Vault Close Flow
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant V as Vault
+    participant C as crypto
+    participant SB as sealbox
+    participant S as store
+
+    Caller->>V: Close()
+    V->>C: ZeroBytes(masterKey)
+    C->>SB: SecureZero(masterKey)
+    Note over SB: Overwrite all bytes with 0x00
+    V->>S: Close()
+    S-->>V: nil
+    V-->>Caller: nil
 ```
 
 ## Secret Encrypt / Decrypt
@@ -265,29 +330,47 @@ sequenceDiagram
     end
 ```
 
-## Key Derivation Chain
+## Master Key Sealing
 
 ```mermaid
 graph TD
-    MID["Platform Machine ID<br/>(Windows: MachineGuid registry<br/>Linux: DMI product_id<br/>Darwin: serial number<br/>Fallback: hostname)"]
-    Salt["Random Salt<br/>(32 bytes, stored in DB)"]
-
-    MID --> HKDF["HKDF-SHA256<br/>info = 'profile-vault-v1'"]
-    Salt --> HKDF
-    HKDF --> DK["Derived Key<br/>(256-bit)"]
-
     MK["Master Key<br/>(256-bit, random)"]
 
-    DK --> GCM["AES-256-GCM Encrypt"]
-    MK --> GCM
-    GCM --> Sealed["Sealed Data + Nonce<br/>(stored in vault_sealed_key)"]
+    MK --> Decision{"TPM 2.0<br/>available?"}
 
-    MID --> SHA["SHA-256"]
-    SHA --> Hash["Machine ID Hash<br/>(stored for verification)"]
+    Decision -->|Yes| TPMPath
+    Decision -->|No / Failed| SWPath
+
+    subgraph TPMPath["TPM Path (seal_method = 'tpm')"]
+        direction TB
+        KM["sealbox.NewKeyManager()"]
+        KM --> Seal["km.SealKey(masterKey)"]
+        Seal --> SD["SealedData struct<br/>(public_area, private_area,<br/>sealed_blob_public)"]
+        SD --> JSON["JSON marshal"]
+        JSON --> Store1["sealed_data = JSON blob<br/>nonce = NULL<br/>key_salt = NULL"]
+    end
+
+    subgraph SWPath["Software Path (seal_method = 'software')"]
+        direction TB
+        MID["Platform Machine ID"]
+        Salt["Random Salt (32 bytes)"]
+        MID --> HKDF["HKDF-SHA256<br/>info = 'profile-vault-v1'"]
+        Salt --> HKDF
+        HKDF --> DK["Derived Key (256-bit)"]
+        DK --> GCM["AES-256-GCM Encrypt"]
+        GCM --> Store2["sealed_data = ciphertext<br/>nonce = GCM nonce<br/>key_salt = salt"]
+    end
+
+    MID2["Machine ID"] --> SHA["SHA-256"]
+    SHA --> Hash["machine_id_hash<br/>(stored for verification)"]
+
+    Store1 --> DB[(vault_sealed_key)]
+    Store2 --> DB
+    Hash --> DB
 
     style MK fill:#f9f,stroke:#333
-    style DK fill:#bbf,stroke:#333
-    style Sealed fill:#bfb,stroke:#333
+    style TPMPath fill:#e8f5e9,stroke:#4caf50
+    style SWPath fill:#e3f2fd,stroke:#2196f3
 ```
 
 ## Env Release Flow (Password-Gated, Time-Limited)
@@ -298,6 +381,7 @@ sequenceDiagram
     participant CLI
     participant V as Vault
     participant Sen as sentinel
+    participant SB as sealbox
     participant FS as Filesystem
 
     rect rgb(235, 255, 235)
@@ -320,8 +404,10 @@ sequenceDiagram
 
         Sen->>Sen: Build SessionPayload JSON
         Note over Sen: {profile, expires_at, session_id,<br/>machine_hash, created_at}
-        Sen->>Sen: crypto.Encrypt(masterKey, payload)
-        Sen->>FS: Write nonce||ciphertext<br/>to PROFILE_ENV_RELEASE_ENABLED
+        Sen->>SB: sealbox.Encrypt(masterKey, payload)
+        Note over SB: AES-256-GCM, returns nonce||ciphertext
+        SB-->>Sen: packed blob
+        Sen->>FS: Write packed blob<br/>to PROFILE_ENV_RELEASE_ENABLED
 
         Sen-->>V: ReleaseState{Active: true}
         V-->>CLI: state
@@ -334,8 +420,9 @@ sequenceDiagram
         CLI->>V: EnvExport(profile)
         V->>Sen: Check(masterKey)
         Sen->>FS: Read PROFILE_ENV_RELEASE_ENABLED
-        Sen->>Sen: Decrypt + unmarshal
-        Sen->>Sen: Check expiry
+        Sen->>SB: sealbox.Decrypt(masterKey, fileData)
+        SB-->>Sen: plaintext JSON
+        Sen->>Sen: Unmarshal + check expiry
 
         alt expired
             Sen->>FS: Rename to DISABLED (auto-revoke)
@@ -376,7 +463,7 @@ stateDiagram-v2
     state Enabled {
         note right of Enabled
             PROFILE_ENV_RELEASE_ENABLED
-            nonce (12B) || ciphertext
+            sealbox packed: nonce (12B) || ciphertext
             Encrypted SessionPayload JSON
         end note
     }
@@ -430,7 +517,7 @@ graph LR
 
     subgraph Tables["SQLite Tables"]
         direction TB
-        SK["vault_sealed_key<br/>Encrypted master key + salt + hash"]
+        SK["vault_sealed_key<br/>TPM SealedData JSON or software-sealed blob<br/>+ seal_method discriminator"]
         PW["vault_password<br/>bcrypt hash"]
         PR["vault_profiles<br/>name, description, is_default"]
         SE["vault_secrets<br/>AES-256-GCM encrypted values"]
@@ -468,12 +555,15 @@ All commands use `outputResult(cmd, jsonData, textFn)` for consistent dual-mode 
 
 | Layer | Mechanism | Purpose |
 |-------|-----------|---------|
-| Machine binding | SHA-256(MachineID) stored at init, verified at open | Vault non-portable across machines |
-| Master key sealing | HKDF-SHA256(machineID, salt) derives wrapping key | Master key never stored in plaintext |
+| TPM key sealing | `sealbox.NewKeyManager().SealKey()` via TPM 2.0 | Master key hardware-bound; cannot be extracted even with full disk access |
+| Software fallback | HKDF-SHA256(machineID, salt) derives wrapping key | Fallback for machines without TPM (macOS, VMs) |
+| Seal method discriminator | `seal_method` column (`"tpm"` or `"software"`) | Vault knows which unseal path to use |
+| Machine binding | SHA-256(MachineID) stored at init, verified at open (software path) | Vault non-portable across machines |
 | Secret encryption | AES-256-GCM per secret, random nonce | Each secret independently encrypted |
+| Sentinel encryption | `sealbox.Encrypt` (packed nonce\|\|ciphertext) | Sentinel file is opaque without vault master key |
 | Env release gate | bcrypt password + time-limited sentinel file | Secrets require explicit release |
-| Sentinel integrity | Encrypted with master key, not guessable | Sentinel file is opaque without vault |
 | Auto-revoke | Check() expires sessions past TTL | No background cleanup needed |
+| Memory zeroing | `sealbox.SecureZero()` on vault Close and after Init | Master key does not linger in process memory |
 | Singleton tables | `CHECK (id = 1)` constraint | Exactly one sealed key and password |
 | FK cascade | `ON DELETE CASCADE` on secrets | Deleting profile removes all its secrets |
 | SQLite safety | WAL mode, busy timeout, max 1 connection, mutex | Concurrent access without corruption |
