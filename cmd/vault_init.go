@@ -20,7 +20,7 @@ var vaultInitCmd = &cobra.Command{
 					DBPath      string `json:"db_path"`
 					Message     string `json:"message"`
 				}{true, vault.DefaultDBPath(), "Vault is already initialized."}, func() {
-					fmt.Println("Vault is already initialized.")
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Vault is already initialized.")
 				})
 				return nil
 			}
@@ -32,8 +32,9 @@ var vaultInitCmd = &cobra.Command{
 			DBPath      string `json:"db_path"`
 			Message     string `json:"message"`
 		}{true, vault.DefaultDBPath(), "Vault initialized successfully."}, func() {
-			fmt.Println("Vault initialized successfully.")
-			fmt.Printf("Database: %s\n", vault.DefaultDBPath())
+			w := cmd.OutOrStdout()
+			_, _ = fmt.Fprintln(w, "Vault initialized successfully.")
+			_, _ = fmt.Fprintf(w, "Database: %s\n", vault.DefaultDBPath())
 		})
 		return nil
 	},

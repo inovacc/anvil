@@ -25,8 +25,9 @@ var vaultListCmd = &cobra.Command{
 		}
 
 		outputResult(cmd, secrets, func() {
+			w := cmd.OutOrStdout()
 			if len(secrets) == 0 {
-				fmt.Println("No secrets found.")
+				_, _ = fmt.Fprintln(w, "No secrets found.")
 				return
 			}
 
@@ -35,7 +36,7 @@ var vaultListCmd = &cobra.Command{
 				if s.Description != "" {
 					desc = fmt.Sprintf(" - %s", s.Description)
 				}
-				fmt.Printf("  %s%s\n", s.Key, desc)
+				_, _ = fmt.Fprintf(w, "  %s%s\n", s.Key, desc)
 			}
 		})
 		return nil

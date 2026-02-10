@@ -26,10 +26,12 @@ func setupTestDir(t *testing.T) (cleanup func()) {
 
 func testKey(t *testing.T) []byte {
 	t.Helper()
+
 	key, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("generate key: %v", err)
 	}
+
 	return key
 }
 
@@ -59,12 +61,15 @@ func TestRelease(t *testing.T) {
 			if !state.Active {
 				t.Error("expected Active to be true")
 			}
+
 			if state.ProfileName != tc.profile {
 				t.Errorf("ProfileName = %q, want %q", state.ProfileName, tc.profile)
 			}
+
 			if state.SessionID == "" {
 				t.Error("expected non-empty SessionID")
 			}
+
 			if state.Remaining <= 0 {
 				t.Error("expected positive Remaining duration")
 			}
@@ -99,6 +104,7 @@ func TestCheck(t *testing.T) {
 				if _, err := Release(key, "test", 1*time.Millisecond); err != nil {
 					t.Fatalf("Release() error = %v", err)
 				}
+
 				time.Sleep(5 * time.Millisecond)
 			},
 			wantActive: false,
@@ -132,8 +138,10 @@ func TestCheck(t *testing.T) {
 				if err == nil {
 					t.Error("expected error, got nil")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("Check() error = %v", err)
 			}
@@ -179,8 +187,10 @@ func TestRevoke(t *testing.T) {
 				if err == nil {
 					t.Errorf("expected error %v, got nil", tc.wantErr)
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("Revoke() error = %v", err)
 			}
@@ -190,6 +200,7 @@ func TestRevoke(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Check() after revoke error = %v", err)
 			}
+
 			if state.Active {
 				t.Error("expected Active to be false after revoke")
 			}
@@ -208,6 +219,7 @@ func TestIsReleased(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IsReleased() error = %v", err)
 	}
+
 	if released {
 		t.Error("expected not released initially")
 	}
@@ -221,6 +233,7 @@ func TestIsReleased(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IsReleased() error = %v", err)
 	}
+
 	if !released {
 		t.Error("expected released after Release()")
 	}
@@ -234,6 +247,7 @@ func TestIsReleased(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IsReleased() error = %v", err)
 	}
+
 	if released {
 		t.Error("expected not released after Revoke()")
 	}
@@ -266,6 +280,7 @@ func TestReleaseOverwrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Check() error = %v", err)
 	}
+
 	if state.ProfileName != "prod" {
 		t.Errorf("ProfileName = %q, want %q", state.ProfileName, "prod")
 	}
@@ -281,6 +296,7 @@ func TestDisabledFileCleaned(t *testing.T) {
 	if _, err := Release(key, "test", 10*time.Minute); err != nil {
 		t.Fatalf("Release() error = %v", err)
 	}
+
 	if err := Revoke(); err != nil {
 		t.Fatalf("Revoke() error = %v", err)
 	}

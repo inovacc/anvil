@@ -24,7 +24,7 @@ var vaultEnvRevokeCmd = &cobra.Command{
 		outputResult(cmd, struct {
 			Message string `json:"message"`
 		}{"Release revoked."}, func() {
-			fmt.Println("Release revoked.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Release revoked.")
 		})
 		return nil
 	},

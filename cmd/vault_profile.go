@@ -34,7 +34,7 @@ var vaultProfileCreateCmd = &cobra.Command{
 			Name    string `json:"name"`
 			Message string `json:"message"`
 		}{args[0], fmt.Sprintf("Profile %q created.", args[0])}, func() {
-			fmt.Printf("Profile %q created.\n", args[0])
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Profile %q created.\n", args[0])
 		})
 		return nil
 	},
@@ -56,8 +56,9 @@ var vaultProfileListCmd = &cobra.Command{
 		}
 
 		outputResult(cmd, profiles, func() {
+			w := cmd.OutOrStdout()
 			if len(profiles) == 0 {
-				fmt.Println("No profiles found.")
+				_, _ = fmt.Fprintln(w, "No profiles found.")
 				return
 			}
 
@@ -70,7 +71,7 @@ var vaultProfileListCmd = &cobra.Command{
 				if p.Description != "" {
 					desc = fmt.Sprintf(" - %s", p.Description)
 				}
-				fmt.Printf("%s%s (%d secrets)%s\n", marker, p.Name, p.SecretCount, desc)
+				_, _ = fmt.Fprintf(w, "%s%s (%d secrets)%s\n", marker, p.Name, p.SecretCount, desc)
 			}
 		})
 		return nil
@@ -96,7 +97,7 @@ var vaultProfileDeleteCmd = &cobra.Command{
 			Name    string `json:"name"`
 			Message string `json:"message"`
 		}{args[0], fmt.Sprintf("Profile %q deleted.", args[0])}, func() {
-			fmt.Printf("Profile %q deleted.\n", args[0])
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Profile %q deleted.\n", args[0])
 		})
 		return nil
 	},
@@ -121,7 +122,7 @@ var vaultProfileUseCmd = &cobra.Command{
 			Name    string `json:"name"`
 			Message string `json:"message"`
 		}{args[0], fmt.Sprintf("Now using profile %q.", args[0])}, func() {
-			fmt.Printf("Now using profile %q.\n", args[0])
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Now using profile %q.\n", args[0])
 		})
 		return nil
 	},

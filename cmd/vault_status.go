@@ -17,21 +17,22 @@ var vaultStatusCmd = &cobra.Command{
 		}
 
 		outputResult(cmd, status, func() {
+			w := cmd.OutOrStdout()
 			if !status.Initialized {
-				fmt.Println("Vault is not initialized.")
-				fmt.Printf("Database path: %s\n", status.DBPath)
-				fmt.Println("Run 'profile vault init' to initialize.")
+				_, _ = fmt.Fprintln(w, "Vault is not initialized.")
+				_, _ = fmt.Fprintf(w, "Database path: %s\n", status.DBPath)
+				_, _ = fmt.Fprintln(w, "Run 'profile vault init' to initialize.")
 				return
 			}
 
-			fmt.Println("Vault Status")
-			fmt.Println("  Initialized:  yes")
-			fmt.Printf("  Database:     %s\n", status.DBPath)
-			fmt.Printf("  Profiles:     %d\n", status.ProfileCount)
-			fmt.Printf("  Secrets:      %d\n", status.SecretCount)
-			fmt.Printf("  Key version:  %d\n", status.KeyVersion)
+			_, _ = fmt.Fprintln(w, "Vault Status")
+			_, _ = fmt.Fprintln(w, "  Initialized:  yes")
+			_, _ = fmt.Fprintf(w, "  Database:     %s\n", status.DBPath)
+			_, _ = fmt.Fprintf(w, "  Profiles:     %d\n", status.ProfileCount)
+			_, _ = fmt.Fprintf(w, "  Secrets:      %d\n", status.SecretCount)
+			_, _ = fmt.Fprintf(w, "  Key version:  %d\n", status.KeyVersion)
 			if !status.CreatedAt.IsZero() {
-				fmt.Printf("  Created:      %s\n", status.CreatedAt.Format("2006-01-02 15:04:05"))
+				_, _ = fmt.Fprintf(w, "  Created:      %s\n", status.CreatedAt.Format("2006-01-02 15:04:05"))
 			}
 		})
 		return nil

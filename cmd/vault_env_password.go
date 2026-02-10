@@ -48,7 +48,7 @@ var vaultEnvPasswordSetCmd = &cobra.Command{
 			outputResult(cmd, struct {
 				Message string `json:"message"`
 			}{"Password set successfully."}, func() {
-				fmt.Println("Password set successfully.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
 			})
 			return nil
 		}
@@ -87,7 +87,7 @@ var vaultEnvPasswordSetCmd = &cobra.Command{
 		outputResult(cmd, struct {
 			Message string `json:"message"`
 		}{"Password set successfully."}, func() {
-			fmt.Println("Password set successfully.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
 		})
 		return nil
 	},
@@ -111,7 +111,7 @@ var vaultEnvPasswordResetCmd = &cobra.Command{
 			outputResult(cmd, struct {
 				Message string `json:"message"`
 			}{"No password is set."}, func() {
-				fmt.Println("No password is set.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No password is set.")
 			})
 			return nil
 		}
@@ -134,7 +134,7 @@ var vaultEnvPasswordResetCmd = &cobra.Command{
 		outputResult(cmd, struct {
 			Message string `json:"message"`
 		}{"Password removed."}, func() {
-			fmt.Println("Password removed.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password removed.")
 		})
 		return nil
 	},

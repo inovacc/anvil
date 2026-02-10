@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -17,8 +14,7 @@ var rootCmd = &cobra.Command{
 	Short: "Machine-bound encrypted vault and profile manager",
 	Long:  "CLI tool for managing encrypted secrets organized by profiles, bound to this machine.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		envInline, _ := cmd.Flags().GetString("env-inline")
-		if envInline != "" {
+		if envInline, _ := cmd.Flags().GetString("env-inline"); envInline != "" {
 			return envInlineHandler(envInline, cmd)
 		}
 
@@ -31,6 +27,7 @@ func envInlineHandler(key string, cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = v.Close() }()
 
 	profileName, _ := cmd.Flags().GetString("profile")
@@ -44,8 +41,9 @@ func envInlineHandler(key string, cmd *cobra.Command) error {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	}{Key: key, Value: value}, func() {
-		fmt.Print(value)
+		_, _ = fmt.Fprint(cmd.OutOrStdout(), value)
 	})
+
 	return nil
 }
 

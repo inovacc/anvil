@@ -29,7 +29,7 @@ var vaultGetCmd = &cobra.Command{
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		}{args[0], value}, func() {
-			fmt.Print(value)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), value)
 		})
 		return nil
 	},

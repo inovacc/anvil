@@ -21,10 +21,12 @@ const (
 // DeriveKey derives a 256-bit key from the machine ID and a salt using HKDF-SHA256.
 func DeriveKey(machineID string, salt []byte) ([]byte, error) {
 	hk := hkdf.New(sha256.New, []byte(machineID), salt, []byte("profile-vault-v1"))
+
 	key := make([]byte, keySize)
 	if _, err := io.ReadFull(hk, key); err != nil {
 		return nil, fmt.Errorf("hkdf derive: %w", err)
 	}
+
 	return key, nil
 }
 
@@ -34,6 +36,7 @@ func GenerateSalt() ([]byte, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return nil, fmt.Errorf("generate salt: %w", err)
 	}
+
 	return salt, nil
 }
 
@@ -43,6 +46,7 @@ func GenerateKey() ([]byte, error) {
 	if _, err := rand.Read(key); err != nil {
 		return nil, fmt.Errorf("generate key: %w", err)
 	}
+
 	return key, nil
 }
 
@@ -65,6 +69,7 @@ func Encrypt(key, plaintext []byte) (ciphertext, nonce []byte, err error) {
 	}
 
 	ciphertext = gcm.Seal(nil, nonce, plaintext, nil)
+
 	return ciphertext, nonce, nil
 }
 

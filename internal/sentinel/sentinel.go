@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/inovacc/profile/internal/application"
 	"github.com/inovacc/profile/internal/crypto"
 )
 
 const (
-	cacheSubdir  = "profile"
 	enabledFile  = "PROFILE_ENV_RELEASE_ENABLED"
 	disabledFile = "PROFILE_ENV_RELEASE_DISABLED"
 )
@@ -48,7 +48,8 @@ func defaultCacheDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("get user cache dir: %w", err)
 	}
-	return filepath.Join(base, cacheSubdir), nil
+
+	return filepath.Join(base, application.AppName), nil
 }
 
 func enabledPath() (string, error) {
@@ -56,6 +57,7 @@ func enabledPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, enabledFile), nil
 }
 
@@ -64,6 +66,7 @@ func disabledPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, disabledFile), nil
 }
 
@@ -106,7 +109,9 @@ func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseS
 	}
 
 	// File format: nonce (12 bytes) || ciphertext
-	fileData := append(nonce, ciphertext...)
+	fileData := make([]byte, 0, len(nonce)+len(ciphertext))
+	fileData = append(fileData, nonce...)
+	fileData = append(fileData, ciphertext...)
 
 	ep, err := enabledPath()
 	if err != nil {
@@ -129,6 +134,7 @@ func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseS
 	if err != nil {
 		return nil, err
 	}
+
 	_ = os.Remove(dp)
 
 	return &ReleaseState{
@@ -156,6 +162,7 @@ func Revoke() error {
 		if os.IsNotExist(err) {
 			return ErrNoActive
 		}
+
 		return fmt.Errorf("revoke sentinel: %w", err)
 	}
 
@@ -174,6 +181,7 @@ func Check(masterKey []byte) (*ReleaseState, error) {
 		if os.IsNotExist(err) {
 			return &ReleaseState{Active: false}, nil
 		}
+
 		return nil, fmt.Errorf("read sentinel: %w", err)
 	}
 
@@ -199,6 +207,7 @@ func Check(masterKey []byte) (*ReleaseState, error) {
 	if remaining <= 0 {
 		// Auto-revoke expired session
 		_ = Revoke()
+
 		return &ReleaseState{
 			Active:      false,
 			ProfileName: payload.ProfileName,
@@ -222,5 +231,6 @@ func IsReleased(masterKey []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return state.Active, nil
 }

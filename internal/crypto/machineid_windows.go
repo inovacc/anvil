@@ -12,6 +12,7 @@ func platformMachineID() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to open registry key: %w", err)
 	}
+
 	defer func() { _ = k.Close() }()
 
 	val, _, err := k.GetStringValue("MachineGuid")

@@ -107,6 +107,7 @@ func (s *Store) ProfileExists(name string) (bool, error) {
 	defer s.mu.RUnlock()
 
 	count, err := s.queries.ProfileExists(context.Background(), name)
+
 	return count > 0, err
 }
 
@@ -187,6 +188,7 @@ func (s *Store) SecretExists(profileName, key string) (bool, error) {
 		ProfileName: profileName,
 		Key:         key,
 	})
+
 	return count > 0, err
 }
 
@@ -214,6 +216,7 @@ func (s *Store) HasSealedKey() (bool, error) {
 	defer s.mu.RUnlock()
 
 	count, err := s.queries.HasSealedKey(context.Background())
+
 	return count > 0, err
 }
 
@@ -255,6 +258,7 @@ func (s *Store) HasPassword() (bool, error) {
 	defer s.mu.RUnlock()
 
 	count, err := s.queries.HasPassword(context.Background())
+
 	return count > 0, err
 }
 

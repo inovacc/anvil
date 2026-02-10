@@ -52,7 +52,7 @@ var vaultEnvReleaseCmd = &cobra.Command{
 			Remaining: state.Remaining.Truncate(time.Second).String(),
 			Message:   fmt.Sprintf("Secrets released for profile %q. Expires in %s", state.ProfileName, state.Remaining.Truncate(time.Second)),
 		}, func() {
-			fmt.Printf("Secrets released for profile %q. Expires in %s\n", state.ProfileName, state.Remaining.Truncate(time.Second))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Secrets released for profile %q. Expires in %s\n", state.ProfileName, state.Remaining.Truncate(time.Second))
 		})
 		return nil
 	},

@@ -27,16 +27,18 @@ var vaultExportCmd = &cobra.Command{
 			return err
 		}
 
+		w := cmd.OutOrStdout()
+
 		switch format {
 		case "json":
 			data, err := json.MarshalIndent(entries, "", "  ")
 			if err != nil {
 				return fmt.Errorf("marshal json: %w", err)
 			}
-			fmt.Println(string(data))
+			_, _ = fmt.Fprintln(w, string(data))
 		case "env":
 			for _, e := range entries {
-				fmt.Printf("%s=%s\n", e.Key, e.Value)
+				_, _ = fmt.Fprintf(w, "%s=%s\n", e.Key, e.Value)
 			}
 		default:
 			return fmt.Errorf("unsupported format: %s (use json or env)", format)

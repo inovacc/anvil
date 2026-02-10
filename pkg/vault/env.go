@@ -25,6 +25,7 @@ func (v *Vault) EnvRelease(password string, opts *EnvReleaseOptions) (*sentinel.
 		if opts.ProfileName != "" {
 			profileName = opts.ProfileName
 		}
+
 		if opts.TTL > 0 {
 			ttl = opts.TTL
 		}
@@ -33,6 +34,7 @@ func (v *Vault) EnvRelease(password string, opts *EnvReleaseOptions) (*sentinel.
 	if ttl < minTTL {
 		return nil, fmt.Errorf("TTL must be at least %s", minTTL)
 	}
+
 	if ttl > maxTTL {
 		return nil, fmt.Errorf("TTL must be at most %s", maxTTL)
 	}

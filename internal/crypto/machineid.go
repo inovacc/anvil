@@ -26,6 +26,7 @@ func MachineIDHash() ([]byte, error) {
 	}
 
 	h := sha256.Sum256([]byte(id))
+
 	return h[:], nil
 }
 

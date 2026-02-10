@@ -1,6 +1,10 @@
 package vault
 
-import "time"
+import (
+	"time"
+
+	"github.com/inovacc/profile/internal/application"
+)
 
 // ProfileInfo represents vault profile metadata.
 type ProfileInfo struct {
@@ -34,7 +38,7 @@ type Status struct {
 	SecretCount  int64     `json:"secret_count"`
 	KeyVersion   int64     `json:"key_version"`
 	PasswordSet  bool      `json:"password_set"`
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt    time.Time `json:"created_at,omitzero"`
 }
 
 // EnvReleaseOptions configures an env release operation.
@@ -51,5 +55,9 @@ type Options struct {
 
 // DefaultDBPath returns the default vault database path.
 func DefaultDBPath() string {
-	return defaultDBPath()
+	dir, err := application.GetApplicationDirectory()
+	if err != nil {
+		return ""
+	}
+	return dir
 }

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
+	"github.com/inovacc/profile/internal/application"
 	"github.com/inovacc/profile/internal/crypto"
 	"github.com/inovacc/profile/internal/store"
 	"golang.org/x/crypto/bcrypt"
@@ -21,29 +21,13 @@ type Vault struct {
 	dbPath    string
 }
 
-func defaultDBPath() string {
-	var configDir string
-
-	switch runtime.GOOS {
-	case "windows":
-		configDir = os.Getenv("APPDATA")
-		if configDir == "" {
-			configDir = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Roaming")
-		}
-	default:
-		configDir = os.Getenv("XDG_CONFIG_HOME")
-		if configDir == "" {
-			home, _ := os.UserHomeDir()
-			configDir = filepath.Join(home, ".config")
-		}
-	}
-
-	return filepath.Join(configDir, "profile", "vault.db")
-}
-
 // Init initializes a new vault, generating a master key sealed to this machine.
 func Init(opts *Options) error {
-	dbPath := defaultDBPath()
+	dbPath, err := application.GetApplicationDirectory()
+	if err != nil {
+		return fmt.Errorf("get application directory: %w", err)
+	}
+
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
 	}
@@ -56,12 +40,14 @@ func Init(opts *Options) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
+
 	defer func() { _ = vaultStore.Close() }()
 
 	has, err := vaultStore.HasSealedKey()
 	if err != nil {
 		return fmt.Errorf("check sealed key: %w", err)
 	}
+
 	if has {
 		return ErrAlreadyInitialized
 	}
@@ -100,7 +86,11 @@ func Init(opts *Options) error {
 
 // Open opens an existing vault, unsealing the master key with the machine identity.
 func Open(opts *Options) (*Vault, error) {
-	dbPath := defaultDBPath()
+	dbPath, err := application.GetApplicationDirectory()
+	if err != nil {
+		return nil, fmt.Errorf("get application directory: %w", err)
+	}
+
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
 	}
@@ -115,6 +105,7 @@ func Open(opts *Options) (*Vault, error) {
 		_ = vaultStore.Close()
 		return nil, fmt.Errorf("check sealed key: %w", err)
 	}
+
 	if !has {
 		_ = vaultStore.Close()
 		return nil, ErrNotInitialized
@@ -174,6 +165,7 @@ func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
 	if err != nil {
 		return fmt.Errorf("check profile: %w", err)
 	}
+
 	if exists {
 		return ErrProfileExists
 	}
@@ -187,6 +179,7 @@ func (v *Vault) DeleteProfile(name string) error {
 	if err != nil {
 		return fmt.Errorf("check profile: %w", err)
 	}
+
 	if !exists {
 		return ErrProfileNotFound
 	}
@@ -200,6 +193,7 @@ func (v *Vault) UseProfile(name string) error {
 	if err != nil {
 		return fmt.Errorf("check profile: %w", err)
 	}
+
 	if !exists {
 		return ErrProfileNotFound
 	}
@@ -229,6 +223,7 @@ func (v *Vault) ListProfiles() ([]ProfileInfo, error) {
 		if row.Description != nil {
 			info.Description = *row.Description
 		}
+
 		if row.IsDefault != nil {
 			info.IsDefault = *row.IsDefault == 1
 		}
@@ -246,9 +241,11 @@ func (v *Vault) resolveProfile(profileName string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("check profile: %w", err)
 		}
+
 		if !exists {
 			return "", ErrProfileNotFound
 		}
+
 		return profileName, nil
 	}
 
@@ -256,6 +253,7 @@ func (v *Vault) resolveProfile(profileName string) (string, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrNoDefaultProfile
 	}
+
 	if err != nil {
 		return "", fmt.Errorf("get default profile: %w", err)
 	}
@@ -291,6 +289,7 @@ func (v *Vault) Get(key, profileName string) (string, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrSecretNotFound
 	}
+
 	if err != nil {
 		return "", fmt.Errorf("get secret: %w", err)
 	}
@@ -314,6 +313,7 @@ func (v *Vault) Delete(key, profileName string) error {
 	if err != nil {
 		return fmt.Errorf("check secret: %w", err)
 	}
+
 	if !exists {
 		return ErrSecretNotFound
 	}
@@ -342,6 +342,7 @@ func (v *Vault) List(profileName string) ([]SecretInfo, error) {
 		if row.Description != nil {
 			info.Description = *row.Description
 		}
+
 		if row.UpdatedAt != nil {
 			info.UpdatedAt = *row.UpdatedAt
 		}
@@ -414,11 +415,13 @@ func (v *Vault) Status() (*Status, error) {
 	}
 
 	var totalSecrets int64
+
 	for _, p := range profiles {
 		count, err := v.store.CountSecrets(p.Name)
 		if err != nil {
 			return nil, fmt.Errorf("count secrets: %w", err)
 		}
+
 		totalSecrets += count
 	}
 
@@ -456,6 +459,7 @@ func (v *Vault) SetPassword(password string) error {
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
+
 	return v.store.UpsertPassword(hash)
 }
 
@@ -465,6 +469,7 @@ func (v *Vault) VerifyPassword(password string) error {
 	if err != nil {
 		return fmt.Errorf("check password: %w", err)
 	}
+
 	if !has {
 		return ErrPasswordNotSet
 	}
@@ -477,6 +482,7 @@ func (v *Vault) VerifyPassword(password string) error {
 	if err := bcrypt.CompareHashAndPassword(pw.PasswordHash, []byte(password)); err != nil {
 		return ErrPasswordMismatch
 	}
+
 	return nil
 }
 
@@ -497,7 +503,11 @@ func (v *Vault) MasterKey() []byte {
 
 // GetStatus returns vault status without requiring Open (checks if initialized).
 func GetStatus(opts *Options) (*Status, error) {
-	dbPath := defaultDBPath()
+	dbPath, err := application.GetApplicationDirectory()
+	if err != nil {
+		return nil, fmt.Errorf("get application directory: %w", err)
+	}
+
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
 	}
@@ -516,6 +526,7 @@ func GetStatus(opts *Options) (*Status, error) {
 			DBPath:      dbPath,
 		}, nil
 	}
+
 	defer func() { _ = v.Close() }()
 
 	return v.Status()

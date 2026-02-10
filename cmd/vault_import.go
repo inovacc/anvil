@@ -39,7 +39,7 @@ var vaultImportCmd = &cobra.Command{
 			Count   int    `json:"count"`
 			Message string `json:"message"`
 		}{len(entries), fmt.Sprintf("Imported %d secrets.", len(entries))}, func() {
-			fmt.Printf("Imported %d secrets.\n", len(entries))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Imported %d secrets.\n", len(entries))
 		})
 		return nil
 	},
@@ -57,6 +57,7 @@ func parseImportFile(path, format string) ([]vault.SecretEntry, error) {
 		if err := json.Unmarshal(data, &entries); err != nil {
 			return nil, fmt.Errorf("parse json: %w", err)
 		}
+
 		return entries, nil
 	case "env":
 		return parseEnvData(data)
@@ -67,6 +68,7 @@ func parseImportFile(path, format string) ([]vault.SecretEntry, error) {
 
 func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 	var entries []vault.SecretEntry
+
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

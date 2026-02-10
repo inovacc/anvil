@@ -16,8 +16,11 @@ func outputResult(cmd *cobra.Command, jsonData any, textFn func()) {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error marshaling JSON: %v\n", err)
 			return
 		}
-		fmt.Println(string(data))
+
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
+
 		return
 	}
+
 	textFn()
 }

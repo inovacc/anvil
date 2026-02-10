@@ -46,16 +46,17 @@ var vaultEnvStatusCmd = &cobra.Command{
 				return ""
 			}(),
 		}, func() {
+			w := cmd.OutOrStdout()
 			if !state.Active {
-				fmt.Println("Status:  inactive")
+				_, _ = fmt.Fprintln(w, "Status:  inactive")
 				return
 			}
 
-			fmt.Printf("Status:    active\n")
-			fmt.Printf("Profile:   %s\n", state.ProfileName)
-			fmt.Printf("Session:   %s\n", state.SessionID)
-			fmt.Printf("Expires:   %s\n", state.ExpiresAt.Format(time.RFC3339))
-			fmt.Printf("Remaining: %s\n", state.Remaining.Truncate(time.Second))
+			_, _ = fmt.Fprintf(w, "Status:    active\n")
+			_, _ = fmt.Fprintf(w, "Profile:   %s\n", state.ProfileName)
+			_, _ = fmt.Fprintf(w, "Session:   %s\n", state.SessionID)
+			_, _ = fmt.Fprintf(w, "Expires:   %s\n", state.ExpiresAt.Format(time.RFC3339))
+			_, _ = fmt.Fprintf(w, "Remaining: %s\n", state.Remaining.Truncate(time.Second))
 		})
 		return nil
 	},

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,35 +20,40 @@ var cmdTreeCmd = &cobra.Command{
 	Long:  "Shows a visual tree of all available commands.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		outputResult(cmd, flattenCommands(rootCmd, ""), func() {
-			fmt.Println(rootCmd.Name())
-			printTree(rootCmd, "")
+			w := cmd.OutOrStdout()
+			_, _ = fmt.Fprintln(w, rootCmd.Name())
+			printTree(w, rootCmd, "")
 		})
 		return nil
 	},
 }
 
-func printTree(cmd *cobra.Command, prefix string) {
+func printTree(w io.Writer, cmd *cobra.Command, prefix string) {
 	children := visibleSubcommands(cmd)
 	for i, child := range children {
 		isLast := i == len(children)-1
 		connector := "├── "
 		childPrefix := "│   "
+
 		if isLast {
 			connector = "└── "
 			childPrefix = "    "
 		}
-		fmt.Printf("%s%s%s\n", prefix, connector, child.Name())
-		printTree(child, prefix+childPrefix)
+
+		_, _ = fmt.Fprintf(w, "%s%s%s\n", prefix, connector, child.Name())
+		printTree(w, child, prefix+childPrefix)
 	}
 }
 
 func visibleSubcommands(cmd *cobra.Command) []*cobra.Command {
 	var visible []*cobra.Command
+
 	for _, c := range cmd.Commands() {
 		if !c.Hidden && c.Name() != "help" {
 			visible = append(visible, c)
 		}
 	}
+
 	return visible
 }
 
@@ -57,13 +63,15 @@ func flattenCommands(cmd *cobra.Command, parentPath string) []cmdTreeEntry {
 		fullPath = parentPath + " " + cmd.Name()
 	}
 
-	entries := []cmdTreeEntry{{
+	children := visibleSubcommands(cmd)
+	entries := make([]cmdTreeEntry, 1, 1+len(children))
+	entries[0] = cmdTreeEntry{
 		Name:        cmd.Name(),
 		FullPath:    strings.TrimSpace(fullPath),
 		Description: cmd.Short,
-	}}
+	}
 
-	for _, child := range visibleSubcommands(cmd) {
+	for _, child := range children {
 		entries = append(entries, flattenCommands(child, fullPath)...)
 	}
 

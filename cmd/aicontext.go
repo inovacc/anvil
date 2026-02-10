@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -38,10 +39,11 @@ var aicontextCmd = &cobra.Command{
 		}
 
 		outputResult(cmd, commands, func() {
+			w := cmd.OutOrStdout()
 			if compact {
-				printCompactMarkdown(commands)
+				printCompactMarkdown(w, commands)
 			} else {
-				printFullMarkdown(commands)
+				printFullMarkdown(w, commands)
 			}
 		})
 		return nil
@@ -59,6 +61,7 @@ func collectCommands(cmd *cobra.Command, parentPath, category string) []aiComman
 	if currentCategory == "" && parentPath != "" {
 		currentCategory = cmd.Name()
 	}
+
 	if parentPath == "" {
 		currentCategory = "root"
 	}
@@ -79,6 +82,7 @@ func collectCommands(cmd *cobra.Command, parentPath, category string) []aiComman
 			if f.Name == "help" || f.Name == "json" {
 				return
 			}
+
 			fi := aiFlagInfo{
 				Name:        "--" + f.Name,
 				Description: f.Usage,
@@ -86,9 +90,11 @@ func collectCommands(cmd *cobra.Command, parentPath, category string) []aiComman
 			if f.Shorthand != "" {
 				fi.Shorthand = "-" + f.Shorthand
 			}
+
 			if f.DefValue != "" && f.DefValue != "false" && f.DefValue != "0" {
 				fi.DefaultValue = f.DefValue
 			}
+
 			info.Flags = append(info.Flags, fi)
 		})
 
@@ -104,61 +110,71 @@ func collectCommands(cmd *cobra.Command, parentPath, category string) []aiComman
 
 func filterByCategory(commands []aiCommandInfo, category string) []aiCommandInfo {
 	cat := strings.ToLower(category)
+
 	var filtered []aiCommandInfo
+
 	for _, c := range commands {
 		if strings.ToLower(c.Category) == cat {
 			filtered = append(filtered, c)
 		}
 	}
+
 	return filtered
 }
 
-func printFullMarkdown(commands []aiCommandInfo) {
-	fmt.Println("# profile CLI")
-	fmt.Println()
-	fmt.Println("Machine-bound encrypted vault and profile manager.")
-	fmt.Println()
-	fmt.Println("## Commands")
+func printFullMarkdown(w io.Writer, commands []aiCommandInfo) {
+	_, _ = fmt.Fprintln(w, "# profile CLI")
+	_, _ = fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w, "Machine-bound encrypted vault and profile manager.")
+	_, _ = fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w, "## Commands")
 
 	for _, c := range commands {
-		fmt.Println()
-		fmt.Printf("### %s\n", c.FullPath)
-		fmt.Println()
-		fmt.Println(c.Description)
-		fmt.Println()
-		fmt.Printf("**Usage:** `%s`\n", c.Usage)
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintf(w, "### %s\n", c.FullPath)
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w, c.Description)
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintf(w, "**Usage:** `%s`\n", c.Usage)
 
 		if len(c.Flags) > 0 {
-			fmt.Println()
-			fmt.Println("**Flags:**")
+			_, _ = fmt.Fprintln(w)
+			_, _ = fmt.Fprintln(w, "**Flags:**")
+
 			for _, f := range c.Flags {
 				flag := f.Name
 				if f.Shorthand != "" {
 					flag = f.Shorthand + ", " + f.Name
 				}
+
 				def := ""
 				if f.DefaultValue != "" {
 					def = fmt.Sprintf(" (default: %s)", f.DefaultValue)
 				}
-				fmt.Printf("- `%s` — %s%s\n", flag, f.Description, def)
+
+				_, _ = fmt.Fprintf(w, "- `%s` — %s%s\n", flag, f.Description, def)
 			}
 		}
 	}
 }
 
-func printCompactMarkdown(commands []aiCommandInfo) {
-	fmt.Println("# profile CLI")
-	fmt.Println()
+func printCompactMarkdown(w io.Writer, commands []aiCommandInfo) {
+	_, _ = fmt.Fprintln(w, "# profile CLI")
+	_, _ = fmt.Fprintln(w)
+
 	for _, c := range commands {
 		flags := ""
+
 		if len(c.Flags) > 0 {
-			var names []string
+			names := make([]string, 0, len(c.Flags))
 			for _, f := range c.Flags {
 				names = append(names, f.Name)
 			}
+
 			flags = " [" + strings.Join(names, ", ") + "]"
 		}
-		fmt.Printf("- `%s` — %s%s\n", c.FullPath, c.Description, flags)
+
+		_, _ = fmt.Fprintf(w, "- `%s` — %s%s\n", c.FullPath, c.Description, flags)
 	}
 }
 
