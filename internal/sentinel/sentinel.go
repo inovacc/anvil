@@ -68,7 +68,7 @@ func disabledPath() (string, error) {
 }
 
 // Release creates a new env release session. The sentinel file is encrypted
-// with the vault master key so it is opaque without vault access.
+// with the vault master key, so it is opaque without vault access.
 func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseState, error) {
 	dir, err := cacheDir()
 	if err != nil {
@@ -113,8 +113,8 @@ func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseS
 		return nil, err
 	}
 
-	// Write to temp file then rename for atomicity
-	tmpFile := ep + ".tmp"
+	// Write to a temp file, then rename it for atomicity
+	tmpFile := fmt.Sprintf("%s.tmp", ep)
 	if err := os.WriteFile(tmpFile, fileData, 0o600); err != nil {
 		return nil, fmt.Errorf("write sentinel: %w", err)
 	}
@@ -124,7 +124,7 @@ func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseS
 		return nil, fmt.Errorf("rename sentinel: %w", err)
 	}
 
-	// Remove disabled file if it exists
+	// Remove a disabled file if it exists
 	dp, err := disabledPath()
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseS
 	}, nil
 }
 
-// Revoke revokes the active release by renaming the enabled file to disabled.
+// Revoke revokes the active release by renaming the enabled file to disable.
 func Revoke() error {
 	ep, err := enabledPath()
 	if err != nil {

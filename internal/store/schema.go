@@ -1,4 +1,4 @@
-package vaultdb
+package store
 
 // Schema contains the CREATE TABLE statements for the vault database.
 const Schema = `

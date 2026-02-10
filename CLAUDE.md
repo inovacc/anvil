@@ -61,7 +61,9 @@ profile/
 │   └── aicontext.go # AI context documentation generator
 ├── internal/       # Private application code
 │   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, machine ID
-│   └── sentinel/   # Time-limited release session management
+│   ├── sentinel/   # Time-limited release session management
+│   └── store/
+│       └── vaultdb/ # SQLite database store (sqlc-generated queries, mutex-protected ops)
 ├── pkg/vault/      # Public vault API (types, errors, operations)
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration

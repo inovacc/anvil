@@ -1,4 +1,4 @@
-package vaultdb
+package store
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/inovacc/profile/internal/store/vaultdb/sqlc"
+	"github.com/inovacc/profile/internal/store/sqlc"
 	_ "modernc.org/sqlite"
 )
 

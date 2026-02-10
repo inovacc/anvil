@@ -3,19 +3,20 @@ package vault
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/inovacc/profile/internal/crypto"
-	"github.com/inovacc/profile/internal/store/vaultdb"
+	"github.com/inovacc/profile/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // Vault provides encrypted secret storage organized by profiles.
 type Vault struct {
-	store     *vaultdb.Store
+	store     *store.Store
 	masterKey []byte
 	dbPath    string
 }
@@ -51,13 +52,13 @@ func Init(opts *Options) error {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
-	store, err := vaultdb.Open(dbPath)
+	vaultStore, err := store.Open(dbPath)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer func() { _ = store.Close() }()
+	defer func() { _ = vaultStore.Close() }()
 
-	has, err := store.HasSealedKey()
+	has, err := vaultStore.HasSealedKey()
 	if err != nil {
 		return fmt.Errorf("check sealed key: %w", err)
 	}
@@ -90,7 +91,7 @@ func Init(opts *Options) error {
 		return fmt.Errorf("seal master key: %w", err)
 	}
 
-	if err := store.UpsertSealedKey(sealed, nonce, salt, machineIDHash, 1); err != nil {
+	if err := vaultStore.UpsertSealedKey(sealed, nonce, salt, machineIDHash, 1); err != nil {
 		return fmt.Errorf("save sealed key: %w", err)
 	}
 
@@ -104,52 +105,52 @@ func Open(opts *Options) (*Vault, error) {
 		dbPath = opts.DBPath
 	}
 
-	store, err := vaultdb.Open(dbPath)
+	vaultStore, err := store.Open(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	has, err := store.HasSealedKey()
+	has, err := vaultStore.HasSealedKey()
 	if err != nil {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, fmt.Errorf("check sealed key: %w", err)
 	}
 	if !has {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, ErrNotInitialized
 	}
 
-	sk, err := store.GetSealedKey()
+	sk, err := vaultStore.GetSealedKey()
 	if err != nil {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, fmt.Errorf("get sealed key: %w", err)
 	}
 
 	machineIDHash, err := crypto.MachineIDHash()
 	if err != nil {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, fmt.Errorf("hash machine ID: %w", err)
 	}
 
 	if !bytes.Equal(sk.MachineIDHash, machineIDHash) {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, ErrMachineMismatch
 	}
 
 	machineID, err := crypto.MachineID()
 	if err != nil {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, fmt.Errorf("get machine ID: %w", err)
 	}
 
 	masterKey, err := crypto.UnsealMasterKey(sk.SealedData, sk.Nonce, machineID, sk.KeySalt)
 	if err != nil {
-		_ = store.Close()
+		_ = vaultStore.Close()
 		return nil, fmt.Errorf("unseal master key: %w", err)
 	}
 
 	return &Vault{
-		store:     store,
+		store:     vaultStore,
 		masterKey: masterKey,
 		dbPath:    dbPath,
 	}, nil
@@ -252,7 +253,7 @@ func (v *Vault) resolveProfile(profileName string) (string, error) {
 	}
 
 	row, err := v.store.GetDefaultProfile()
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrNoDefaultProfile
 	}
 	if err != nil {
@@ -287,7 +288,7 @@ func (v *Vault) Get(key, profileName string) (string, error) {
 	}
 
 	row, err := v.store.GetSecret(profile, key)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrSecretNotFound
 	}
 	if err != nil {

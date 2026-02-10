@@ -45,3 +45,16 @@
 - [ ] Auto-completion for shells
 - [ ] Secret templates
 - [ ] Plugin system
+
+## Test Coverage
+
+**Current:** 13.6%  |  **Target:** 80%
+
+| Package | Coverage | Status |
+|---------|----------|--------|
+| internal/crypto | 72.9% | Needs improvement |
+| internal/sentinel | 70.7% | Needs improvement |
+| internal/store/vaultdb | 0.0% | No tests |
+| internal/store/vaultdb/sqlc | 0.0% | No tests (generated code) |
+| pkg/vault | 0.0% | No tests |
+| cmd | 0.0% | No tests |

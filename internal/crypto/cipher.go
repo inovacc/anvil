@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io"
 
-	"golang.org/x/crypto/hkdf"
 	"crypto/sha256"
+
+	"golang.org/x/crypto/hkdf"
 )
 
 const (

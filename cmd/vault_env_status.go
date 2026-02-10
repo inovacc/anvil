@@ -33,8 +33,18 @@ var vaultEnvStatusCmd = &cobra.Command{
 			Active:    state.Active,
 			Profile:   state.ProfileName,
 			SessionID: state.SessionID,
-			ExpiresAt: func() string { if state.Active { return state.ExpiresAt.Format(time.RFC3339) }; return "" }(),
-			Remaining: func() string { if state.Active { return state.Remaining.Truncate(time.Second).String() }; return "" }(),
+			ExpiresAt: func() string {
+				if state.Active {
+					return state.ExpiresAt.Format(time.RFC3339)
+				}
+				return ""
+			}(),
+			Remaining: func() string {
+				if state.Active {
+					return state.Remaining.Truncate(time.Second).String()
+				}
+				return ""
+			}(),
 		}, func() {
 			if !state.Active {
 				fmt.Println("Status:  inactive")
