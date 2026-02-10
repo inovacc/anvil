@@ -68,6 +68,13 @@
 - Test workflow runs lint, tests, and vulncheck on PRs
 - Build workflow validates Linux and Windows builds on develop branch
 
+### User-Friendly Error Handling
+- **Status:** Completed (v0.3.x)
+- `UserError` type with Message and optional Hint for all vault errors
+- `handleError` formats errors for both text and JSON (`--json`) output
+- Cobra `SilenceErrors`/`SilenceUsage` suppresses usage dump on errors
+- Actionable hints guide users to the correct command
+
 ## Proposed
 
 ### Master Key Rotation

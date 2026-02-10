@@ -57,6 +57,7 @@ task release:check      # Validate goreleaser config
 profile/
 ├── cmd/            # CLI commands (Cobra)
 │   ├── output.go   # JSON/text output helper (outputResult)
+│   ├── errors.go   # User-friendly error formatting (handleError)
 │   ├── cmdtree.go  # Command tree visualization
 │   └── aicontext.go # AI context documentation generator
 ├── internal/       # Private application code
@@ -66,7 +67,7 @@ profile/
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
-├── pkg/vault/      # Public vault API (types, errors, TPM-first init/open)
+├── pkg/vault/      # Public vault API (types, UserError, TPM-first init/open)
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
@@ -131,5 +132,7 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Use `log/slog` for structured logging
 - All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output
 - Global `--json` persistent flag on rootCmd inherited by all subcommands
+- Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/errors.go` formats them (text or JSON based on `--json`)
+- `SilenceErrors` and `SilenceUsage` are set on rootCmd; Cobra does not dump usage on errors
 - `visibleSubcommands()` in cmdtree.go filters hidden commands and "help"
 - TPM tests use `t.Skip("TPM not available")` when `!sealbox.IsAvailable()`

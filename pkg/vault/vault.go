@@ -14,6 +14,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const dbFileName = "vault.db"
+
 // Vault provides encrypted secret storage organized by profiles.
 type Vault struct {
 	store     *store.Store
@@ -30,6 +32,8 @@ func Init(opts *Options) error {
 
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
+	} else {
+		dbPath = filepath.Join(dbPath, dbFileName)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
@@ -68,7 +72,7 @@ func Init(opts *Options) error {
 	if crypto.IsTPMAvailable() {
 		sealedJSON, tpmErr := crypto.SealMasterKeyTPM(masterKey)
 		if tpmErr == nil {
-			if err := vaultStore.UpsertSealedKey(sealedJSON, nil, nil, machineIDHash, 1, crypto.SealMethodTPM); err != nil {
+			if err := vaultStore.UpsertSealedKey(sealedJSON, []byte{}, []byte{}, machineIDHash, 1, crypto.SealMethodTPM); err != nil {
 				return fmt.Errorf("save sealed key: %w", err)
 			}
 
@@ -108,6 +112,8 @@ func Open(opts *Options) (*Vault, error) {
 
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
+	} else {
+		dbPath = filepath.Join(dbPath, dbFileName)
 	}
 
 	vaultStore, err := store.Open(dbPath)
@@ -542,6 +548,8 @@ func GetStatus(opts *Options) (*Status, error) {
 
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
+	} else {
+		dbPath = filepath.Join(dbPath, dbFileName)
 	}
 
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {

@@ -10,9 +10,11 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "profile",
-	Short: "Machine-bound encrypted vault and profile manager",
-	Long:  "CLI tool for managing encrypted secrets organized by profiles, bound to this machine.",
+	Use:           "profile",
+	Short:         "Machine-bound encrypted vault and profile manager",
+	Long:          "CLI tool for managing encrypted secrets organized by profiles, bound to this machine.",
+	SilenceErrors: true,
+	SilenceUsage:  true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if envInline, _ := cmd.Flags().GetString("env-inline"); envInline != "" {
 			return envInlineHandler(envInline, cmd)
@@ -50,8 +52,8 @@ func envInlineHandler(key string, cmd *cobra.Command) error {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
+	if err := rootCmd.Execute(); err != nil {
+		handleError(rootCmd, err)
 		os.Exit(1)
 	}
 }

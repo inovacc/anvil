@@ -49,7 +49,8 @@
 - [x] CI/CD pipeline integration (GitHub Actions: release on tag, test on PR, build on develop)
 - [ ] Secret sharing between machines (encrypted export)
 
-### Phase 7: Polish [NOT STARTED]
+### Phase 7: Polish [IN PROGRESS]
+- [x] User-friendly error handling (UserError type, no usage dump, JSON error output)
 - [ ] Interactive TUI mode
 - [ ] Auto-completion for shells
 - [ ] Secret templates
@@ -58,7 +59,7 @@
 
 ## Test Coverage
 
-**Current:** 15.0%  |  **Target:** 80%
+**Current:** 14.5%  |  **Target:** 80%
 
 | Package | Coverage | Status |
 |---------|----------|--------|

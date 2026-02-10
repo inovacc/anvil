@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/inovacc/profile/internal/application"
@@ -61,5 +62,5 @@ func DefaultDBPath() string {
 		return ""
 	}
 
-	return dir
+	return filepath.Join(dir, dbFileName)
 }

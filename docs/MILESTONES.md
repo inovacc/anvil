@@ -24,7 +24,7 @@
 - Vault status displays seal method
 - GitHub Actions CI/CD: release workflow (goreleaser on tag push), test workflow (lint + vuln on PR), build workflow (Linux + Windows)
 - **Released:** v0.3.0
-- **Test Coverage:** 15.0% (crypto 73.7%, sentinel 72.4%, store 0%, vault 0%, cmd 0%)
+- **Test Coverage:** 14.5% (crypto 73.7%, sentinel 72.4%, store 0%, vault 0%, cmd 0%)
 
 ## v0.4.0 — Security Hardening (Planned)
 - Master key rotation

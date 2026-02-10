@@ -51,8 +51,6 @@ graph TB
     Sealbox -.-> TPM
     Store --> DB
     Sentinel --> FS
-    App --> Store
-    App --> Sentinel
 ```
 
 ## Command Tree
@@ -113,7 +111,6 @@ graph TD
     sentinel --> app
     crypto --> sealbox
     store --> sqlc
-    store --> app
 ```
 
 ## Database Schema
@@ -550,6 +547,36 @@ graph TD
 ```
 
 All commands use `outputResult(cmd, jsonData, textFn)` for consistent dual-mode output. The `--json` flag is a persistent flag on the root command, inherited by all subcommands.
+
+## Error Handling
+
+```mermaid
+graph TD
+    Err["Command returns error"] --> Extract{"errors.As<br/>*vault.UserError?"}
+
+    Extract -->|yes| UE["UserError<br/>{Message, Hint}"]
+    Extract -->|no| Raw["Raw error string"]
+
+    UE --> Mode1{"--json flag?"}
+    Raw --> Mode2{"--json flag?"}
+
+    Mode1 -->|yes| UEJSON["{\"error\": \"...\", \"hint\": \"...\"}"]
+    Mode1 -->|no| UEText["Error: message\nHint:  hint"]
+
+    Raw --> Mode2
+    Mode2 -->|yes| RawJSON["{\"error\": \"...\"}"]
+    Mode2 -->|no| RawText["Error: message"]
+
+    UEJSON --> Stderr["stderr + exit 1"]
+    UEText --> Stderr
+    RawJSON --> Stderr
+    RawText --> Stderr
+```
+
+- `SilenceErrors` and `SilenceUsage` are set on rootCmd — Cobra never dumps usage text on errors
+- `handleError` in `cmd/errors.go` extracts `UserError` via `errors.As` and formats output
+- All sentinel errors in `pkg/vault/errors.go` are `*UserError` values with message and optional hint
+- Non-`UserError` errors (unexpected/system errors) pass through with the raw error message
 
 ## Security Model
 

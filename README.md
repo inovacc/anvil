@@ -12,6 +12,7 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
 - **Inline Secret Access** — Single secret retrieval via `--env-inline` flag
 - **Global JSON Output** — Structured JSON output for all commands via `--json`
+- **User-Friendly Errors** — Clean error messages with actionable hints, no usage dump on errors
 - **Memory Safety** — Master key zeroed on vault close via `sealbox.SecureZero`
 - **Cross-Platform** — Windows (TPM via TBS), Linux (TPM via `/dev/tpmrm0`), macOS (software fallback)
 
