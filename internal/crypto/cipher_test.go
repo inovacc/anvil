@@ -3,6 +3,8 @@ package crypto
 import (
 	"bytes"
 	"testing"
+
+	"github.com/inovacc/sealbox"
 )
 
 func TestEncryptDecrypt(t *testing.T) {
@@ -199,5 +201,114 @@ func TestMachineIDHash(t *testing.T) {
 
 	if len(hash) != 32 {
 		t.Errorf("hash length = %d, want 32", len(hash))
+	}
+}
+
+func TestPreferredSealMethod(t *testing.T) {
+	method := PreferredSealMethod()
+
+	if method != SealMethodSoftware && method != SealMethodTPM {
+		t.Errorf("PreferredSealMethod() = %q, want %q or %q", method, SealMethodSoftware, SealMethodTPM)
+	}
+
+	if IsTPMAvailable() && method != SealMethodTPM {
+		t.Error("expected TPM method when TPM is available")
+	}
+
+	if !IsTPMAvailable() && method != SealMethodSoftware {
+		t.Error("expected software method when TPM is not available")
+	}
+}
+
+func TestZeroBytes(t *testing.T) {
+	data := []byte{0x01, 0x02, 0x03, 0x04, 0x05}
+	ZeroBytes(data)
+
+	for i, b := range data {
+		if b != 0 {
+			t.Errorf("byte %d = 0x%02x, want 0x00", i, b)
+		}
+	}
+}
+
+func TestZeroBytesEmpty(t *testing.T) {
+	// Should not panic on empty or nil slices.
+	ZeroBytes(nil)
+	ZeroBytes([]byte{})
+}
+
+func TestSealMasterKeyTPM(t *testing.T) {
+	if !sealbox.IsAvailable() {
+		t.Skip("TPM not available")
+	}
+
+	masterKey, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	sealedJSON, err := SealMasterKeyTPM(masterKey)
+	if err != nil {
+		t.Fatalf("SealMasterKeyTPM: %v", err)
+	}
+
+	if len(sealedJSON) == 0 {
+		t.Error("expected non-empty sealed JSON")
+	}
+
+	unsealed, err := UnsealMasterKeyTPM(sealedJSON)
+	if err != nil {
+		t.Fatalf("UnsealMasterKeyTPM: %v", err)
+	}
+
+	if !bytes.Equal(masterKey, unsealed) {
+		t.Error("unsealed key should match original")
+	}
+}
+
+func TestPackedFormatCompatibility(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	plaintext := []byte("test payload for format compatibility")
+
+	// Encrypt with the old Encrypt() and manually pack nonce||ciphertext.
+	ciphertext, nonce, err := Encrypt(key, plaintext)
+	if err != nil {
+		t.Fatalf("Encrypt: %v", err)
+	}
+
+	packed := make([]byte, 0, len(nonce)+len(ciphertext))
+	packed = append(packed, nonce...)
+	packed = append(packed, ciphertext...)
+
+	// sealbox.Decrypt should be able to read this packed format.
+	decrypted, err := sealbox.Decrypt(key, packed)
+	if err != nil {
+		t.Fatalf("sealbox.Decrypt on manually packed data: %v", err)
+	}
+
+	if !bytes.Equal(decrypted, plaintext) {
+		t.Errorf("got %q, want %q", decrypted, plaintext)
+	}
+
+	// And the reverse: sealbox.Encrypt output should be readable by splitting.
+	packed2, err := sealbox.Encrypt(key, plaintext)
+	if err != nil {
+		t.Fatalf("sealbox.Encrypt: %v", err)
+	}
+
+	nonce2 := packed2[:nonceSize]
+	ct2 := packed2[nonceSize:]
+
+	decrypted2, err := Decrypt(key, ct2, nonce2)
+	if err != nil {
+		t.Fatalf("Decrypt on sealbox output: %v", err)
+	}
+
+	if !bytes.Equal(decrypted2, plaintext) {
+		t.Errorf("got %q, want %q", decrypted2, plaintext)
 	}
 }

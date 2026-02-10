@@ -33,6 +33,7 @@ type VaultSealedKey struct {
 	MachineIDHash []byte     `json:"machine_id_hash"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     *time.Time `json:"updated_at"`
+	SealMethod    string     `json:"seal_method"`
 }
 
 type VaultSecret struct {

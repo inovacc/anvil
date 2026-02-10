@@ -10,6 +10,7 @@ import (
 
 	"github.com/inovacc/profile/internal/application"
 	"github.com/inovacc/profile/internal/crypto"
+	"github.com/inovacc/sealbox"
 )
 
 const (
@@ -44,12 +45,7 @@ type ReleaseState struct {
 var cacheDir = defaultCacheDir
 
 func defaultCacheDir() (string, error) {
-	base, err := os.UserCacheDir()
-	if err != nil {
-		return "", fmt.Errorf("get user cache dir: %w", err)
-	}
-
-	return filepath.Join(base, application.AppName), nil
+	return application.GetApplicationDirectory()
 }
 
 func enabledPath() (string, error) {
@@ -103,15 +99,11 @@ func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseS
 		return nil, fmt.Errorf("marshal payload: %w", err)
 	}
 
-	ciphertext, nonce, err := crypto.Encrypt(masterKey, data)
+	// sealbox.Encrypt packs nonce (12 bytes) || ciphertext into a single blob.
+	fileData, err := sealbox.Encrypt(masterKey, data)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt payload: %w", err)
 	}
-
-	// File format: nonce (12 bytes) || ciphertext
-	fileData := make([]byte, 0, len(nonce)+len(ciphertext))
-	fileData = append(fileData, nonce...)
-	fileData = append(fileData, ciphertext...)
 
 	ep, err := enabledPath()
 	if err != nil {
@@ -185,15 +177,12 @@ func Check(masterKey []byte) (*ReleaseState, error) {
 		return nil, fmt.Errorf("read sentinel: %w", err)
 	}
 
-	// nonce is 12 bytes
-	if len(fileData) < 12 {
+	// sealbox.Decrypt expects nonce (12 bytes) || ciphertext.
+	if len(fileData) < sealbox.NonceSize {
 		return &ReleaseState{Active: false}, nil
 	}
 
-	nonce := fileData[:12]
-	ciphertext := fileData[12:]
-
-	data, err := crypto.Decrypt(masterKey, ciphertext, nonce)
+	data, err := sealbox.Decrypt(masterKey, fileData)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt sentinel: %w", err)
 	}
@@ -205,7 +194,7 @@ func Check(masterKey []byte) (*ReleaseState, error) {
 
 	remaining := time.Until(payload.ExpiresAt)
 	if remaining <= 0 {
-		// Auto-revoke expired session
+		// Auto-revoke an expired session
 		_ = Revoke()
 
 		return &ReleaseState{

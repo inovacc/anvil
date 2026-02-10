@@ -2,7 +2,6 @@ package sentinel
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ func setupTestDir(t *testing.T) (cleanup func()) {
 
 	origCacheDir := cacheDir
 	cacheDir = func() (string, error) {
-		return filepath.Join(tmpDir, cacheSubdir), nil
+		return tmpDir, nil
 	}
 
 	return func() {

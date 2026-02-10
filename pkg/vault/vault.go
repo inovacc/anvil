@@ -52,11 +52,6 @@ func Init(opts *Options) error {
 		return ErrAlreadyInitialized
 	}
 
-	machineID, err := crypto.MachineID()
-	if err != nil {
-		return fmt.Errorf("get machine ID: %w", err)
-	}
-
 	machineIDHash, err := crypto.MachineIDHash()
 	if err != nil {
 		return fmt.Errorf("hash machine ID: %w", err)
@@ -65,6 +60,26 @@ func Init(opts *Options) error {
 	masterKey, err := crypto.GenerateKey()
 	if err != nil {
 		return fmt.Errorf("generate master key: %w", err)
+	}
+
+	defer crypto.ZeroBytes(masterKey)
+
+	// Try TPM-first, fall back to software sealing.
+	if crypto.IsTPMAvailable() {
+		sealedJSON, tpmErr := crypto.SealMasterKeyTPM(masterKey)
+		if tpmErr == nil {
+			if err := vaultStore.UpsertSealedKey(sealedJSON, nil, nil, machineIDHash, 1, crypto.SealMethodTPM); err != nil {
+				return fmt.Errorf("save sealed key: %w", err)
+			}
+
+			return nil
+		}
+		// TPM seal failed — fall through to software path.
+	}
+
+	machineID, err := crypto.MachineID()
+	if err != nil {
+		return fmt.Errorf("get machine ID: %w", err)
 	}
 
 	salt, err := crypto.GenerateSalt()
@@ -77,7 +92,7 @@ func Init(opts *Options) error {
 		return fmt.Errorf("seal master key: %w", err)
 	}
 
-	if err := vaultStore.UpsertSealedKey(sealed, nonce, salt, machineIDHash, 1); err != nil {
+	if err := vaultStore.UpsertSealedKey(sealed, nonce, salt, machineIDHash, 1, crypto.SealMethodSoftware); err != nil {
 		return fmt.Errorf("save sealed key: %w", err)
 	}
 
@@ -117,27 +132,41 @@ func Open(opts *Options) (*Vault, error) {
 		return nil, fmt.Errorf("get sealed key: %w", err)
 	}
 
-	machineIDHash, err := crypto.MachineIDHash()
-	if err != nil {
-		_ = vaultStore.Close()
-		return nil, fmt.Errorf("hash machine ID: %w", err)
-	}
+	var masterKey []byte
 
-	if !bytes.Equal(sk.MachineIDHash, machineIDHash) {
-		_ = vaultStore.Close()
-		return nil, ErrMachineMismatch
-	}
+	switch sk.SealMethod {
+	case crypto.SealMethodTPM:
+		var err error
 
-	machineID, err := crypto.MachineID()
-	if err != nil {
-		_ = vaultStore.Close()
-		return nil, fmt.Errorf("get machine ID: %w", err)
-	}
+		masterKey, err = crypto.UnsealMasterKeyTPM(sk.SealedData)
+		if err != nil {
+			_ = vaultStore.Close()
+			return nil, fmt.Errorf("unseal master key (TPM): %w", err)
+		}
 
-	masterKey, err := crypto.UnsealMasterKey(sk.SealedData, sk.Nonce, machineID, sk.KeySalt)
-	if err != nil {
-		_ = vaultStore.Close()
-		return nil, fmt.Errorf("unseal master key: %w", err)
+	default: // "software" or legacy rows without seal_method
+		machineIDHash, err := crypto.MachineIDHash()
+		if err != nil {
+			_ = vaultStore.Close()
+			return nil, fmt.Errorf("hash machine ID: %w", err)
+		}
+
+		if !bytes.Equal(sk.MachineIDHash, machineIDHash) {
+			_ = vaultStore.Close()
+			return nil, ErrMachineMismatch
+		}
+
+		machineID, err := crypto.MachineID()
+		if err != nil {
+			_ = vaultStore.Close()
+			return nil, fmt.Errorf("get machine ID: %w", err)
+		}
+
+		masterKey, err = crypto.UnsealMasterKey(sk.SealedData, sk.Nonce, machineID, sk.KeySalt)
+		if err != nil {
+			_ = vaultStore.Close()
+			return nil, fmt.Errorf("unseal master key: %w", err)
+		}
 	}
 
 	return &Vault{
@@ -147,8 +176,10 @@ func Open(opts *Options) (*Vault, error) {
 	}, nil
 }
 
-// Close closes the vault.
+// Close zeros the master key and closes the vault.
 func (v *Vault) Close() error {
+	crypto.ZeroBytes(v.masterKey)
+
 	return v.store.Close()
 }
 
@@ -446,6 +477,7 @@ func (v *Vault) Status() (*Status, error) {
 		ProfileCount: len(profiles),
 		SecretCount:  totalSecrets,
 		KeyVersion:   keyVersion,
+		SealMethod:   sk.SealMethod,
 		PasswordSet:  passwordSet,
 		CreatedAt:    sk.CreatedAt,
 	}, nil

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS vault_sealed_key (
     key_salt BLOB NOT NULL,
     version INTEGER DEFAULT 1,
     machine_id_hash BLOB NOT NULL,
+    seal_method TEXT NOT NULL DEFAULT 'software',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

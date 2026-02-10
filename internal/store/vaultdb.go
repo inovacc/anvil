@@ -34,6 +34,9 @@ func Open(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
+	// Idempotent migration: add seal_method column if missing (pre-v003 databases).
+	_, _ = db.Exec(`ALTER TABLE vault_sealed_key ADD COLUMN seal_method TEXT NOT NULL DEFAULT 'software'`)
+
 	return &Store{
 		db:      db,
 		queries: sqlc.New(db),
@@ -221,7 +224,7 @@ func (s *Store) HasSealedKey() (bool, error) {
 }
 
 // UpsertSealedKey saves the sealed master key.
-func (s *Store) UpsertSealedKey(sealedData, nonce, keySalt, machineIDHash []byte, version int64) error {
+func (s *Store) UpsertSealedKey(sealedData, nonce, keySalt, machineIDHash []byte, version int64, sealMethod string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -231,6 +234,7 @@ func (s *Store) UpsertSealedKey(sealedData, nonce, keySalt, machineIDHash []byte
 		KeySalt:       keySalt,
 		Version:       &version,
 		MachineIDHash: machineIDHash,
+		SealMethod:    sealMethod,
 	})
 }
 

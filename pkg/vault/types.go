@@ -37,6 +37,7 @@ type Status struct {
 	ProfileCount int       `json:"profile_count"`
 	SecretCount  int64     `json:"secret_count"`
 	KeyVersion   int64     `json:"key_version"`
+	SealMethod   string    `json:"seal_method"`
 	PasswordSet  bool      `json:"password_set"`
 	CreatedAt    time.Time `json:"created_at,omitzero"`
 }
@@ -59,5 +60,6 @@ func DefaultDBPath() string {
 	if err != nil {
 		return ""
 	}
+
 	return dir
 }

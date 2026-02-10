@@ -4,11 +4,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"io"
 
 	"crypto/sha256"
 
+	"github.com/inovacc/sealbox"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -16,6 +18,12 @@ const (
 	keySize   = 32 // AES-256
 	nonceSize = 12 // GCM standard nonce
 	saltSize  = 32
+
+	// SealMethodSoftware indicates HKDF-based software key sealing.
+	SealMethodSoftware = "software"
+
+	// SealMethodTPM indicates TPM 2.0 hardware-backed key sealing.
+	SealMethodTPM = "tpm"
 )
 
 // DeriveKey derives a 256-bit key from the machine ID and a salt using HKDF-SHA256.
@@ -121,4 +129,68 @@ func UnsealMasterKey(sealed, nonce []byte, machineID string, salt []byte) ([]byt
 	}
 
 	return masterKey, nil
+}
+
+// IsTPMAvailable reports whether TPM 2.0 hardware is accessible.
+func IsTPMAvailable() bool {
+	return sealbox.IsAvailable()
+}
+
+// PreferredSealMethod returns "tpm" if TPM hardware is available, otherwise "software".
+func PreferredSealMethod() string {
+	if IsTPMAvailable() {
+		return SealMethodTPM
+	}
+
+	return SealMethodSoftware
+}
+
+// SealMasterKeyTPM seals the master key using TPM 2.0 hardware.
+// The returned byte slice is the JSON-serialized SealedData.
+func SealMasterKeyTPM(masterKey []byte) ([]byte, error) {
+	km, err := sealbox.NewKeyManager()
+	if err != nil {
+		return nil, fmt.Errorf("open TPM key manager: %w", err)
+	}
+
+	defer func() { _ = km.Close() }()
+
+	sealed, err := km.SealKey(masterKey)
+	if err != nil {
+		return nil, fmt.Errorf("TPM seal key: %w", err)
+	}
+
+	data, err := json.Marshal(sealed)
+	if err != nil {
+		return nil, fmt.Errorf("marshal sealed data: %w", err)
+	}
+
+	return data, nil
+}
+
+// UnsealMasterKeyTPM unseals the master key from JSON-serialized TPM SealedData.
+func UnsealMasterKeyTPM(sealedJSON []byte) ([]byte, error) {
+	var sealed sealbox.SealedData
+	if err := json.Unmarshal(sealedJSON, &sealed); err != nil {
+		return nil, fmt.Errorf("unmarshal sealed data: %w", err)
+	}
+
+	km, err := sealbox.NewKeyManager()
+	if err != nil {
+		return nil, fmt.Errorf("open TPM key manager: %w", err)
+	}
+
+	defer func() { _ = km.Close() }()
+
+	masterKey, err := km.UnsealKey(&sealed)
+	if err != nil {
+		return nil, fmt.Errorf("TPM unseal key: %w", err)
+	}
+
+	return masterKey, nil
+}
+
+// ZeroBytes overwrites a byte slice with zeros to prevent key material from lingering in memory.
+func ZeroBytes(b []byte) {
+	sealbox.SecureZero(b)
 }

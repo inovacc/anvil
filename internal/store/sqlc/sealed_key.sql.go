@@ -19,7 +19,7 @@ func (q *Queries) DeleteSealedKey(ctx context.Context) error {
 }
 
 const getSealedKey = `-- name: GetSealedKey :one
-SELECT id, sealed_data, nonce, key_salt, version, machine_id_hash, created_at, updated_at FROM vault_sealed_key WHERE id = 1
+SELECT id, sealed_data, nonce, key_salt, version, machine_id_hash, created_at, updated_at, seal_method FROM vault_sealed_key WHERE id = 1
 `
 
 func (q *Queries) GetSealedKey(ctx context.Context) (VaultSealedKey, error) {
@@ -34,6 +34,7 @@ func (q *Queries) GetSealedKey(ctx context.Context) (VaultSealedKey, error) {
 		&i.MachineIDHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SealMethod,
 	)
 	return i, err
 }
@@ -50,14 +51,15 @@ func (q *Queries) HasSealedKey(ctx context.Context) (int64, error) {
 }
 
 const upsertSealedKey = `-- name: UpsertSealedKey :exec
-INSERT INTO vault_sealed_key (id, sealed_data, nonce, key_salt, version, machine_id_hash, created_at, updated_at)
-VALUES (1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+INSERT INTO vault_sealed_key (id, sealed_data, nonce, key_salt, version, machine_id_hash, seal_method, created_at, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT(id) DO UPDATE SET
     sealed_data = excluded.sealed_data,
     nonce = excluded.nonce,
     key_salt = excluded.key_salt,
     version = excluded.version,
     machine_id_hash = excluded.machine_id_hash,
+    seal_method = excluded.seal_method,
     updated_at = CURRENT_TIMESTAMP
 `
 
@@ -67,6 +69,7 @@ type UpsertSealedKeyParams struct {
 	KeySalt       []byte `json:"key_salt"`
 	Version       *int64 `json:"version"`
 	MachineIDHash []byte `json:"machine_id_hash"`
+	SealMethod    string `json:"seal_method"`
 }
 
 func (q *Queries) UpsertSealedKey(ctx context.Context, arg UpsertSealedKeyParams) error {
@@ -76,6 +79,7 @@ func (q *Queries) UpsertSealedKey(ctx context.Context, arg UpsertSealedKeyParams
 		arg.KeySalt,
 		arg.Version,
 		arg.MachineIDHash,
+		arg.SealMethod,
 	)
 	return err
 }
