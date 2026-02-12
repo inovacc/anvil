@@ -67,7 +67,8 @@ profile/
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
-├── pkg/vault/      # Public vault API (types, UserError, TPM-first init/open)
+├── pkg/vault/      # Public vault API (types, interfaces, UserError, TPM-first init/open)
+│   └── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword interfaces
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
@@ -136,3 +137,6 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - `SilenceErrors` and `SilenceUsage` are set on rootCmd; Cobra does not dump usage on errors
 - `visibleSubcommands()` in cmdtree.go filters hidden commands and "help"
 - TPM tests use `t.Skip("TPM not available")` when `!sealbox.IsAvailable()`
+- `pkg/vault` is the public module boundary — never expose `internal/` types in its signatures
+- `pkg/vault/iface.go` has compile-time `var _ Interface = (*Vault)(nil)` checks — update when adding public methods
+- `toReleaseState()` in `env.go` converts internal `sentinel.ReleaseState` to public `vault.ReleaseState`

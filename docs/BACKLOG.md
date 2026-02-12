@@ -51,7 +51,7 @@
 
 ### Technical Debt
 - **Priority:** P1
-- **Description:** Increase test coverage to 80%+ across all packages (currently 14.5%)
+- **Description:** Increase test coverage to 80%+ across all packages (currently 14.4%)
 - **Effort:** Medium
 - **Details:** `internal/store` (0%), `pkg/vault` (0%), `cmd` (0%) need tests; `crypto` (73.7%) and `sentinel` (72.4%) need improvement
 

@@ -18,6 +18,7 @@ graph TB
     subgraph Core["pkg/vault/ — Public API"]
         Vault["Vault"]
         EnvOps["Env Release"]
+        Ifaces["Interfaces<br/>VaultReader / VaultWriter<br/>VaultEnv / VaultPassword"]
     end
 
     subgraph Internal["internal/"]

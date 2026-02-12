@@ -8,6 +8,7 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 - **Machine-Bound Encryption** — AES-256-GCM with HKDF-SHA256, non-portable by design
 - **Profile Management** — Organize secrets into named profiles with default selection
 - **Secret CRUD** — Set, get, delete, list, export, and import encrypted secrets
+- **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`) for external consumers
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
 - **Inline Secret Access** — Single secret retrieval via `--env-inline` flag
@@ -97,6 +98,34 @@ profile vault status --json
 profile vault list --json
 profile vault get API_KEY --json
 ```
+
+## Library Usage
+
+Use `pkg/vault` as a Go library in your own applications:
+
+```go
+import "github.com/inovacc/profile/pkg/vault"
+
+// Open an existing vault
+v, err := vault.Open(nil)
+if err != nil {
+    log.Fatal(err)
+}
+defer v.Close()
+
+// Read a secret
+value, err := v.Get("API_KEY", "myapp")
+```
+
+Program against interfaces for testability:
+
+```go
+func NewService(reader vault.VaultReader) *Service {
+    return &Service{vault: reader}
+}
+```
+
+Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (password ops).
 
 ## CLI Tools
 

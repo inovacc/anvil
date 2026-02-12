@@ -534,11 +534,6 @@ func (v *Vault) DeletePassword() error {
 	return v.store.DeletePassword()
 }
 
-// MasterKey returns the master key for sentinel operations.
-func (v *Vault) MasterKey() []byte {
-	return v.masterKey
-}
-
 // GetStatus returns vault status without requiring Open (checks if initialized).
 func GetStatus(opts *Options) (*Status, error) {
 	dbPath, err := application.GetApplicationDirectory()

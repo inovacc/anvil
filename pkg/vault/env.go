@@ -12,8 +12,19 @@ const (
 	maxTTL = 24 * time.Hour
 )
 
+// toReleaseState converts an internal sentinel.ReleaseState to the public type.
+func toReleaseState(s *sentinel.ReleaseState) *ReleaseState {
+	return &ReleaseState{
+		Active:      s.Active,
+		ProfileName: s.ProfileName,
+		ExpiresAt:   s.ExpiresAt,
+		SessionID:   s.SessionID,
+		Remaining:   s.Remaining,
+	}
+}
+
 // EnvRelease verifies the password and creates a time-limited release session.
-func (v *Vault) EnvRelease(password string, opts *EnvReleaseOptions) (*sentinel.ReleaseState, error) {
+func (v *Vault) EnvRelease(password string, opts *EnvReleaseOptions) (*ReleaseState, error) {
 	if err := v.VerifyPassword(password); err != nil {
 		return nil, err
 	}
@@ -44,7 +55,12 @@ func (v *Vault) EnvRelease(password string, opts *EnvReleaseOptions) (*sentinel.
 		return nil, err
 	}
 
-	return sentinel.Release(v.masterKey, profile, ttl)
+	state, err := sentinel.Release(v.masterKey, profile, ttl)
+	if err != nil {
+		return nil, err
+	}
+
+	return toReleaseState(state), nil
 }
 
 // EnvRevoke revokes the active release session.
@@ -53,8 +69,13 @@ func (v *Vault) EnvRevoke() error {
 }
 
 // EnvStatus returns the current release state.
-func (v *Vault) EnvStatus() (*sentinel.ReleaseState, error) {
-	return sentinel.Check(v.masterKey)
+func (v *Vault) EnvStatus() (*ReleaseState, error) {
+	state, err := sentinel.Check(v.masterKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return toReleaseState(state), nil
 }
 
 // EnvExport checks the sentinel and exports secrets for the released profile.

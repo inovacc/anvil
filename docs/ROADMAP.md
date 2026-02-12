@@ -37,6 +37,13 @@
 - [x] Idempotent database migration for `seal_method` column
 - [x] Vault status displays seal method
 
+### Phase 4b: Public API Boundary [COMPLETE]
+- [x] Clean `pkg/vault` module with no internal type leaks
+- [x] `ReleaseState` type owned by `pkg/vault` (was leaking `internal/sentinel`)
+- [x] Removed `MasterKey()` security exposure from public API
+- [x] Interfaces: `VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`
+- [x] Compile-time interface satisfaction checks
+
 ### Phase 5: Enhanced Security [NOT STARTED]
 - [ ] Master key rotation
 - [ ] Audit logging (access history)
@@ -59,7 +66,7 @@
 
 ## Test Coverage
 
-**Current:** 14.5%  |  **Target:** 80%
+**Current:** 14.4%  |  **Target:** 80%
 
 | Package | Coverage | Status |
 |---------|----------|--------|

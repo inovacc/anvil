@@ -24,7 +24,14 @@
 - Vault status displays seal method
 - GitHub Actions CI/CD: release workflow (goreleaser on tag push), test workflow (lint + vuln on PR), build workflow (Linux + Windows)
 - **Released:** v0.3.0
-- **Test Coverage:** 14.5% (crypto 73.7%, sentinel 72.4%, store 0%, vault 0%, cmd 0%)
+- **Test Coverage:** 14.4% (crypto 73.7%, sentinel 72.4%, store 0%, vault 0%, cmd 0%)
+
+## v0.3.x — Public API Boundary (Complete)
+- Clean `pkg/vault` module with no internal type leaks in public signatures
+- Vault-owned `ReleaseState` type (replaces leaked `internal/sentinel.ReleaseState`)
+- Removed `MasterKey()` method (security exposure, zero callers)
+- Interfaces: `VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword` with compile-time checks
+- Updated package documentation with interface usage examples
 
 ## v0.4.0 — Security Hardening (Planned)
 - Master key rotation

@@ -43,6 +43,15 @@ type Status struct {
 	CreatedAt    time.Time `json:"created_at,omitzero"`
 }
 
+// ReleaseState represents the current state of an env release session.
+type ReleaseState struct {
+	Active      bool          `json:"active"`
+	ProfileName string        `json:"profile_name,omitempty"`
+	ExpiresAt   time.Time     `json:"expires_at,omitzero"`
+	SessionID   string        `json:"session_id,omitempty"`
+	Remaining   time.Duration `json:"remaining,omitempty"`
+}
+
 // EnvReleaseOptions configures an env release operation.
 type EnvReleaseOptions struct {
 	ProfileName string

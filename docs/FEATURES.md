@@ -75,6 +75,17 @@
 - Cobra `SilenceErrors`/`SilenceUsage` suppresses usage dump on errors
 - Actionable hints guide users to the correct command
 
+### Public Go API with Interfaces
+- **Status:** Completed (v0.3.x)
+- Clean `pkg/vault` module boundary — no `internal/` types in public signatures
+- `VaultReader` interface for read-only vault consumers
+- `VaultWriter` interface extending VaultReader with write operations
+- `VaultEnv` interface for env release session management
+- `VaultPassword` interface for password operations
+- Compile-time interface satisfaction checks (`var _ VaultReader = (*Vault)(nil)`)
+- Vault-owned `ReleaseState` type (decoupled from internal sentinel package)
+- Removed `MasterKey()` method to prevent raw key exposure
+
 ## Proposed
 
 ### Master Key Rotation
