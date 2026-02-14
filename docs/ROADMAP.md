@@ -3,6 +3,22 @@
 ## Current Status
 **Overall Progress:** 75% Complete
 
+## Storage Compatibility Rule (MANDATORY)
+
+**The vault storage structure (SQLite schema, file layout, sealed key format) MUST be preserved across all versions.** This is a non-negotiable requirement:
+
+1. **Never drop or rename** existing tables, columns, or indexes
+2. **Never change column types** or constraints on existing columns
+3. **All schema changes** must be additive (new tables, new nullable columns, new indexes)
+4. **Every schema change** requires a new numbered migration file (`migrations/NNN_*.sql`) using `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN` (idempotent)
+5. **Version detection**: Migrations must detect the current schema version and apply only what's needed — older vaults opened with newer anvil versions must auto-migrate transparently
+6. **Sealed key format**: Changes to `vault_sealed_key` structure or sealed data encoding require a migration that reads the old format and converts in-place — never break existing sealed vaults
+7. **Sentinel file format**: Any changes to the sentinel binary format must include backward-compatible reading of the old format
+8. **Backup/restore**: Exported backups from any previous version must remain importable by newer versions
+9. **Test coverage**: Every migration must have a test that creates a database in the pre-migration state and verifies the migration succeeds without data loss
+
+Violating this rule means users lose access to their encrypted secrets. **There are no exceptions.**
+
 ## Phases
 
 ### Phase 1: Foundation [COMPLETE]

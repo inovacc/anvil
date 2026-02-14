@@ -110,6 +110,18 @@ Vault init tries TPM 2.0 first, falls back to software HKDF:
 - Sentinel files use `sealbox.Encrypt`/`sealbox.Decrypt` (packed `nonce(12B) || ciphertext` format)
 - Binary-compatible with the original manual nonce packing
 
+### Storage Compatibility (MANDATORY RULE)
+
+**Never break existing vault storage.** All schema/format changes must preserve backward compatibility:
+
+- **No dropping/renaming** tables, columns, or indexes — only additive changes
+- **Every schema change** gets a new numbered migration (`migrations/NNN_*.sql`) that is idempotent
+- **Auto-migrate on open**: `store.Open()` detects the current schema version and applies pending migrations transparently
+- **Sealed key & sentinel format changes** must read old formats and convert in-place
+- **Backups from any prior version** must remain importable
+- **Every migration must have a test** that creates a pre-migration DB and verifies data survives
+- Violating this rule means users lose access to their encrypted secrets — **no exceptions**
+
 ### Database Migrations
 
 - `migrations/001_initial.sql` — profiles, secrets, sealed_key tables
