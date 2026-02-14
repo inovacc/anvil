@@ -53,6 +53,7 @@
 - **Priority:** P3
 - **Description:** Encrypted secret export for machine-to-machine transfer
 - **Effort:** Large
+- **Status:** DONE — `vault share export/import` commands with passphrase-based encryption
 
 ### Technical Debt
 - **Priority:** P1

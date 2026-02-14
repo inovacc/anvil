@@ -48,13 +48,13 @@
 - [x] Master key rotation (`vault rotate-key` with transactional re-encryption)
 - [x] Audit logging (action, profile, key, detail, timestamp)
 - [x] Secret versioning with rollback
-- [ ] Backup and restore
+- [x] Backup and restore
 
 ### Phase 6: Integration [IN PROGRESS]
 - [x] Shell auto-completion (bash, zsh, fish, powershell) with dynamic profile/secret completion
 - [x] Docker secrets bridge (`vault docker export/clean/compose`)
 - [x] CI/CD pipeline integration (GitHub Actions: release on tag, test on PR, build on main)
-- [ ] Secret sharing between machines (encrypted export)
+- [x] Secret sharing between machines (encrypted export)
 
 ### Phase 7: Polish [IN PROGRESS]
 - [x] User-friendly error handling (UserError type, no usage dump, JSON error output)

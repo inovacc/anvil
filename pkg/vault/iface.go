@@ -59,6 +59,14 @@ type VaultVersioning interface {
 	SecretRollback(key, profileName string, version int64) error
 }
 
+// VaultBackup provides backup, restore, and sharing operations.
+type VaultBackup interface {
+	Backup(password string) ([]byte, error)
+	Restore(encrypted []byte, password string) error
+	ShareExport(profileName, passphrase string) ([]byte, error)
+	ShareImport(encrypted []byte, passphrase, targetProfile string) (*SharedExport, error)
+}
+
 // Compile-time interface satisfaction checks.
 var (
 	_ VaultReader      = (*Vault)(nil)
@@ -68,4 +76,5 @@ var (
 	_ VaultKeyRotation = (*Vault)(nil)
 	_ VaultAudit       = (*Vault)(nil)
 	_ VaultVersioning  = (*Vault)(nil)
+	_ VaultBackup      = (*Vault)(nil)
 )
