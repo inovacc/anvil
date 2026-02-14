@@ -1,4 +1,4 @@
-module github.com/inovacc/profile
+module github.com/inovacc/anvil
 
 go 1.25
 

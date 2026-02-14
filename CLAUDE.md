@@ -1,10 +1,10 @@
-# profile
+# anvil
 
 ## Project Overview
 
 Go CLI application built with Cobra.
 
-- **Module**: `github.com/inovacc/profile`
+- **Module**: `github.com/inovacc/anvil`
 - **Go version**: 1.25
 - **Architecture**: Hexagonal/Clean (cmd/, internal/, pkg/)
 
@@ -54,7 +54,7 @@ task release:check      # Validate goreleaser config
 ## Project Structure
 
 ```
-profile/
+anvil/
 ├── cmd/            # CLI commands (Cobra)
 │   ├── output.go   # JSON/text output helper (outputResult)
 │   ├── errors.go   # User-friendly error formatting (handleError)

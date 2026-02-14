@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/inovacc/profile/internal/application"
-	"github.com/inovacc/profile/internal/crypto"
+	"github.com/inovacc/anvil/internal/application"
+	"github.com/inovacc/anvil/internal/crypto"
 	"github.com/inovacc/sealbox"
 )
 

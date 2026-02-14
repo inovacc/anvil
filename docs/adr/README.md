@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This directory contains Architecture Decision Records (ADRs) for the profile project.
+This directory contains Architecture Decision Records (ADRs) for the anvil project.
 
 ## Index
 

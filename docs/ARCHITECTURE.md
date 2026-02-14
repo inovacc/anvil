@@ -9,7 +9,7 @@ graph TB
     User([User / Script])
 
     subgraph CLI["cmd/ — Cobra CLI"]
-        Root["profile (root)"]
+        Root["anvil (root)"]
         VaultCmd["vault"]
         EnvCmd["env"]
         ProfileCmd["profile"]
@@ -58,7 +58,7 @@ graph TB
 
 ```mermaid
 graph LR
-    root["profile"]
+    root["anvil"]
 
     root --> envInline["--env-inline KEY"]
     root --> vault["vault"]
@@ -173,7 +173,7 @@ sequenceDiagram
     participant S as store
     participant DB as SQLite
 
-    User->>CLI: profile vault init
+    User->>CLI: anvil vault init
     CLI->>V: Init(opts)
     V->>S: Open(dbPath)
     S->>DB: CREATE TABLE IF NOT EXISTS ...
@@ -479,11 +479,11 @@ stateDiagram-v2
 ```mermaid
 sequenceDiagram
     participant Shell as Shell Script
-    participant CLI as profile CLI
+    participant CLI as anvil CLI
     participant V as Vault
     participant Sen as sentinel
 
-    Shell->>CLI: MY_KEY=$(profile --env-inline MY_KEY)
+    Shell->>CLI: MY_KEY=$(anvil --env-inline MY_KEY)
     CLI->>V: Open(nil)
     V-->>CLI: vault
 
@@ -527,8 +527,8 @@ graph LR
     DB --> SE
 
     subgraph Paths["Platform Paths"]
-        Win["Windows: %LOCALAPPDATA%/profile/"]
-        Lin["Linux: ~/.config/profile/"]
+        Win["Windows: %LOCALAPPDATA%/anvil/"]
+        Lin["Linux: ~/.config/anvil/"]
     end
 
     Paths --> AppDir

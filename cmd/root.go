@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/inovacc/profile/pkg/vault"
+	"github.com/inovacc/anvil/pkg/vault"
 	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:           "profile",
-	Short:         "Machine-bound encrypted vault and profile manager",
-	Long:          "CLI tool for managing encrypted secrets organized by profiles, bound to this machine.",
+	Use:           "anvil",
+	Short:         "Machine-bound encrypted vault and secret manager",
+	Long:          "Anvil — machine-bound encrypted vault for managing secrets organized by profiles.",
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	RunE: func(cmd *cobra.Command, args []string) error {

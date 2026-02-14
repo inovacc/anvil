@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/inovacc/profile/internal/store/sqlc"
+	"github.com/inovacc/anvil/internal/store/sqlc"
 	_ "modernc.org/sqlite"
 )
 

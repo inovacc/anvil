@@ -1,4 +1,4 @@
-# profile
+# anvil
 
 Machine-bound encrypted vault and profile manager. Store and manage secrets organized by profiles, bound to the current machine.
 
@@ -22,14 +22,14 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 ### Go Install
 
 ```bash
-go install github.com/inovacc/profile@latest
+go install github.com/inovacc/anvil@latest
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/inovacc/profile.git
-cd profile
+git clone https://github.com/inovacc/anvil.git
+cd anvil
 task build
 ```
 
@@ -37,20 +37,20 @@ task build
 
 ```bash
 # Initialize the vault
-profile vault init
+anvil vault init
 
 # Create a profile
-profile vault profile create myapp --default
+anvil vault profile create myapp --default
 
 # Store secrets
-profile vault set API_KEY sk-abc123
-profile vault set DB_PASSWORD s3cret -d "Production database"
+anvil vault set API_KEY sk-abc123
+anvil vault set DB_PASSWORD s3cret -d "Production database"
 
 # Retrieve a secret
-profile vault get API_KEY
+anvil vault get API_KEY
 
 # List secrets
-profile vault list
+anvil vault list
 ```
 
 ## Environment Variable Release
@@ -59,34 +59,34 @@ Release secrets as environment variables with password-gated, time-limited acces
 
 ```bash
 # Set a password (min 8 characters)
-profile vault env password set
+anvil vault env password set
 
 # Release secrets (default: 30 minutes)
-profile vault env release --ttl 1h
+anvil vault env release --ttl 1h
 
 # Export as shell variables
-eval $(profile vault env export --format export)       # bash/zsh
-profile vault env export --format powershell | iex      # PowerShell
+eval $(anvil vault env export --format export)       # bash/zsh
+anvil vault env export --format powershell | iex      # PowerShell
 
 # Check release status
-profile vault env status
+anvil vault env status
 
 # Revoke access
-profile vault env revoke
+anvil vault env revoke
 ```
 
 ## Import & Export
 
 ```bash
 # Export secrets to JSON
-profile vault export --format json > secrets.json
+anvil vault export --format json > secrets.json
 
 # Export as env file
-profile vault export --format env > .env
+anvil vault export --format env > .env
 
 # Import from file
-profile vault import secrets.json
-profile vault import .env --format env
+anvil vault import secrets.json
+anvil vault import .env --format env
 ```
 
 ## JSON Output
@@ -94,9 +94,9 @@ profile vault import .env --format env
 All commands support structured JSON output via the `--json` flag:
 
 ```bash
-profile vault status --json
-profile vault list --json
-profile vault get API_KEY --json
+anvil vault status --json
+anvil vault list --json
+anvil vault get API_KEY --json
 ```
 
 ## Library Usage
@@ -104,7 +104,7 @@ profile vault get API_KEY --json
 Use `pkg/vault` as a Go library in your own applications:
 
 ```go
-import "github.com/inovacc/profile/pkg/vault"
+import "github.com/inovacc/anvil/pkg/vault"
 
 // Open an existing vault
 v, err := vault.Open(nil)
@@ -131,18 +131,18 @@ Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `Va
 
 ```bash
 # Display command tree
-profile cmdtree
+anvil cmdtree
 
 # Generate AI-readable documentation
-profile aicontext
-profile aicontext --compact
-profile aicontext --category vault
+anvil aicontext
+anvil aicontext --compact
+anvil aicontext --category vault
 ```
 
 ## Command Reference
 
 ```
-profile
+anvil
 ├── vault
 │   ├── init              Initialize the encrypted vault
 │   ├── status            Show vault status

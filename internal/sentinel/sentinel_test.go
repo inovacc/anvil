@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inovacc/profile/internal/crypto"
+	"github.com/inovacc/anvil/internal/crypto"
 )
 
 func setupTestDir(t *testing.T) (cleanup func()) {

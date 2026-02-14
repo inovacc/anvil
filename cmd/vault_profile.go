@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/inovacc/profile/pkg/vault"
+	"github.com/inovacc/anvil/pkg/vault"
 	"github.com/spf13/cobra"
 )
 

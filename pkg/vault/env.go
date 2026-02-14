@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/inovacc/profile/internal/sentinel"
+	"github.com/inovacc/anvil/internal/sentinel"
 )
 
 const (

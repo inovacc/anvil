@@ -9,10 +9,10 @@ External applications need to consume vault secrets as environment variables. Th
 ## Decision
 Implement a password-gated release mechanism with:
 - **Password storage:** bcrypt hash stored in the vault database (cost >= 10)
-- **Sentinel file:** Encrypted session state stored in `~/.cache/profile/` using AES-256-GCM with the vault master key
+- **Sentinel file:** Encrypted session state stored in `~/.cache/anvil/` using AES-256-GCM with the vault master key
 - **TTL-based access:** Secrets are released for a configurable duration (1 minute to 24 hours)
 - **Auto-expiry:** Expired sessions are automatically revoked on check
-- **Inline access:** `profile --env-inline KEY` for shell command substitution
+- **Inline access:** `anvil --env-inline KEY` for shell command substitution
 
 The sentinel file format is `nonce (12 bytes) || AES-256-GCM ciphertext(JSON payload)`, making it opaque without vault access.
 

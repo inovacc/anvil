@@ -10,13 +10,13 @@ import (
 
 const (
 	// AppName is the application name used for directories and identification
-	AppName = "profile"
+	AppName = "anvil"
 
 	// AppExeName is the executable name (without extension)
-	AppExeName = "profile"
+	AppExeName = "anvil"
 
 	// AppExeNameWindows is the executable name on Windows
-	AppExeNameWindows = "profile.exe"
+	AppExeNameWindows = "anvil.exe"
 )
 
 var (
@@ -25,9 +25,9 @@ var (
 	errDir error
 )
 
-// GetApplicationDirectory returns the profile configuration directory path.
-// Linux: ~/.config/profile (via os.UserConfigDir)
-// Windows: C:\Users\{username}\AppData\Local\profile (via os.UserCacheDir)
+// GetApplicationDirectory returns the anvil configuration directory path.
+// Linux: ~/.config/anvil (via os.UserConfigDir)
+// Windows: C:\Users\{username}\AppData\Local\anvil (via os.UserCacheDir)
 func GetApplicationDirectory() (string, error) {
 	once.Do(lazyLoad)
 
