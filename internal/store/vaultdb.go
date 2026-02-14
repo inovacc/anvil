@@ -281,3 +281,32 @@ func (s *Store) DeletePassword() error {
 
 	return s.queries.DeletePassword(context.Background())
 }
+
+// === Rotation operations ===
+
+// ListAllSecrets returns all secrets across all profiles.
+func (s *Store) ListAllSecrets() ([]sqlc.VaultSecret, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListAllSecrets(context.Background())
+}
+
+// BeginTx starts a database transaction and returns queries bound to it.
+func (s *Store) BeginTx() (*sql.Tx, *sqlc.Queries, error) {
+	s.mu.Lock()
+	// Note: caller must call s.mu.Unlock() after committing/rolling back.
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		s.mu.Unlock()
+		return nil, nil, err
+	}
+
+	return tx, s.queries.WithTx(tx), nil
+}
+
+// EndTx releases the write lock acquired by BeginTx.
+func (s *Store) EndTx() {
+	s.mu.Unlock()
+}

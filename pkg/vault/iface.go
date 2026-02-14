@@ -39,10 +39,16 @@ type VaultPassword interface {
 	DeletePassword() error
 }
 
+// VaultKeyRotation provides master key rotation operations.
+type VaultKeyRotation interface {
+	RotateKey(password string) error
+}
+
 // Compile-time interface satisfaction checks.
 var (
 	_ VaultReader   = (*Vault)(nil)
 	_ VaultWriter   = (*Vault)(nil)
 	_ VaultEnv      = (*Vault)(nil)
-	_ VaultPassword = (*Vault)(nil)
+	_ VaultPassword    = (*Vault)(nil)
+	_ VaultKeyRotation = (*Vault)(nil)
 )
