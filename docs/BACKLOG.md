@@ -13,19 +13,23 @@
 - **Priority:** P1
 - **Description:** Add master key rotation support
 - **Effort:** Large
+- **Status:** DONE — `vault rotate-key` command with transactional re-encryption
 
 - **Priority:** P2
 - **Description:** Implement audit logging for secret access
 - **Effort:** Medium
+- **Status:** DONE — `vault audit` command, logs all CRUD + rotation + env operations
 
 - **Priority:** P2
 - **Description:** Add secret versioning with rollback capability
 - **Effort:** Large
+- **Status:** DONE — `vault history <key>` and `vault rollback <key> <version>` commands
 
 ### Usability
 - **Priority:** P1
 - **Description:** Shell auto-completion (bash, zsh, fish, powershell)
 - **Effort:** Medium
+- **Status:** DONE — Dynamic completion for profile names and secret keys
 
 - **Priority:** P2
 - **Description:** Interactive TUI with bubbletea
@@ -39,11 +43,12 @@
 - **Priority:** P2
 - **Description:** Docker secrets bridge for container environments
 - **Effort:** Medium
+- **Status:** DONE — `vault docker export/clean/compose` commands
 
 - **Priority:** P2
 - **Description:** CI/CD pipeline integration (GitHub Actions, GitLab CI)
 - **Effort:** Medium
-- **Status:** Partially done — release workflow (goreleaser on tag) and test workflow (lint + vulncheck on PR) are in place. Build workflow targets `develop` branch (not yet created).
+- **Status:** DONE — Release (goreleaser on tag), test (lint + test on PR), build (on main)
 
 - **Priority:** P3
 - **Description:** Encrypted secret export for machine-to-machine transfer
@@ -51,9 +56,9 @@
 
 ### Technical Debt
 - **Priority:** P1
-- **Description:** Increase test coverage to 80%+ across all packages (currently 14.4%)
+- **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Details:** `internal/store` (0%), `pkg/vault` (0%), `cmd` (0%) need tests; `crypto` (73.7%) and `sentinel` (72.4%) need improvement
+- **Status:** IN PROGRESS — Core packages at 72% (store 93%, vault 65%, crypto 74%, sentinel 72%). Bounded by untestable TPM branches.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands
@@ -61,8 +66,4 @@
 
 - **Priority:** P3
 - **Description:** Benchmark encryption/decryption performance
-- **Effort:** Small
-
-- **Priority:** P2
-- **Description:** Populate LICENSE file (currently empty)
 - **Effort:** Small

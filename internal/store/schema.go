@@ -52,4 +52,31 @@ CREATE TABLE IF NOT EXISTS vault_password (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Vault audit log table
+CREATE TABLE IF NOT EXISTS vault_audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL,
+    profile_name TEXT NOT NULL,
+    secret_key TEXT DEFAULT '',
+    detail TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_vault_audit_log_action ON vault_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_vault_audit_log_profile ON vault_audit_log(profile_name);
+CREATE INDEX IF NOT EXISTS idx_vault_audit_log_created ON vault_audit_log(created_at);
+
+-- Vault secret versions table
+CREATE TABLE IF NOT EXISTS vault_secret_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_name TEXT NOT NULL,
+    key TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    encrypted_value BLOB NOT NULL,
+    nonce BLOB NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (profile_name) REFERENCES vault_profiles(name) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_vault_secret_versions_key ON vault_secret_versions(profile_name, key);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vault_secret_versions_unique ON vault_secret_versions(profile_name, key, version);
 `

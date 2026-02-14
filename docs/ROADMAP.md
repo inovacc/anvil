@@ -1,7 +1,7 @@
 # Project Roadmap
 
 ## Current Status
-**Overall Progress:** 50% Complete
+**Overall Progress:** 75% Complete
 
 ## Phases
 
@@ -44,36 +44,36 @@
 - [x] Interfaces: `VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`
 - [x] Compile-time interface satisfaction checks
 
-### Phase 5: Enhanced Security [NOT STARTED]
-- [ ] Master key rotation
-- [ ] Audit logging (access history)
-- [ ] Secret versioning
+### Phase 5: Enhanced Security [COMPLETE]
+- [x] Master key rotation (`vault rotate-key` with transactional re-encryption)
+- [x] Audit logging (action, profile, key, detail, timestamp)
+- [x] Secret versioning with rollback
 - [ ] Backup and restore
 
 ### Phase 6: Integration [IN PROGRESS]
-- [ ] Shell integration helpers (bash, zsh, fish, powershell)
-- [ ] Docker secrets bridge
-- [x] CI/CD pipeline integration (GitHub Actions: release on tag, test on PR, build on develop)
+- [x] Shell auto-completion (bash, zsh, fish, powershell) with dynamic profile/secret completion
+- [x] Docker secrets bridge (`vault docker export/clean/compose`)
+- [x] CI/CD pipeline integration (GitHub Actions: release on tag, test on PR, build on main)
 - [ ] Secret sharing between machines (encrypted export)
 
 ### Phase 7: Polish [IN PROGRESS]
 - [x] User-friendly error handling (UserError type, no usage dump, JSON error output)
 - [ ] Interactive TUI mode
-- [ ] Auto-completion for shells
+- [x] Auto-completion for shells
 - [ ] Secret templates
 - [ ] Plugin system
 - [x] Release automation with goreleaser (GitHub Actions workflow)
 
 ## Test Coverage
 
-**Current:** 14.4%  |  **Target:** 80%
+**Current:** 72% (core packages)  |  **Target:** 80%
 
 | Package | Coverage | Status |
 |---------|----------|--------|
 | internal/crypto | 73.7% | Good |
 | internal/sentinel | 72.4% | Good |
-| internal/store | 0.0% | No tests |
-| internal/store/sqlc | 0.0% | No tests (generated code) |
+| internal/store | 93.0% | Excellent |
+| internal/store/sqlc | N/A | Generated code |
 | internal/application | 0.0% | No tests |
-| pkg/vault | 0.0% | No tests |
-| cmd | 0.0% | No tests |
+| pkg/vault | 64.5% | Good (TPM branches untestable) |
+| cmd | 0.0% | No tests (commands use real vault paths) |

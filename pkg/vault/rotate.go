@@ -27,39 +27,48 @@ func (v *Vault) RotateKey(password string) error {
 		return fmt.Errorf("generate new master key: %w", err)
 	}
 
-	// Begin transaction for atomic re-encryption.
-	tx, qtx, err := v.store.BeginTx()
+	newVersion, sealMethod, err := v.rotateKeyTx(newKey)
 	if err != nil {
 		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("begin transaction: %w", err)
+		return err
+	}
+
+	crypto.ZeroBytes(v.masterKey)
+	v.masterKey = newKey
+
+	v.logAudit("key.rotate", "", "", fmt.Sprintf("version %d, method %s", newVersion, sealMethod))
+
+	return nil
+}
+
+func (v *Vault) rotateKeyTx(newKey []byte) (int64, string, error) {
+	tx, qtx, err := v.store.BeginTx()
+	if err != nil {
+		return 0, "", fmt.Errorf("begin transaction: %w", err)
 	}
 
 	defer v.store.EndTx()
 
 	ctx := context.Background()
 
-	// Fetch all secrets.
+	// Fetch and re-encrypt all secrets.
 	secrets, err := qtx.ListAllSecrets(ctx)
 	if err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("list secrets: %w", err)
+		return 0, "", fmt.Errorf("list secrets: %w", err)
 	}
 
-	// Re-encrypt each secret with the new key.
 	for _, s := range secrets {
 		plaintext, err := crypto.Decrypt(v.masterKey, s.EncryptedValue, s.Nonce)
 		if err != nil {
 			_ = tx.Rollback()
-			crypto.ZeroBytes(newKey)
-			return fmt.Errorf("decrypt secret %q: %w", s.Key, err)
+			return 0, "", fmt.Errorf("decrypt secret %q: %w", s.Key, err)
 		}
 
 		newCiphertext, newNonce, err := crypto.Encrypt(newKey, plaintext)
 		if err != nil {
 			_ = tx.Rollback()
-			crypto.ZeroBytes(newKey)
-			return fmt.Errorf("re-encrypt secret %q: %w", s.Key, err)
+			return 0, "", fmt.Errorf("re-encrypt secret %q: %w", s.Key, err)
 		}
 
 		desc := ""
@@ -75,8 +84,37 @@ func (v *Vault) RotateKey(password string) error {
 			Description:    &desc,
 		}); err != nil {
 			_ = tx.Rollback()
-			crypto.ZeroBytes(newKey)
-			return fmt.Errorf("update secret %q: %w", s.Key, err)
+			return 0, "", fmt.Errorf("update secret %q: %w", s.Key, err)
+		}
+	}
+
+	// Re-encrypt all secret versions.
+	secretVersions, err := qtx.ListAllSecretVersions(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, "", fmt.Errorf("list secret versions: %w", err)
+	}
+
+	for _, sv := range secretVersions {
+		plaintext, err := crypto.Decrypt(v.masterKey, sv.EncryptedValue, sv.Nonce)
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, "", fmt.Errorf("decrypt version %d of %q: %w", sv.Version, sv.Key, err)
+		}
+
+		newCiphertext, newNonce, err := crypto.Encrypt(newKey, plaintext)
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, "", fmt.Errorf("re-encrypt version %d of %q: %w", sv.Version, sv.Key, err)
+		}
+
+		if err := qtx.UpdateSecretVersionData(ctx, sqlc.UpdateSecretVersionDataParams{
+			EncryptedValue: newCiphertext,
+			Nonce:          newNonce,
+			ID:             sv.ID,
+		}); err != nil {
+			_ = tx.Rollback()
+			return 0, "", fmt.Errorf("update version %d of %q: %w", sv.Version, sv.Key, err)
 		}
 	}
 
@@ -84,8 +122,7 @@ func (v *Vault) RotateKey(password string) error {
 	sk, err := qtx.GetSealedKey(ctx)
 	if err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("get sealed key: %w", err)
+		return 0, "", fmt.Errorf("get sealed key: %w", err)
 	}
 
 	var newVersion int64 = 1
@@ -97,9 +134,10 @@ func (v *Vault) RotateKey(password string) error {
 	machineIDHash, err := crypto.MachineIDHash()
 	if err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("machine ID hash: %w", err)
+		return 0, "", fmt.Errorf("machine ID hash: %w", err)
 	}
+
+	sealMethod := crypto.SealMethodSoftware
 
 	if crypto.IsTPMAvailable() {
 		sealedJSON, tpmErr := crypto.SealMasterKeyTPM(newKey)
@@ -113,19 +151,14 @@ func (v *Vault) RotateKey(password string) error {
 				SealMethod:    crypto.SealMethodTPM,
 			}); err != nil {
 				_ = tx.Rollback()
-				crypto.ZeroBytes(newKey)
-				return fmt.Errorf("save sealed key: %w", err)
+				return 0, "", fmt.Errorf("save sealed key: %w", err)
 			}
 
 			if err := tx.Commit(); err != nil {
-				crypto.ZeroBytes(newKey)
-				return fmt.Errorf("commit: %w", err)
+				return 0, "", fmt.Errorf("commit: %w", err)
 			}
 
-			crypto.ZeroBytes(v.masterKey)
-			v.masterKey = newKey
-
-			return nil
+			return newVersion, crypto.SealMethodTPM, nil
 		}
 	}
 
@@ -133,22 +166,19 @@ func (v *Vault) RotateKey(password string) error {
 	machineID, err := crypto.MachineID()
 	if err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("get machine ID: %w", err)
+		return 0, "", fmt.Errorf("get machine ID: %w", err)
 	}
 
 	salt, err := crypto.GenerateSalt()
 	if err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("generate salt: %w", err)
+		return 0, "", fmt.Errorf("generate salt: %w", err)
 	}
 
 	sealed, nonce, err := crypto.SealMasterKey(newKey, machineID, salt)
 	if err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("seal master key: %w", err)
+		return 0, "", fmt.Errorf("seal master key: %w", err)
 	}
 
 	if err := qtx.UpsertSealedKey(ctx, sqlc.UpsertSealedKeyParams{
@@ -157,20 +187,15 @@ func (v *Vault) RotateKey(password string) error {
 		KeySalt:       salt,
 		Version:       &newVersion,
 		MachineIDHash: machineIDHash,
-		SealMethod:    crypto.SealMethodSoftware,
+		SealMethod:    sealMethod,
 	}); err != nil {
 		_ = tx.Rollback()
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("save sealed key: %w", err)
+		return 0, "", fmt.Errorf("save sealed key: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		crypto.ZeroBytes(newKey)
-		return fmt.Errorf("commit: %w", err)
+		return 0, "", fmt.Errorf("commit: %w", err)
 	}
 
-	crypto.ZeroBytes(v.masterKey)
-	v.masterKey = newKey
-
-	return nil
+	return newVersion, sealMethod, nil
 }

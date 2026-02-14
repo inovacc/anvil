@@ -58,6 +58,22 @@ type EnvReleaseOptions struct {
 	TTL         time.Duration
 }
 
+// AuditEntry represents a single audit log record.
+type AuditEntry struct {
+	Action      string    `json:"action"`
+	ProfileName string    `json:"profile_name"`
+	SecretKey   string    `json:"secret_key,omitempty"`
+	Detail      string    `json:"detail,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// SecretVersion represents a historical version of a secret.
+type SecretVersion struct {
+	Version   int64     `json:"version"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // Options configures vault behavior.
 type Options struct {
 	// DBPath overrides the default database path.

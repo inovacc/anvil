@@ -1,5 +1,7 @@
 package vault
 
+import "time"
+
 // VaultReader provides read-only access to a vault.
 type VaultReader interface {
 	Get(key, profileName string) (string, error)
@@ -44,11 +46,26 @@ type VaultKeyRotation interface {
 	RotateKey(password string) error
 }
 
+// VaultAudit provides audit log operations.
+type VaultAudit interface {
+	AuditLog(limit int64) ([]AuditEntry, error)
+	AuditLogByProfile(profileName string, limit int64) ([]AuditEntry, error)
+	PurgeAuditLog(before time.Time) error
+}
+
+// VaultVersioning provides secret version history and rollback operations.
+type VaultVersioning interface {
+	SecretHistory(key, profileName string) ([]SecretVersion, error)
+	SecretRollback(key, profileName string, version int64) error
+}
+
 // Compile-time interface satisfaction checks.
 var (
-	_ VaultReader   = (*Vault)(nil)
-	_ VaultWriter   = (*Vault)(nil)
-	_ VaultEnv      = (*Vault)(nil)
+	_ VaultReader      = (*Vault)(nil)
+	_ VaultWriter      = (*Vault)(nil)
+	_ VaultEnv         = (*Vault)(nil)
 	_ VaultPassword    = (*Vault)(nil)
 	_ VaultKeyRotation = (*Vault)(nil)
+	_ VaultAudit       = (*Vault)(nil)
+	_ VaultVersioning  = (*Vault)(nil)
 )

@@ -60,12 +60,20 @@ func (v *Vault) EnvRelease(password string, opts *EnvReleaseOptions) (*ReleaseSt
 		return nil, err
 	}
 
+	v.logAudit("env.release", profile, "", fmt.Sprintf("ttl %s", ttl))
+
 	return toReleaseState(state), nil
 }
 
 // EnvRevoke revokes the active release session.
 func (v *Vault) EnvRevoke() error {
-	return sentinel.Revoke()
+	if err := sentinel.Revoke(); err != nil {
+		return err
+	}
+
+	v.logAudit("env.revoke", "", "", "")
+
+	return nil
 }
 
 // EnvStatus returns the current release state.

@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+type VaultAuditLog struct {
+	ID          int64     `json:"id"`
+	Action      string    `json:"action"`
+	ProfileName string    `json:"profile_name"`
+	SecretKey   *string   `json:"secret_key"`
+	Detail      *string   `json:"detail"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type VaultPassword struct {
 	ID           int64      `json:"id"`
 	PasswordHash []byte     `json:"password_hash"`
@@ -45,4 +54,14 @@ type VaultSecret struct {
 	Description    *string    `json:"description"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      *time.Time `json:"updated_at"`
+}
+
+type VaultSecretVersion struct {
+	ID             int64     `json:"id"`
+	ProfileName    string    `json:"profile_name"`
+	Key            string    `json:"key"`
+	Version        int64     `json:"version"`
+	EncryptedValue []byte    `json:"encrypted_value"`
+	Nonce          []byte    `json:"nonce"`
+	CreatedAt      time.Time `json:"created_at"`
 }

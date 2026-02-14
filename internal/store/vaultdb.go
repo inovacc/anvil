@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/inovacc/anvil/internal/store/sqlc"
 	_ "modernc.org/sqlite"
@@ -280,6 +281,136 @@ func (s *Store) DeletePassword() error {
 	defer s.mu.Unlock()
 
 	return s.queries.DeletePassword(context.Background())
+}
+
+// === Audit log operations ===
+
+// LogAudit records an audit log entry.
+func (s *Store) LogAudit(action, profileName, secretKey, detail string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.InsertAuditLog(context.Background(), sqlc.InsertAuditLogParams{
+		Action:      action,
+		ProfileName: profileName,
+		SecretKey:   &secretKey,
+		Detail:      &detail,
+	})
+}
+
+// ListAuditLog returns the most recent audit log entries.
+func (s *Store) ListAuditLog(limit int64) ([]sqlc.VaultAuditLog, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListAuditLog(context.Background(), limit)
+}
+
+// ListAuditLogByProfile returns audit log entries for a specific profile.
+func (s *Store) ListAuditLogByProfile(profileName string, limit int64) ([]sqlc.VaultAuditLog, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListAuditLogByProfile(context.Background(), sqlc.ListAuditLogByProfileParams{
+		ProfileName: profileName,
+		Limit:       limit,
+	})
+}
+
+// ListAuditLogByAction returns audit log entries for a specific action.
+func (s *Store) ListAuditLogByAction(action string, limit int64) ([]sqlc.VaultAuditLog, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListAuditLogByAction(context.Background(), sqlc.ListAuditLogByActionParams{
+		Action: action,
+		Limit:  limit,
+	})
+}
+
+// CountAuditLog returns the total number of audit log entries.
+func (s *Store) CountAuditLog() (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.CountAuditLog(context.Background())
+}
+
+// PurgeAuditLog deletes audit log entries older than the given time.
+func (s *Store) PurgeAuditLog(before time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.PurgeAuditLog(context.Background(), before)
+}
+
+// === Secret version operations ===
+
+// InsertSecretVersion archives an encrypted secret value as a version.
+func (s *Store) InsertSecretVersion(profileName, key string, version int64, encryptedValue, nonce []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.InsertSecretVersion(context.Background(), sqlc.InsertSecretVersionParams{
+		ProfileName:    profileName,
+		Key:            key,
+		Version:        version,
+		EncryptedValue: encryptedValue,
+		Nonce:          nonce,
+	})
+}
+
+// ListSecretVersions returns all versions for a secret, newest first.
+func (s *Store) ListSecretVersions(profileName, key string) ([]sqlc.VaultSecretVersion, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListSecretVersions(context.Background(), sqlc.ListSecretVersionsParams{
+		ProfileName: profileName,
+		Key:         key,
+	})
+}
+
+// GetSecretVersion returns a specific version of a secret.
+func (s *Store) GetSecretVersion(profileName, key string, version int64) (sqlc.VaultSecretVersion, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetSecretVersion(context.Background(), sqlc.GetSecretVersionParams{
+		ProfileName: profileName,
+		Key:         key,
+		Version:     version,
+	})
+}
+
+// GetLatestVersionNumber returns the highest version number for a secret.
+func (s *Store) GetLatestVersionNumber(profileName, key string) (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetLatestVersionNumber(context.Background(), sqlc.GetLatestVersionNumberParams{
+		ProfileName: profileName,
+		Key:         key,
+	})
+}
+
+// DeleteSecretVersions deletes all versions for a secret.
+func (s *Store) DeleteSecretVersions(profileName, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeleteSecretVersions(context.Background(), sqlc.DeleteSecretVersionsParams{
+		ProfileName: profileName,
+		Key:         key,
+	})
+}
+
+// ListAllSecretVersions returns all secret versions across all profiles.
+func (s *Store) ListAllSecretVersions() ([]sqlc.VaultSecretVersion, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListAllSecretVersions(context.Background())
 }
 
 // === Rotation operations ===

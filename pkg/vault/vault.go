@@ -207,7 +207,13 @@ func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
 		return ErrProfileExists
 	}
 
-	return v.store.CreateProfile(name, description, isDefault)
+	if err := v.store.CreateProfile(name, description, isDefault); err != nil {
+		return err
+	}
+
+	v.logAudit("profile.create", name, "", description)
+
+	return nil
 }
 
 // DeleteProfile deletes a profile and all its secrets.
@@ -221,7 +227,13 @@ func (v *Vault) DeleteProfile(name string) error {
 		return ErrProfileNotFound
 	}
 
-	return v.store.DeleteProfile(name)
+	if err := v.store.DeleteProfile(name); err != nil {
+		return err
+	}
+
+	v.logAudit("profile.delete", name, "", "")
+
+	return nil
 }
 
 // UseProfile sets a profile as the default.
@@ -235,7 +247,13 @@ func (v *Vault) UseProfile(name string) error {
 		return ErrProfileNotFound
 	}
 
-	return v.store.SetDefaultProfile(name)
+	if err := v.store.SetDefaultProfile(name); err != nil {
+		return err
+	}
+
+	v.logAudit("profile.use", name, "", "")
+
+	return nil
 }
 
 // ListProfiles returns all vault profiles with secret counts.
@@ -301,9 +319,14 @@ func (v *Vault) resolveProfile(profileName string) (string, error) {
 // === Secret operations ===
 
 // Set encrypts and stores a secret in the given profile (or default).
+// If the key already exists, the current value is archived as a version.
 func (v *Vault) Set(key, value, profileName, description string) error {
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
+		return err
+	}
+
+	if err := v.archiveCurrentSecret(profile, key); err != nil {
 		return err
 	}
 
@@ -312,7 +335,13 @@ func (v *Vault) Set(key, value, profileName, description string) error {
 		return fmt.Errorf("encrypt: %w", err)
 	}
 
-	return v.store.UpsertSecret(profile, key, ciphertext, nonce, description)
+	if err := v.store.UpsertSecret(profile, key, ciphertext, nonce, description); err != nil {
+		return err
+	}
+
+	v.logAudit("secret.set", profile, key, "")
+
+	return nil
 }
 
 // Get decrypts and returns a secret value.
@@ -336,6 +365,8 @@ func (v *Vault) Get(key, profileName string) (string, error) {
 		return "", fmt.Errorf("decrypt: %w", err)
 	}
 
+	v.logAudit("secret.get", profile, key, "")
+
 	return string(plaintext), nil
 }
 
@@ -355,7 +386,17 @@ func (v *Vault) Delete(key, profileName string) error {
 		return ErrSecretNotFound
 	}
 
-	return v.store.DeleteSecret(profile, key)
+	if err := v.store.DeleteSecretVersions(profile, key); err != nil {
+		return fmt.Errorf("delete versions: %w", err)
+	}
+
+	if err := v.store.DeleteSecret(profile, key); err != nil {
+		return err
+	}
+
+	v.logAudit("secret.delete", profile, key, "")
+
+	return nil
 }
 
 // List returns metadata for all secrets in a profile.
@@ -420,6 +461,8 @@ func (v *Vault) Export(profileName string) ([]SecretEntry, error) {
 		entries = append(entries, entry)
 	}
 
+	v.logAudit("secret.export", profile, "", fmt.Sprintf("%d secrets", len(entries)))
+
 	return entries, nil
 }
 
@@ -440,6 +483,8 @@ func (v *Vault) Import(entries []SecretEntry, profileName string) error {
 			return fmt.Errorf("save %q: %w", entry.Key, err)
 		}
 	}
+
+	v.logAudit("secret.import", profile, "", fmt.Sprintf("%d secrets", len(entries)))
 
 	return nil
 }

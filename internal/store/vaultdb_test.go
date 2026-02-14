@@ -6,6 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/inovacc/anvil/internal/store/sqlc"
 )
@@ -444,6 +445,169 @@ func TestBeginTxRollback(t *testing.T) {
 	if exists {
 		t.Error("secret found after tx rollback")
 	}
+}
+
+func TestAuditLogCRUD(t *testing.T) {
+	s := openTestStore(t)
+
+	t.Run("empty initially", func(t *testing.T) {
+		count, err := s.CountAuditLog()
+		if err != nil {
+			t.Fatalf("CountAuditLog: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("got count %d, want 0", count)
+		}
+	})
+
+	t.Run("insert and list", func(t *testing.T) {
+		if err := s.LogAudit("secret.set", "dev", "API_KEY", ""); err != nil {
+			t.Fatalf("LogAudit: %v", err)
+		}
+		if err := s.LogAudit("secret.get", "dev", "API_KEY", ""); err != nil {
+			t.Fatalf("LogAudit: %v", err)
+		}
+		if err := s.LogAudit("profile.create", "staging", "", "new profile"); err != nil {
+			t.Fatalf("LogAudit: %v", err)
+		}
+
+		entries, err := s.ListAuditLog(10)
+		if err != nil {
+			t.Fatalf("ListAuditLog: %v", err)
+		}
+		if len(entries) != 3 {
+			t.Fatalf("got %d entries, want 3", len(entries))
+		}
+		if entries[0].Action != "profile.create" {
+			t.Errorf("expected newest first, got %q", entries[0].Action)
+		}
+	})
+
+	t.Run("list by profile", func(t *testing.T) {
+		entries, err := s.ListAuditLogByProfile("dev", 10)
+		if err != nil {
+			t.Fatalf("ListAuditLogByProfile: %v", err)
+		}
+		if len(entries) != 2 {
+			t.Errorf("got %d entries, want 2", len(entries))
+		}
+	})
+
+	t.Run("list by action", func(t *testing.T) {
+		entries, err := s.ListAuditLogByAction("secret.set", 10)
+		if err != nil {
+			t.Fatalf("ListAuditLogByAction: %v", err)
+		}
+		if len(entries) != 1 {
+			t.Errorf("got %d entries, want 1", len(entries))
+		}
+	})
+
+	t.Run("count", func(t *testing.T) {
+		count, err := s.CountAuditLog()
+		if err != nil {
+			t.Fatalf("CountAuditLog: %v", err)
+		}
+		if count != 3 {
+			t.Errorf("got count %d, want 3", count)
+		}
+	})
+
+	t.Run("purge", func(t *testing.T) {
+		// Purge entries older than far in the future (all of them).
+		future := time.Now().Add(24 * time.Hour)
+		if err := s.PurgeAuditLog(future); err != nil {
+			t.Fatalf("PurgeAuditLog: %v", err)
+		}
+		count, _ := s.CountAuditLog()
+		if count != 0 {
+			t.Errorf("got count %d after purge, want 0", count)
+		}
+	})
+}
+
+func TestSecretVersionCRUD(t *testing.T) {
+	s := openTestStore(t)
+	_ = s.CreateProfile("prod", "production", true)
+	_ = s.UpsertSecret("prod", "API_KEY", []byte("v1-enc"), []byte("v1-nonce"), "api key")
+
+	t.Run("insert and list versions", func(t *testing.T) {
+		if err := s.InsertSecretVersion("prod", "API_KEY", 1, []byte("v1-enc"), []byte("v1-nonce")); err != nil {
+			t.Fatalf("InsertSecretVersion: %v", err)
+		}
+		if err := s.InsertSecretVersion("prod", "API_KEY", 2, []byte("v2-enc"), []byte("v2-nonce")); err != nil {
+			t.Fatalf("InsertSecretVersion: %v", err)
+		}
+
+		versions, err := s.ListSecretVersions("prod", "API_KEY")
+		if err != nil {
+			t.Fatalf("ListSecretVersions: %v", err)
+		}
+		if len(versions) != 2 {
+			t.Fatalf("got %d versions, want 2", len(versions))
+		}
+		if versions[0].Version != 2 {
+			t.Errorf("first version = %d, want 2 (newest first)", versions[0].Version)
+		}
+	})
+
+	t.Run("get specific version", func(t *testing.T) {
+		ver, err := s.GetSecretVersion("prod", "API_KEY", 1)
+		if err != nil {
+			t.Fatalf("GetSecretVersion: %v", err)
+		}
+		if string(ver.EncryptedValue) != "v1-enc" {
+			t.Errorf("encrypted value = %q, want %q", ver.EncryptedValue, "v1-enc")
+		}
+	})
+
+	t.Run("get latest version number", func(t *testing.T) {
+		num, err := s.GetLatestVersionNumber("prod", "API_KEY")
+		if err != nil {
+			t.Fatalf("GetLatestVersionNumber: %v", err)
+		}
+		if num != 2 {
+			t.Errorf("latest version = %d, want 2", num)
+		}
+	})
+
+	t.Run("get latest version number for nonexistent key", func(t *testing.T) {
+		num, err := s.GetLatestVersionNumber("prod", "NOPE")
+		if err != nil {
+			t.Fatalf("GetLatestVersionNumber: %v", err)
+		}
+		if num != 0 {
+			t.Errorf("latest version = %d, want 0", num)
+		}
+	})
+
+	t.Run("delete versions", func(t *testing.T) {
+		if err := s.DeleteSecretVersions("prod", "API_KEY"); err != nil {
+			t.Fatalf("DeleteSecretVersions: %v", err)
+		}
+		versions, err := s.ListSecretVersions("prod", "API_KEY")
+		if err != nil {
+			t.Fatalf("ListSecretVersions: %v", err)
+		}
+		if len(versions) != 0 {
+			t.Errorf("got %d versions after delete, want 0", len(versions))
+		}
+	})
+
+	t.Run("list all secret versions", func(t *testing.T) {
+		_ = s.CreateProfile("stg", "staging", false)
+		_ = s.UpsertSecret("stg", "TOKEN", []byte("enc"), []byte("nonce"), "")
+		_ = s.InsertSecretVersion("prod", "API_KEY", 1, []byte("enc1"), []byte("n1"))
+		_ = s.InsertSecretVersion("stg", "TOKEN", 1, []byte("enc2"), []byte("n2"))
+
+		all, err := s.ListAllSecretVersions()
+		if err != nil {
+			t.Fatalf("ListAllSecretVersions: %v", err)
+		}
+		if len(all) != 2 {
+			t.Errorf("got %d versions, want 2", len(all))
+		}
+	})
 }
 
 func TestClosePreventsFurtherOps(t *testing.T) {

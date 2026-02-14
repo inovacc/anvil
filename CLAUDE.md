@@ -68,12 +68,15 @@ anvil/
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
 ├── pkg/vault/      # Public vault API (types, interfaces, UserError, TPM-first init/open)
-│   └── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword interfaces
+│   ├── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword, VaultAudit, VaultVersioning, VaultKeyRotation interfaces
+│   ├── audit.go    # Audit logging (best-effort, never blocks operations)
+│   ├── versions.go # Secret versioning and rollback
+│   └── rotate.go   # Master key rotation with transactional re-encryption
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
 ├── .goreleaser.yaml # Release configuration
-├── .github/workflows/ # CI/CD (release on tag, test on PR, build on develop)
+├── .github/workflows/ # CI/CD (release on tag, test on PR, build on main)
 └── main.go         # Entry point
 ```
 
@@ -112,6 +115,8 @@ Vault init tries TPM 2.0 first, falls back to software HKDF:
 - `migrations/001_initial.sql` — profiles, secrets, sealed_key tables
 - `migrations/002_vault_password.sql` — password table
 - `migrations/003_seal_method.sql` — adds `seal_method` column to `vault_sealed_key`
+- `migrations/004_audit_log.sql` — audit log table
+- `migrations/005_secret_versions.sql` — secret version history table
 - Idempotent `ALTER TABLE` runs in `store.Open()` for pre-migration databases
 
 ### sqlc Workflow
@@ -140,3 +145,7 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - `pkg/vault` is the public module boundary — never expose `internal/` types in its signatures
 - `pkg/vault/iface.go` has compile-time `var _ Interface = (*Vault)(nil)` checks — update when adding public methods
 - `toReleaseState()` in `env.go` converts internal `sentinel.ReleaseState` to public `vault.ReleaseState`
+- Audit logging is best-effort — `logAudit()` never returns errors, only logs via `slog.Error`
+- Secret versioning: `Set` archives previous value; `Delete` removes version history
+- Key rotation uses `rotateKeyTx()` helper to isolate transaction scope from audit logging (avoids mutex deadlock)
+- Docker bridge: `vault docker export` writes one file per secret; `vault docker compose` generates YAML snippet

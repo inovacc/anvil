@@ -568,3 +568,115 @@ func TestExportEmptyProfile(t *testing.T) {
 		t.Errorf("expected 0 entries, got %d", len(entries))
 	}
 }
+
+func TestSecretVersioningAndRollback(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("ver", "versioning test", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	t.Run("first set has no history", func(t *testing.T) {
+		if err := v.Set("KEY", "value1", "ver", "first"); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		history, err := v.SecretHistory("KEY", "ver")
+		if err != nil {
+			t.Fatalf("SecretHistory: %v", err)
+		}
+		if len(history) != 0 {
+			t.Errorf("expected 0 versions, got %d", len(history))
+		}
+	})
+
+	t.Run("second set archives first", func(t *testing.T) {
+		if err := v.Set("KEY", "value2", "ver", "second"); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		history, err := v.SecretHistory("KEY", "ver")
+		if err != nil {
+			t.Fatalf("SecretHistory: %v", err)
+		}
+		if len(history) != 1 {
+			t.Fatalf("expected 1 version, got %d", len(history))
+		}
+		if history[0].Value != "value1" {
+			t.Errorf("version value = %q, want %q", history[0].Value, "value1")
+		}
+		if history[0].Version != 1 {
+			t.Errorf("version number = %d, want 1", history[0].Version)
+		}
+	})
+
+	t.Run("third set archives second", func(t *testing.T) {
+		if err := v.Set("KEY", "value3", "ver", "third"); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		history, err := v.SecretHistory("KEY", "ver")
+		if err != nil {
+			t.Fatalf("SecretHistory: %v", err)
+		}
+		if len(history) != 2 {
+			t.Fatalf("expected 2 versions, got %d", len(history))
+		}
+	})
+
+	t.Run("rollback to version 1", func(t *testing.T) {
+		if err := v.SecretRollback("KEY", "ver", 1); err != nil {
+			t.Fatalf("SecretRollback: %v", err)
+		}
+		val, err := v.Get("KEY", "ver")
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
+		if val != "value1" {
+			t.Errorf("after rollback, value = %q, want %q", val, "value1")
+		}
+
+		history, err := v.SecretHistory("KEY", "ver")
+		if err != nil {
+			t.Fatalf("SecretHistory: %v", err)
+		}
+		if len(history) != 3 {
+			t.Errorf("expected 3 versions after rollback, got %d", len(history))
+		}
+	})
+
+	t.Run("rollback nonexistent version", func(t *testing.T) {
+		err := v.SecretRollback("KEY", "ver", 999)
+		if err == nil {
+			t.Fatal("expected error for nonexistent version")
+		}
+	})
+
+	t.Run("history for nonexistent secret", func(t *testing.T) {
+		_, err := v.SecretHistory("NOPE", "ver")
+		if !errors.Is(err, vault.ErrSecretNotFound) {
+			t.Fatalf("expected ErrSecretNotFound, got %v", err)
+		}
+	})
+
+	t.Run("delete removes versions", func(t *testing.T) {
+		if err := v.Set("TEMP", "a", "ver", ""); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		if err := v.Set("TEMP", "b", "ver", ""); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		if err := v.Delete("TEMP", "ver"); err != nil {
+			t.Fatalf("Delete: %v", err)
+		}
+		// After delete, the secret and its versions should be gone.
+		// Re-create to verify no leftover versions.
+		if err := v.Set("TEMP", "fresh", "ver", ""); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		history, err := v.SecretHistory("TEMP", "ver")
+		if err != nil {
+			t.Fatalf("SecretHistory: %v", err)
+		}
+		if len(history) != 0 {
+			t.Errorf("expected 0 versions after delete+recreate, got %d", len(history))
+		}
+	})
+}
