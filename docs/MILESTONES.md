@@ -24,7 +24,7 @@
 - Vault status displays seal method
 - GitHub Actions CI/CD: release workflow (goreleaser on tag push), test workflow (lint + vuln on PR), build workflow (Linux + Windows)
 - **Released:** v0.3.0
-- **Test Coverage:** 14.4% (crypto 73.7%, sentinel 72.4%, store 0%, vault 0%, cmd 0%)
+- **Test Coverage:** crypto 75.8%, sentinel 73.7%, store 83.2%
 
 ## v0.3.x — Public API Boundary (Complete)
 - Clean `pkg/vault` module with no internal type leaks in public signatures
@@ -44,9 +44,11 @@
 - Auto-completion for bash, zsh, fish, powershell
 - Docker secrets bridge (`vault docker export/clean/compose`)
 - Secret templates (5 built-in: postgres, mysql, redis, aws, github-token)
-- CLI integration tests via `ANVIL_DB_PATH` env var
+- CLI integration tests via `ANVIL_DB_PATH` env var (15 tests)
 - Plugin system (event hooks, secret providers, custom commands)
 - Encryption/decryption benchmarks
+- CI/CD coverage reporting with threshold enforcement
+- **Test Coverage:** application 72.7%, crypto 75.8%, sentinel 73.7%, store 83.2%, vault 47.9%, cmd 37.9%
 
 ## v1.0.0 — Production Ready (Planned)
 - Full test coverage (80%+ all packages)

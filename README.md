@@ -8,6 +8,14 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 - **Machine-Bound Encryption** — AES-256-GCM with HKDF-SHA256, non-portable by design
 - **Profile Management** — Organize secrets into named profiles with default selection
 - **Secret CRUD** — Set, get, delete, list, export, and import encrypted secrets
+- **Secret Versioning** — Automatic version history with rollback capability
+- **Master Key Rotation** — Rotate encryption key with transactional re-encryption of all secrets
+- **Audit Logging** — Full action history with profile filtering
+- **Backup & Restore** — Password-encrypted vault backups
+- **Encrypted Sharing** — Cross-machine secret transfer with passphrase encryption
+- **Secret Templates** — 5 built-in templates (postgres, mysql, redis, aws, github-token) with variable interpolation
+- **Plugin System** — Event hooks (pre/post set, get, delete) and external secret providers
+- **Docker Bridge** — Export secrets as Docker files or Compose YAML snippets
 - **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`) for external consumers
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
@@ -152,19 +160,44 @@ anvil
 │   ├── list              List secrets in a profile
 │   ├── export            Export secrets in plaintext
 │   ├── import <file>     Import secrets from a file
+│   ├── rotate-key        Rotate the vault master key
+│   ├── audit             Show audit log entries
+│   ├── history <key>     Show version history for a secret
+│   ├── rollback <k> <v>  Rollback a secret to a previous version
+│   ├── backup            Create encrypted vault backup
+│   ├── restore           Restore vault from backup
 │   ├── profile
 │   │   ├── create        Create a new vault profile
 │   │   ├── list          List all vault profiles
 │   │   ├── delete        Delete a profile and its secrets
 │   │   └── use           Set a profile as the default
-│   └── env
-│       ├── password
-│       │   ├── set       Set or update the vault env password
-│       │   └── reset     Remove the vault env password
-│       ├── release       Release secrets for a time-limited period
-│       ├── revoke        Revoke the active env release
-│       ├── status        Show current env release status
-│       └── export        Export released secrets as env variables
+│   ├── env
+│   │   ├── password
+│   │   │   ├── set       Set or update the vault env password
+│   │   │   └── reset     Remove the vault env password
+│   │   ├── release       Release secrets for a time-limited period
+│   │   ├── revoke        Revoke the active env release
+│   │   ├── status        Show current env release status
+│   │   └── export        Export released secrets as env variables
+│   ├── template
+│   │   ├── create        Create a template from YAML/JSON
+│   │   ├── list          List all templates
+│   │   ├── show          Show template definition
+│   │   ├── delete        Delete a template
+│   │   └── apply         Apply template to create secrets
+│   ├── plugin
+│   │   ├── list          List configured hooks and providers
+│   │   ├── hook-add      Add a hook for a vault event
+│   │   ├── hook-remove   Remove a hook
+│   │   ├── provider-add  Add a secret provider
+│   │   └── provider-remove Remove a secret provider
+│   ├── share
+│   │   ├── export        Export secrets with passphrase encryption
+│   │   └── import        Import shared secrets
+│   └── docker
+│       ├── export        Write secrets as individual files
+│       ├── clean         Remove exported secret files
+│       └── compose       Generate Docker Compose YAML snippet
 ├── cmdtree               Display command tree
 ├── aicontext             Generate AI-readable documentation
 └── completion            Shell completion scripts

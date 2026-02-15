@@ -80,11 +80,13 @@ graph LR
     prof --> puse["use"]
 
     vault --> tmpl["template"]
+    vault --> plugin["plugin"]
     vault --> rotate["rotate-key"]
     vault --> audit["audit"]
     vault --> history["history"]
     vault --> backup["backup"]
     vault --> share["share"]
+    vault --> docker["docker"]
 
     env --> password["password"]
     env --> release["release"]
@@ -100,6 +102,19 @@ graph LR
     tmpl --> tshow["show"]
     tmpl --> tdelete["delete"]
     tmpl --> tapply["apply"]
+
+    plugin --> pllist["list"]
+    plugin --> plhookadd["hook-add"]
+    plugin --> plhookrm["hook-remove"]
+    plugin --> plprovadd["provider-add"]
+    plugin --> plprovrm["provider-remove"]
+
+    share --> sexport["export"]
+    share --> simport["import"]
+
+    docker --> dexport["export"]
+    docker --> dclean["clean"]
+    docker --> dcompose["compose"]
 ```
 
 ## Package Dependency Graph

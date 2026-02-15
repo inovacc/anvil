@@ -60,12 +60,12 @@
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** IN PROGRESS — Core packages at 72% (store 93%, vault 65%, crypto 74%, sentinel 72%). Bounded by untestable TPM branches.
+- **Status:** IN PROGRESS — application 72.7%, crypto 75.8%, sentinel 73.7%, store 83.2%, vault 47.9%, cmd 37.9%. Bounded by TPM branches and interactive commands.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands
 - **Effort:** Medium
-- **Status:** DONE — `cmd/cmd_test.go` with init, profile CRUD, secret CRUD, status, JSON output tests via `ANVIL_DB_PATH` env var
+- **Status:** DONE — `cmd/cmd_test.go` with 15 integration tests (init, profiles, secrets, audit, versioning, export/import, templates, plugins, errors, E2E plugin hook)
 
 - **Priority:** P3
 - **Description:** Benchmark encryption/decryption performance
