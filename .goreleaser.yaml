@@ -135,13 +135,3 @@ announce:
 metadata:
   mod_timestamp: "{{ .CommitTimestamp }}"
 
-sboms:
-  - id: binaries-sbom
-    artifacts: binary
-    cmd: syft
-    args:
-      - "$artifact"
-      - "--output"
-      - "cyclonedx-json=$document"
-    documents:
-      - "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}.sbom.json"

@@ -93,5 +93,5 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 | internal/store | 83.2% | Excellent |
 | internal/store/sqlc | N/A | Generated code |
 | internal/application | 72.7% | Good |
-| pkg/vault | 47.9% | Bounded by TPM branches + timeout |
+| pkg/vault | 50.6% | Bounded by TPM branches + timeout |
 | cmd | 37.9% | 15 integration tests; many cmds need interactive input |

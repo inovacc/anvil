@@ -2,14 +2,13 @@
 
 ## Open Issues
 
-| # | Issue | Severity | Workaround |
-|---|-------|----------|------------|
-| 3 | `sboms` section in `.goreleaser.yaml` requires `syft` which may not be installed in CI runner | Low | SBOM generation silently skipped if `syft` not available |
+_No known issues at this time._
 
 ## Resolved Issues
 
 | Issue | Resolution | Date |
 |-------|------------|------|
+| `sboms` section in `.goreleaser.yaml` requires `syft` which may not be installed in CI runner | Removed `sboms` section entirely; SBOM generation not needed | 2026-02-15 |
 | LICENSE file is empty | Populated with BSD 3-Clause license | 2026-02-14 |
 | Build workflow targets `develop` branch which does not exist yet | Changed workflow to target `main` branch, removed unnecessary GUI deps | 2026-02-14 |
 | CLI dumps full usage text on every error, leaks internal error chains, `--json` flag doesn't affect errors | Added `UserError` type with hints, `handleError` for text/JSON formatting, `SilenceErrors`/`SilenceUsage` on rootCmd | 2026-02-10 |

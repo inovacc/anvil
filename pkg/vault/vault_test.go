@@ -2,6 +2,7 @@ package vault_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -834,6 +835,217 @@ func TestRotateEmptyVault(t *testing.T) {
 	}
 	if status.KeyVersion != 2 {
 		t.Errorf("KeyVersion = %d, want 2", status.KeyVersion)
+	}
+}
+
+func TestResolveDBPath(t *testing.T) {
+	t.Run("from options", func(t *testing.T) {
+		path, err := vault.ResolveDBPath(&vault.Options{DBPath: "/custom/vault.db"})
+		if err != nil {
+			t.Fatalf("ResolveDBPath: %v", err)
+		}
+		if path != "/custom/vault.db" {
+			t.Errorf("got %q, want /custom/vault.db", path)
+		}
+	})
+
+	t.Run("from env var", func(t *testing.T) {
+		t.Setenv("ANVIL_DB_PATH", "/env/vault.db")
+		path, err := vault.ResolveDBPath(nil)
+		if err != nil {
+			t.Fatalf("ResolveDBPath: %v", err)
+		}
+		if path != "/env/vault.db" {
+			t.Errorf("got %q, want /env/vault.db", path)
+		}
+	})
+
+	t.Run("default path", func(t *testing.T) {
+		t.Setenv("ANVIL_DB_PATH", "")
+		path, err := vault.ResolveDBPath(nil)
+		if err != nil {
+			t.Fatalf("ResolveDBPath: %v", err)
+		}
+		if path == "" {
+			t.Error("expected non-empty default path")
+		}
+	})
+}
+
+func TestStatusWithMultipleProfiles(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("p1", "", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.CreateProfile("p2", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Add secrets to both profiles.
+	for i := 0; i < 3; i++ {
+		if err := v.Set("K"+string(rune('A'+i)), "val", "p1", ""); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+	}
+	for i := 0; i < 2; i++ {
+		if err := v.Set("K"+string(rune('X'+i)), "val", "p2", ""); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+	}
+
+	status, err := v.Status()
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.ProfileCount != 2 {
+		t.Errorf("ProfileCount = %d, want 2", status.ProfileCount)
+	}
+	if status.SecretCount != 5 {
+		t.Errorf("SecretCount = %d, want 5", status.SecretCount)
+	}
+	if status.SealMethod == "" {
+		t.Error("expected SealMethod to be set")
+	}
+}
+
+func TestImportEmptyList(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("empty", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Importing an empty list should succeed.
+	if err := v.Import([]vault.SecretEntry{}, "empty"); err != nil {
+		t.Fatalf("Import empty: %v", err)
+	}
+
+	secrets, err := v.List("empty")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(secrets) != 0 {
+		t.Errorf("expected 0 secrets, got %d", len(secrets))
+	}
+}
+
+func TestListSecretsWithDescriptionAndUpdate(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("desc", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("KEY1", "val", "desc", "my description"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	// Overwrite to populate UpdatedAt.
+	if err := v.Set("KEY1", "val2", "desc", "updated desc"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	secrets, err := v.List("desc")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(secrets) != 1 {
+		t.Fatalf("expected 1 secret, got %d", len(secrets))
+	}
+	if secrets[0].Key != "KEY1" {
+		t.Errorf("Key = %q, want KEY1", secrets[0].Key)
+	}
+}
+
+func TestGetStatusWithEnvVar(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	t.Setenv("ANVIL_DB_PATH", dbPath)
+
+	if err := vault.Init(nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	status, err := vault.GetStatus(nil)
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if !status.Initialized {
+		t.Error("expected initialized")
+	}
+}
+
+func TestDeleteProfileCascadesVersions(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("cascade", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Create secret with version history.
+	if err := v.Set("KEY", "v1", "cascade", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("KEY", "v2", "cascade", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Delete profile should cascade.
+	if err := v.DeleteProfile("cascade"); err != nil {
+		t.Fatalf("DeleteProfile: %v", err)
+	}
+
+	// Profile should be gone.
+	profiles, err := v.ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles: %v", err)
+	}
+	for _, p := range profiles {
+		if p.Name == "cascade" {
+			t.Error("profile should be deleted")
+		}
+	}
+}
+
+func TestExportWithDescriptions(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("exp2", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("K1", "V1", "exp2", "desc1"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("K2", "V2", "exp2", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	entries, err := v.Export("exp2")
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2, got %d", len(entries))
+	}
+
+	for _, e := range entries {
+		if e.Key == "K1" && e.Description != "desc1" {
+			t.Errorf("K1 description = %q, want desc1", e.Description)
+		}
+	}
+}
+
+func TestInitCreatesDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "dir")
+	dbPath := filepath.Join(dir, "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Error("expected directory to be created")
 	}
 }
 
