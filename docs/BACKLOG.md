@@ -38,6 +38,7 @@
 - **Priority:** P3
 - **Description:** Secret templates for common patterns (database URLs, API keys)
 - **Effort:** Small
+- **Status:** DONE — `vault template` commands (create, list, show, delete, apply), 5 built-in templates (postgres, mysql, redis, aws, github-token), variable interpolation via text/template
 
 ### Integration
 - **Priority:** P2
@@ -64,7 +65,9 @@
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands
 - **Effort:** Medium
+- **Status:** DONE — `cmd/cmd_test.go` with init, profile CRUD, secret CRUD, status, JSON output tests via `ANVIL_DB_PATH` env var
 
 - **Priority:** P3
 - **Description:** Benchmark encryption/decryption performance
 - **Effort:** Small
+- **Status:** DONE — Go benchmarks for Encrypt/Decrypt, DeriveKey, SealMasterKey, and full vault Set/Get roundtrips

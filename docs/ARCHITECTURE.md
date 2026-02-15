@@ -79,6 +79,13 @@ graph LR
     prof --> pdelete["delete"]
     prof --> puse["use"]
 
+    vault --> tmpl["template"]
+    vault --> rotate["rotate-key"]
+    vault --> audit["audit"]
+    vault --> history["history"]
+    vault --> backup["backup"]
+    vault --> share["share"]
+
     env --> password["password"]
     env --> release["release"]
     env --> revoke["revoke"]
@@ -87,6 +94,12 @@ graph LR
 
     password --> pwset["set"]
     password --> pwreset["reset"]
+
+    tmpl --> tcreate["create"]
+    tmpl --> tlist["list"]
+    tmpl --> tshow["show"]
+    tmpl --> tdelete["delete"]
+    tmpl --> tapply["apply"]
 ```
 
 ## Package Dependency Graph
@@ -157,7 +170,37 @@ erDiagram
         datetime updated_at
     }
 
+    vault_secret_versions {
+        int id PK
+        text profile_name FK
+        text key
+        int version
+        blob encrypted_value "AES-256-GCM"
+        blob nonce "GCM nonce"
+        datetime created_at
+    }
+
+    vault_audit_log {
+        int id PK
+        text action
+        text profile_name
+        text secret_key
+        text detail
+        datetime created_at
+    }
+
+    vault_templates {
+        int id PK
+        text name UK "unique name"
+        text description
+        text template_data "JSON TemplateDefinition"
+        int builtin "0 or 1"
+        datetime created_at
+        datetime updated_at
+    }
+
     vault_profiles ||--o{ vault_secrets : "CASCADE delete"
+    vault_profiles ||--o{ vault_secret_versions : "CASCADE delete"
 ```
 
 ## Vault Init Flow
@@ -519,6 +562,9 @@ graph LR
         PW["vault_password<br/>bcrypt hash"]
         PR["vault_profiles<br/>name, description, is_default"]
         SE["vault_secrets<br/>AES-256-GCM encrypted values"]
+        SV["vault_secret_versions<br/>Archived secret values"]
+        AL["vault_audit_log<br/>Action history"]
+        TM["vault_templates<br/>Secret templates (JSON)"]
     end
 
     DB --> SK

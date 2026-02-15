@@ -86,39 +86,59 @@
 - Vault-owned `ReleaseState` type (decoupled from internal sentinel package)
 - Removed `MasterKey()` method to prevent raw key exposure
 
-## Proposed
-
 ### Master Key Rotation
-- **Status:** Proposed
-- Allow rotating the master encryption key without re-creating the vault
-- Re-encrypt all secrets with the new key
+- **Status:** Completed (v0.4.0)
+- `vault rotate-key` with transactional re-encryption of all secrets and versions
+- Password verification required; revokes active sentinel session
 
 ### Audit Logging
-- **Status:** Proposed
-- Track access history for secrets (who accessed what, when)
-- Queryable audit log
+- **Status:** Completed (v0.4.0)
+- `vault audit` command with profile filtering and purge
+- Tracks all CRUD, rotation, env, backup, and share operations
 
 ### Secret Versioning
-- **Status:** Proposed
-- Keep history of secret values with rollback capability
-- Version comparison
+- **Status:** Completed (v0.4.0)
+- `vault history <key>` and `vault rollback <key> <version>`
+- Automatic archival on overwrite; delete removes all versions
 
 ### Shell Integration Helpers
-- **Status:** Proposed
+- **Status:** Completed (v0.5.0)
 - Native auto-completion for bash, zsh, fish, powershell
-- Shell profile helpers for automatic env loading
+- Dynamic completion for profile names and secret keys
 
 ### Docker Secrets Bridge
-- **Status:** Proposed
-- Bridge vault secrets into Docker container environments
-- Integration with Docker Compose secrets
+- **Status:** Completed (v0.5.0)
+- `vault docker export/clean/compose` commands
+- Writes one file per secret; generates Docker Compose YAML snippet
+
+### Backup & Restore
+- **Status:** Completed (v0.4.0)
+- Password-encrypted full vault backup (profiles, secrets, versions, password hash)
+- `vault backup` and `vault restore` commands
+
+### Encrypted Secret Sharing
+- **Status:** Completed (v0.4.0)
+- `vault share export/import` with passphrase-based encryption
+- Cross-machine secret transfer
+
+### Secret Templates
+- **Status:** Completed (v0.5.0)
+- `vault template create/list/show/delete/apply` commands
+- 5 built-in templates: postgres, mysql, redis, aws, github-token
+- Variable interpolation via Go `text/template`
+
+### Plugin System
+- **Status:** Completed (v0.5.0)
+- Event hooks for secret lifecycle (pre/post set, get, delete, rotate, init)
+- Pre-hooks can block operations by returning `{"allow":false}` via JSON stdout
+- Secret provider plugins for external sources (JSON stdin/stdout protocol)
+- CLI management: `vault plugin hook-add/hook-remove/provider-add/provider-remove/list`
+- Config stored as `plugins.json` alongside vault DB (no schema migration)
+- Hooks auto-fire on `Set`, `Get`, `Delete` operations via integrated `PluginManager`
+
+## Proposed
 
 ### Interactive TUI
 - **Status:** Proposed
 - Terminal UI for browsing and managing secrets
 - Built with bubbletea
-
-### Backup & Restore
-- **Status:** Proposed
-- Encrypted vault backup for disaster recovery
-- Restore to same machine

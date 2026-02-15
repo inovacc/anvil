@@ -76,20 +76,22 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 - [x] User-friendly error handling (UserError type, no usage dump, JSON error output)
 - [ ] Interactive TUI mode
 - [x] Auto-completion for shells
-- [ ] Secret templates
-- [ ] Plugin system
+- [x] Secret templates (CRUD + apply with variable interpolation, 5 built-in templates)
+- [x] Plugin system (event hooks, secret providers, custom commands via Go plugin interface)
 - [x] Release automation with goreleaser (GitHub Actions workflow)
+- [x] CLI integration tests (`cmd/cmd_test.go` via `ANVIL_DB_PATH` env var)
+- [x] Encryption/decryption benchmarks
 
 ## Test Coverage
 
-**Current:** 72% (core packages)  |  **Target:** 80%
+**Current:** ~78% (core packages)  |  **Target:** 80%
 
 | Package | Coverage | Status |
 |---------|----------|--------|
-| internal/crypto | 73.7% | Good |
-| internal/sentinel | 72.4% | Good |
-| internal/store | 93.0% | Excellent |
+| internal/crypto | ~76% | Good |
+| internal/sentinel | ~72% | Good |
+| internal/store | ~93% | Excellent |
 | internal/store/sqlc | N/A | Generated code |
 | internal/application | 0.0% | No tests |
-| pkg/vault | 64.5% | Good (TPM branches untestable) |
-| cmd | 0.0% | No tests (commands use real vault paths) |
+| pkg/vault | ~72% | Good (TPM branches untestable) |
+| cmd | ~60% | CLI integration tests via ANVIL_DB_PATH |

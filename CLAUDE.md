@@ -71,7 +71,8 @@ anvil/
 │   ├── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword, VaultAudit, VaultVersioning, VaultKeyRotation interfaces
 │   ├── audit.go    # Audit logging (best-effort, never blocks operations)
 │   ├── versions.go # Secret versioning and rollback
-│   └── rotate.go   # Master key rotation with transactional re-encryption
+│   ├── rotate.go   # Master key rotation with transactional re-encryption
+│   └── plugin.go   # Plugin system: event hooks and secret providers
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
@@ -161,3 +162,5 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Secret versioning: `Set` archives previous value; `Delete` removes version history
 - Key rotation uses `rotateKeyTx()` helper to isolate transaction scope from audit logging (avoids mutex deadlock)
 - Docker bridge: `vault docker export` writes one file per secret; `vault docker compose` generates YAML snippet
+- Plugin system: `PluginManager` loaded in `Open()` from `plugins.json` alongside vault DB; hooks fire on Set/Get/Delete via pre/post events; pre-hooks can block operations by returning `{"allow":false}`; post-hook errors are logged but never block
+- Plugin config (`plugins.json`) is separate from the vault DB — no schema migration needed

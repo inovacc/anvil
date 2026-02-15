@@ -33,19 +33,24 @@
 - Interfaces: `VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword` with compile-time checks
 - Updated package documentation with interface usage examples
 
-## v0.4.0 — Security Hardening (Planned)
-- Master key rotation
-- Audit logging
-- Secret versioning
-- **Coverage Target:** 80%+
+## v0.4.0 — Security Hardening (Complete)
+- Master key rotation with transactional re-encryption
+- Audit logging (all CRUD, rotation, env operations)
+- Secret versioning with rollback
+- Backup and restore (encrypted, password-protected)
+- Encrypted secret sharing between machines
 
-## v0.5.0 — Shell Integration (Planned)
+## v0.5.0 — Shell Integration (Complete)
 - Auto-completion for bash, zsh, fish, powershell
-- Shell profile helpers
-- Docker secrets bridge
+- Docker secrets bridge (`vault docker export/clean/compose`)
+- Secret templates (5 built-in: postgres, mysql, redis, aws, github-token)
+- CLI integration tests via `ANVIL_DB_PATH` env var
+- Plugin system (event hooks, secret providers, custom commands)
+- Encryption/decryption benchmarks
 
 ## v1.0.0 — Production Ready (Planned)
 - Full test coverage (80%+ all packages)
 - Documentation complete
+- Interactive TUI mode (bubbletea)
 - CI/CD pipeline (release workflow done; expand test/build coverage)
 - Release automation with goreleaser (done)

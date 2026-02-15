@@ -21,6 +21,7 @@ type Vault struct {
 	store     *store.Store
 	masterKey []byte
 	dbPath    string
+	plugins   *PluginManager
 }
 
 // Init initializes a new vault, generating a master key sealed to this machine.
@@ -179,10 +180,13 @@ func Open(opts *Options) (*Vault, error) {
 		}
 	}
 
+	pluginConfigPath := filepath.Join(filepath.Dir(dbPath), "plugins.json")
+
 	v := &Vault{
 		store:     vaultStore,
 		masterKey: masterKey,
 		dbPath:    dbPath,
+		plugins:   NewPluginManager(pluginConfigPath),
 	}
 
 	// Best-effort: load built-in templates if missing.
@@ -201,6 +205,24 @@ func (v *Vault) Close() error {
 // DBPath returns the database file path.
 func (v *Vault) DBPath() string {
 	return v.dbPath
+}
+
+// ResolveDBPath resolves the vault database path without opening the vault.
+func ResolveDBPath(opts *Options) (string, error) {
+	dbPath, err := application.GetApplicationDirectory()
+	if err != nil {
+		return "", fmt.Errorf("get application directory: %w", err)
+	}
+
+	if opts != nil && opts.DBPath != "" {
+		dbPath = opts.DBPath
+	} else if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		dbPath = envPath
+	} else {
+		dbPath = filepath.Join(dbPath, dbFileName)
+	}
+
+	return dbPath, nil
 }
 
 // === Profile operations ===
@@ -335,6 +357,11 @@ func (v *Vault) Set(key, value, profileName, description string) error {
 		return err
 	}
 
+	payload := HookPayload{ProfileName: profile, SecretKey: key, DBPath: v.dbPath}
+	if err := v.plugins.RunHooks(HookPreSet, payload); err != nil {
+		return err
+	}
+
 	if err := v.archiveCurrentSecret(profile, key); err != nil {
 		return err
 	}
@@ -349,6 +376,7 @@ func (v *Vault) Set(key, value, profileName, description string) error {
 	}
 
 	v.logAudit("secret.set", profile, key, "")
+	_ = v.plugins.RunHooks(HookPostSet, payload)
 
 	return nil
 }
@@ -357,6 +385,11 @@ func (v *Vault) Set(key, value, profileName, description string) error {
 func (v *Vault) Get(key, profileName string) (string, error) {
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
+		return "", err
+	}
+
+	payload := HookPayload{ProfileName: profile, SecretKey: key, DBPath: v.dbPath}
+	if err := v.plugins.RunHooks(HookPreGet, payload); err != nil {
 		return "", err
 	}
 
@@ -375,6 +408,7 @@ func (v *Vault) Get(key, profileName string) (string, error) {
 	}
 
 	v.logAudit("secret.get", profile, key, "")
+	_ = v.plugins.RunHooks(HookPostGet, payload)
 
 	return string(plaintext), nil
 }
@@ -383,6 +417,11 @@ func (v *Vault) Get(key, profileName string) (string, error) {
 func (v *Vault) Delete(key, profileName string) error {
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
+		return err
+	}
+
+	payload := HookPayload{ProfileName: profile, SecretKey: key, DBPath: v.dbPath}
+	if err := v.plugins.RunHooks(HookPreDelete, payload); err != nil {
 		return err
 	}
 
@@ -404,6 +443,7 @@ func (v *Vault) Delete(key, profileName string) error {
 	}
 
 	v.logAudit("secret.delete", profile, key, "")
+	_ = v.plugins.RunHooks(HookPostDelete, payload)
 
 	return nil
 }
