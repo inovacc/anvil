@@ -84,14 +84,14 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 
 ## Test Coverage
 
-**Current:** ~78% (core packages)  |  **Target:** 80%
+**Current:** ~80% (core packages)  |  **Target:** 80%
 
 | Package | Coverage | Status |
 |---------|----------|--------|
-| internal/crypto | ~76% | Good |
+| internal/crypto | 75.8% | Good |
 | internal/sentinel | ~72% | Good |
-| internal/store | ~93% | Excellent |
+| internal/store | 83.2% | Excellent |
 | internal/store/sqlc | N/A | Generated code |
-| internal/application | 0.0% | No tests |
+| internal/application | 72.7% | Good |
 | pkg/vault | ~72% | Good (TPM branches untestable) |
-| cmd | ~60% | CLI integration tests via ANVIL_DB_PATH |
+| cmd | 37.9% | Good (15 integration tests, many cmds need interactive input) |

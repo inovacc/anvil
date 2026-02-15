@@ -26,8 +26,35 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      - name: Test
-        run: go test -race -p=1 ./... -v
+      - name: Test with coverage
+        run: go test -race -p=1 -coverprofile=coverage.out -covermode=atomic ./... -v
+
+      - name: Coverage report
+        run: |
+          go tool cover -func=coverage.out
+          echo ""
+          echo "--- Coverage Summary ---"
+          TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+          echo "Total coverage: $TOTAL"
+
+      - name: Check coverage threshold
+        run: |
+          TOTAL=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          THRESHOLD=70
+          echo "Coverage: ${TOTAL}% (threshold: ${THRESHOLD}%)"
+          if [ "$(echo "$TOTAL < $THRESHOLD" | bc -l)" -eq 1 ]; then
+            echo "::error::Coverage ${TOTAL}% is below threshold ${THRESHOLD}%"
+            exit 1
+          fi
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem -run=^$ ./internal/crypto/ ./pkg/vault/ -timeout 120s
 
   build-windows:
     runs-on: windows-latest
