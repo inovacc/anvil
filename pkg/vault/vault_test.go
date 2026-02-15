@@ -680,3 +680,183 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		}
 	})
 }
+
+func TestKeyRotationWithVersions(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("rotpass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+	if err := v.CreateProfile("rv", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Create secret with versions.
+	if err := v.Set("KEY", "val1", "rv", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("KEY", "val2", "rv", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("KEY", "val3", "rv", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Rotate key — should re-encrypt both secrets and versions.
+	if err := v.RotateKey("rotpass"); err != nil {
+		t.Fatalf("RotateKey: %v", err)
+	}
+
+	// Current value readable after rotation.
+	val, err := v.Get("KEY", "rv")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "val3" {
+		t.Errorf("current = %q, want %q", val, "val3")
+	}
+
+	// Version history readable after rotation.
+	history, err := v.SecretHistory("KEY", "rv")
+	if err != nil {
+		t.Fatalf("SecretHistory: %v", err)
+	}
+	if len(history) != 2 {
+		t.Fatalf("expected 2 versions, got %d", len(history))
+	}
+	// Ordered DESC: history[0] is version 2 (val2), history[1] is version 1 (val1).
+	if history[0].Value != "val2" {
+		t.Errorf("version 2 = %q, want %q", history[0].Value, "val2")
+	}
+	if history[1].Value != "val1" {
+		t.Errorf("version 1 = %q, want %q", history[1].Value, "val1")
+	}
+}
+
+func TestSetNoDefaultProfile(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.Set("KEY", "val", "", "")
+	if !errors.Is(err, vault.ErrNoDefaultProfile) {
+		t.Fatalf("expected ErrNoDefaultProfile, got %v", err)
+	}
+}
+
+func TestListNoDefaultProfile(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.List("")
+	if !errors.Is(err, vault.ErrNoDefaultProfile) {
+		t.Fatalf("expected ErrNoDefaultProfile, got %v", err)
+	}
+}
+
+func TestDeleteNoDefaultProfile(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.Delete("KEY", "")
+	if !errors.Is(err, vault.ErrNoDefaultProfile) {
+		t.Fatalf("expected ErrNoDefaultProfile, got %v", err)
+	}
+}
+
+func TestExportNonexistentProfile(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.Export("nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Fatalf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestDoubleRotation(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("pass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+	if err := v.CreateProfile("dr", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("KEY", "original", "dr", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// First rotation: v1 → v2.
+	if err := v.RotateKey("pass"); err != nil {
+		t.Fatalf("RotateKey #1: %v", err)
+	}
+	status, err := v.Status()
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.KeyVersion != 2 {
+		t.Errorf("KeyVersion after first rotation = %d, want 2", status.KeyVersion)
+	}
+
+	// Second rotation: v2 → v3.
+	if err := v.RotateKey("pass"); err != nil {
+		t.Fatalf("RotateKey #2: %v", err)
+	}
+	status, err = v.Status()
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.KeyVersion != 3 {
+		t.Errorf("KeyVersion after second rotation = %d, want 3", status.KeyVersion)
+	}
+
+	// Secret still readable.
+	val, err := v.Get("KEY", "dr")
+	if err != nil {
+		t.Fatalf("Get after double rotation: %v", err)
+	}
+	if val != "original" {
+		t.Errorf("value = %q, want %q", val, "original")
+	}
+}
+
+func TestRotateEmptyVault(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("pass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	// Rotate with no profiles/secrets.
+	if err := v.RotateKey("pass"); err != nil {
+		t.Fatalf("RotateKey: %v", err)
+	}
+
+	status, err := v.Status()
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.KeyVersion != 2 {
+		t.Errorf("KeyVersion = %d, want 2", status.KeyVersion)
+	}
+}
+
+func TestImportOverwrite(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("imp", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("K1", "original", "imp", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Import overwrites.
+	if err := v.Import([]vault.SecretEntry{{Key: "K1", Value: "new"}}, "imp"); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	val, err := v.Get("K1", "imp")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "new" {
+		t.Errorf("got %q, want %q", val, "new")
+	}
+}

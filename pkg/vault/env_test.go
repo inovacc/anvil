@@ -172,6 +172,46 @@ func TestEnvInlineGetWithRelease(t *testing.T) {
 	}
 }
 
+func TestEnvReleaseTTLExactBounds(t *testing.T) {
+	v := initOpenWithPassword(t)
+
+	// Exactly 1 minute — should succeed.
+	state, err := v.EnvRelease("testpass", &vault.EnvReleaseOptions{TTL: 1 * time.Minute})
+	if err != nil {
+		t.Fatalf("EnvRelease at min TTL: %v", err)
+	}
+	if !state.Active {
+		t.Error("expected active release at min TTL")
+	}
+
+	// Revoke for clean state.
+	_ = v.EnvRevoke()
+
+	// Exactly 24 hours — should succeed.
+	state, err = v.EnvRelease("testpass", &vault.EnvReleaseOptions{TTL: 24 * time.Hour})
+	if err != nil {
+		t.Fatalf("EnvRelease at max TTL: %v", err)
+	}
+	if !state.Active {
+		t.Error("expected active release at max TTL")
+	}
+}
+
+func TestEnvStatusNoSession(t *testing.T) {
+	v := initOpenWithPassword(t)
+
+	// Ensure no active session.
+	_ = v.EnvRevoke()
+
+	status, err := v.EnvStatus()
+	if err != nil {
+		t.Fatalf("EnvStatus: %v", err)
+	}
+	if status.Active {
+		t.Error("expected inactive status when no session")
+	}
+}
+
 func TestEnvReleaseWithExplicitProfile(t *testing.T) {
 	v := initOpenWithPassword(t)
 

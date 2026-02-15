@@ -79,4 +79,16 @@ CREATE TABLE IF NOT EXISTS vault_secret_versions (
 );
 CREATE INDEX IF NOT EXISTS idx_vault_secret_versions_key ON vault_secret_versions(profile_name, key);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vault_secret_versions_unique ON vault_secret_versions(profile_name, key, version);
+
+-- Vault templates table
+CREATE TABLE IF NOT EXISTS vault_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT DEFAULT '',
+    template_data TEXT NOT NULL,
+    builtin INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_vault_templates_name ON vault_templates(name);
 `

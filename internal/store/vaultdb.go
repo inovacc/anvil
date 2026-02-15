@@ -413,6 +413,60 @@ func (s *Store) ListAllSecretVersions() ([]sqlc.VaultSecretVersion, error) {
 	return s.queries.ListAllSecretVersions(context.Background())
 }
 
+// === Template operations ===
+
+// CreateTemplate creates a new template.
+func (s *Store) CreateTemplate(name, description, templateData string, builtin bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	b := int64(0)
+	if builtin {
+		b = 1
+	}
+
+	return s.queries.CreateTemplate(context.Background(), sqlc.CreateTemplateParams{
+		Name:         name,
+		Description:  &description,
+		TemplateData: templateData,
+		Builtin:      &b,
+	})
+}
+
+// GetTemplate retrieves a template by name.
+func (s *Store) GetTemplate(name string) (sqlc.VaultTemplate, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetTemplate(context.Background(), name)
+}
+
+// ListTemplates returns all templates.
+func (s *Store) ListTemplates() ([]sqlc.VaultTemplate, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListTemplates(context.Background())
+}
+
+// DeleteTemplate deletes a template by name.
+func (s *Store) DeleteTemplate(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeleteTemplate(context.Background(), name)
+}
+
+// TemplateExists checks if a template exists.
+func (s *Store) TemplateExists(name string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count, err := s.queries.TemplateExists(context.Background(), name)
+
+	return count > 0, err
+}
+
 // === Rotation operations ===
 
 // ListAllSecrets returns all secrets across all profiles.

@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"bytes"
+	"crypto/rand"
 	"testing"
 
 	"github.com/inovacc/sealbox"
@@ -202,6 +203,42 @@ func TestMachineIDHash(t *testing.T) {
 	if len(hash) != 32 {
 		t.Errorf("hash length = %d, want 32", len(hash))
 	}
+
+	// Stability: same value across calls.
+	hash2, err := MachineIDHash()
+	if err != nil {
+		t.Fatalf("MachineIDHash second call: %v", err)
+	}
+	if !bytes.Equal(hash, hash2) {
+		t.Error("MachineIDHash should be stable across calls")
+	}
+}
+
+func TestSealUnsealDifferentSaltLengths(t *testing.T) {
+	masterKey, _ := GenerateKey()
+	machineID := "test-machine"
+
+	// Test with various salt sizes.
+	for _, saltLen := range []int{16, 32, 64} {
+		salt := make([]byte, saltLen)
+		if _, err := rand.Read(salt); err != nil {
+			t.Fatalf("rand.Read: %v", err)
+		}
+
+		sealed, nonce, err := SealMasterKey(masterKey, machineID, salt)
+		if err != nil {
+			t.Fatalf("SealMasterKey (salt len %d): %v", saltLen, err)
+		}
+
+		unsealed, err := UnsealMasterKey(sealed, nonce, machineID, salt)
+		if err != nil {
+			t.Fatalf("UnsealMasterKey (salt len %d): %v", saltLen, err)
+		}
+
+		if !bytes.Equal(masterKey, unsealed) {
+			t.Errorf("roundtrip failed for salt len %d", saltLen)
+		}
+	}
 }
 
 func TestPreferredSealMethod(t *testing.T) {
@@ -263,6 +300,91 @@ func TestSealMasterKeyTPM(t *testing.T) {
 
 	if !bytes.Equal(masterKey, unsealed) {
 		t.Error("unsealed key should match original")
+	}
+}
+
+func TestDecryptInvalidData(t *testing.T) {
+	key, _ := GenerateKey()
+
+	// Too short ciphertext (GCM requires at least tag size).
+	_, err := Decrypt(key, []byte("short"), make([]byte, nonceSize))
+	if err == nil {
+		t.Error("expected error for too-short ciphertext")
+	}
+
+	// Empty ciphertext.
+	_, err = Decrypt(key, []byte{}, make([]byte, nonceSize))
+	if err == nil {
+		t.Error("expected error for empty ciphertext")
+	}
+
+	// Wrong key for valid ciphertext.
+	key2, _ := GenerateKey()
+	ct, nonce, _ := Encrypt(key, []byte("hello"))
+	_, err = Decrypt(key2, ct, nonce)
+	if err == nil {
+		t.Error("expected error for wrong key")
+	}
+}
+
+func TestDeriveKeyEdgeCases(t *testing.T) {
+	salt, _ := GenerateSalt()
+
+	// Empty passphrase should still work.
+	key, err := DeriveKey("", salt)
+	if err != nil {
+		t.Fatalf("DeriveKey empty: %v", err)
+	}
+	if len(key) != 32 {
+		t.Errorf("key length = %d, want 32", len(key))
+	}
+
+	// Long passphrase.
+	longPass := string(bytes.Repeat([]byte("a"), 10000))
+	key2, err := DeriveKey(longPass, salt)
+	if err != nil {
+		t.Fatalf("DeriveKey long: %v", err)
+	}
+	if len(key2) != 32 {
+		t.Errorf("key length = %d, want 32", len(key2))
+	}
+
+	// Different passphrases produce different keys.
+	if bytes.Equal(key, key2) {
+		t.Error("different inputs should produce different keys")
+	}
+}
+
+func TestGenerateKeyLength(t *testing.T) {
+	key1, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+	key2, err := GenerateKey()
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	if len(key1) != 32 {
+		t.Errorf("key length = %d, want 32", len(key1))
+	}
+	if bytes.Equal(key1, key2) {
+		t.Error("two generated keys should not be equal")
+	}
+}
+
+func TestEncryptWithInvalidKey(t *testing.T) {
+	// AES requires 16, 24, or 32 byte keys.
+	_, _, err := Encrypt([]byte("short"), []byte("data"))
+	if err == nil {
+		t.Error("expected error for invalid key size")
+	}
+}
+
+func TestDecryptWithInvalidKey(t *testing.T) {
+	_, err := Decrypt([]byte("short"), []byte("ciphertext-data-here"), make([]byte, nonceSize))
+	if err == nil {
+		t.Error("expected error for invalid key size")
 	}
 }
 

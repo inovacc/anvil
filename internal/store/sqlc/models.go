@@ -65,3 +65,13 @@ type VaultSecretVersion struct {
 	Nonce          []byte    `json:"nonce"`
 	CreatedAt      time.Time `json:"created_at"`
 }
+
+type VaultTemplate struct {
+	ID           int64      `json:"id"`
+	Name         string     `json:"name"`
+	Description  *string    `json:"description"`
+	TemplateData string     `json:"template_data"`
+	Builtin      *int64     `json:"builtin"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at"`
+}

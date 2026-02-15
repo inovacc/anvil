@@ -2,6 +2,7 @@ package vault_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/inovacc/anvil/pkg/vault"
 )
@@ -113,5 +114,37 @@ func TestAuditLogOnImportExport(t *testing.T) {
 	}
 	if !actions["secret.export"] {
 		t.Error("missing secret.export audit entry")
+	}
+}
+
+func TestPurgeAuditLog(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("purge", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("K", "V", "purge", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	entries, err := v.AuditLog(10)
+	if err != nil {
+		t.Fatalf("AuditLog: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("expected audit entries before purge")
+	}
+
+	// Purge everything older than 24 hours from now (i.e., everything).
+	if err := v.PurgeAuditLog(time.Now().Add(24 * time.Hour)); err != nil {
+		t.Fatalf("PurgeAuditLog: %v", err)
+	}
+
+	entries, err = v.AuditLog(10)
+	if err != nil {
+		t.Fatalf("AuditLog: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("expected 0 entries after purge, got %d", len(entries))
 	}
 }

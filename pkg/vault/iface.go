@@ -59,6 +59,15 @@ type VaultVersioning interface {
 	SecretRollback(key, profileName string, version int64) error
 }
 
+// VaultTemplate provides secret template operations.
+type VaultTemplate interface {
+	CreateTemplate(def *TemplateDefinition) error
+	GetTemplate(name string) (*TemplateDefinition, error)
+	ListTemplates() ([]TemplateInfo, error)
+	DeleteTemplate(name string) error
+	ApplyTemplate(name, profileName string, vars map[string]string) error
+}
+
 // VaultBackup provides backup, restore, and sharing operations.
 type VaultBackup interface {
 	Backup(password string) ([]byte, error)
@@ -76,5 +85,6 @@ var (
 	_ VaultKeyRotation = (*Vault)(nil)
 	_ VaultAudit       = (*Vault)(nil)
 	_ VaultVersioning  = (*Vault)(nil)
+	_ VaultTemplate    = (*Vault)(nil)
 	_ VaultBackup      = (*Vault)(nil)
 )

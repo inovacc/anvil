@@ -32,6 +32,8 @@ func Init(opts *Options) error {
 
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
+	} else if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		dbPath = envPath
 	} else {
 		dbPath = filepath.Join(dbPath, dbFileName)
 	}
@@ -112,6 +114,8 @@ func Open(opts *Options) (*Vault, error) {
 
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
+	} else if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		dbPath = envPath
 	} else {
 		dbPath = filepath.Join(dbPath, dbFileName)
 	}
@@ -175,11 +179,16 @@ func Open(opts *Options) (*Vault, error) {
 		}
 	}
 
-	return &Vault{
+	v := &Vault{
 		store:     vaultStore,
 		masterKey: masterKey,
 		dbPath:    dbPath,
-	}, nil
+	}
+
+	// Best-effort: load built-in templates if missing.
+	_ = v.LoadBuiltinTemplates()
+
+	return v, nil
 }
 
 // Close zeros the master key and closes the vault.
@@ -588,6 +597,8 @@ func GetStatus(opts *Options) (*Status, error) {
 
 	if opts != nil && opts.DBPath != "" {
 		dbPath = opts.DBPath
+	} else if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		dbPath = envPath
 	} else {
 		dbPath = filepath.Join(dbPath, dbFileName)
 	}
