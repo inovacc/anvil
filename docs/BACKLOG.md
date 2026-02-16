@@ -34,6 +34,7 @@
 - **Priority:** P2
 - **Description:** Interactive TUI with bubbletea
 - **Effort:** Large
+- **Status:** DONE — `vault tui` command with dashboard, profile browser, secret list, and secret form screens
 
 - **Priority:** P3
 - **Description:** Secret templates for common patterns (database URLs, API keys)

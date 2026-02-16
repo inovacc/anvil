@@ -65,6 +65,7 @@ anvil/
 │   ├── application/ # Application directory resolution (cross-platform)
 │   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID
 │   ├── sentinel/   # Time-limited release session management (sealbox packed encrypt)
+│   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles)
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
