@@ -765,6 +765,130 @@ func TestPurgeExpiredVersions(t *testing.T) {
 	}
 }
 
+// TestMigrationUUIDColumn verifies that opening a pre-migration database
+// (without the uuid column) auto-migrates and backfills UUIDs.
+func TestMigrationUUIDColumn(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+
+	// Create a database with the OLD schema (no uuid column on vault_profiles).
+	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON")
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	oldSchema := `
+CREATE TABLE IF NOT EXISTS vault_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT DEFAULT '',
+    is_default INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS vault_sealed_key (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    sealed_data BLOB NOT NULL,
+    nonce BLOB NOT NULL,
+    key_salt BLOB NOT NULL,
+    version INTEGER DEFAULT 1,
+    machine_id_hash BLOB NOT NULL,
+    seal_method TEXT NOT NULL DEFAULT 'software',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS vault_secrets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_name TEXT NOT NULL,
+    key TEXT NOT NULL,
+    encrypted_value BLOB NOT NULL,
+    nonce BLOB NOT NULL,
+    description TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(profile_name, key)
+);
+CREATE TABLE IF NOT EXISTS vault_password (id INTEGER PRIMARY KEY CHECK (id = 1), password_hash BLOB NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS vault_audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, profile_name TEXT NOT NULL, secret_key TEXT DEFAULT '', detail TEXT DEFAULT '', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS vault_secret_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_name TEXT NOT NULL,
+    key TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    encrypted_value BLOB NOT NULL,
+    nonce BLOB NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS vault_templates (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, description TEXT DEFAULT '', template_data TEXT NOT NULL, builtin INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+`
+	if _, err := db.Exec(oldSchema); err != nil {
+		t.Fatalf("create old schema: %v", err)
+	}
+
+	// Insert a profile WITHOUT uuid.
+	if _, err := db.Exec(`INSERT INTO vault_profiles (name, description, is_default) VALUES ('legacy', 'old profile', 1)`); err != nil {
+		t.Fatalf("insert legacy profile: %v", err)
+	}
+
+	// Insert a version WITHOUT expires_at.
+	if _, err := db.Exec(`INSERT INTO vault_secret_versions (profile_name, key, version, encrypted_value, nonce) VALUES ('legacy', 'KEY', 1, X'AA', X'BB')`); err != nil {
+		t.Fatalf("insert legacy version: %v", err)
+	}
+
+	_ = db.Close()
+
+	// Open via Store — should trigger migrations.
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open (migration): %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	// Verify uuid column was added and backfilled.
+	uuid, err := s.GetProfileUUID("legacy")
+	if err != nil {
+		t.Fatalf("GetProfileUUID after migration: %v", err)
+	}
+	if uuid == "" {
+		t.Error("expected UUID to be backfilled, got empty string")
+	}
+
+	// Verify expires_at column exists (version row should have NULL expires_at).
+	var expiresAt sql.NullTime
+	err = s.db.QueryRowContext(context.Background(),
+		`SELECT expires_at FROM vault_secret_versions WHERE profile_name = 'legacy' AND key = 'KEY'`).Scan(&expiresAt)
+	if err != nil {
+		t.Fatalf("query expires_at: %v", err)
+	}
+	if expiresAt.Valid {
+		t.Error("expected NULL expires_at for pre-migration row")
+	}
+
+	// Verify new profiles get UUIDs.
+	if err := s.CreateProfile("new-profile", "test", false, "custom-uuid"); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	newUUID, err := s.GetProfileUUID("new-profile")
+	if err != nil {
+		t.Fatalf("GetProfileUUID: %v", err)
+	}
+	if newUUID != "custom-uuid" {
+		t.Errorf("got UUID %q, want %q", newUUID, "custom-uuid")
+	}
+
+	// Verify new versions can have expires_at.
+	future := time.Now().Add(30 * 24 * time.Hour)
+	if err := s.InsertSecretVersion("legacy", "KEY", 2, []byte{0xCC}, []byte{0xDD}, future); err != nil {
+		t.Fatalf("InsertSecretVersion with expires_at: %v", err)
+	}
+	err = s.db.QueryRowContext(context.Background(),
+		`SELECT expires_at FROM vault_secret_versions WHERE profile_name = 'legacy' AND key = 'KEY' AND version = 2`).Scan(&expiresAt)
+	if err != nil {
+		t.Fatalf("query new expires_at: %v", err)
+	}
+	if !expiresAt.Valid {
+		t.Error("expected non-NULL expires_at for new version row")
+	}
+}
+
 func TestClosePreventsFurtherOps(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	s, err := Open(dbPath)

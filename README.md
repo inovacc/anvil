@@ -17,7 +17,10 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 - **Plugin System** — Event hooks (pre/post set, get, delete) and external secret providers
 - **Secret Gathering** — Auto-discover secrets from `.env`, JSON, and YAML config files in a directory tree
 - **Docker Bridge** — Export secrets as Docker files or Compose YAML snippets
-- **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`) for external consumers
+- **Profile Isolation** — UUID-based `ScopedVault` for external apps: single-profile access with RBAC (masked reads, denied export)
+- **Vault Seal/Unseal** — Temporarily lock all vault operations with `vault seal` / `vault unseal`
+- **Version Lockdown** — Archived versions are metadata-only with 30-day retention; accessible only via rollback
+- **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`, `VaultScoped`) for external consumers
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
 - **Inline Secret Access** — Single secret retrieval via `--env-inline` flag
@@ -60,6 +63,18 @@ anvil vault get API_KEY
 
 # List secrets
 anvil vault list
+```
+
+## Vault Seal / Unseal
+
+Temporarily lock all vault operations:
+
+```bash
+# Seal — blocks all read/write until unsealed
+anvil vault seal
+
+# Unseal — restores operations
+anvil vault unseal
 ```
 
 ## Environment Variable Release
@@ -130,6 +145,26 @@ defer v.Close()
 value, err := v.Get("API_KEY", "myapp")
 ```
 
+### Scoped Access for External Apps
+
+Use `ScopedVault` when external apps need isolated, single-profile access with RBAC:
+
+```go
+// Open scoped access by profile UUID (Get returns masked values, Export is denied)
+sv, err := vault.OpenScoped("profile-uuid-here", nil)
+if err != nil {
+    log.Fatal(err)
+}
+defer sv.Close()
+
+sv.Set("API_KEY", "secret", "my api key")   // write allowed
+val, _ := sv.Get("API_KEY")                  // returns "sec***key" (masked)
+secrets, _ := sv.List()                       // metadata only
+_, err = sv.Export()                          // returns ErrReadDenied
+```
+
+### Interfaces
+
 Program against interfaces for testability:
 
 ```go
@@ -138,7 +173,7 @@ func NewService(reader vault.VaultReader) *Service {
 }
 ```
 
-Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (password ops).
+Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (password ops), `VaultScoped` (isolated single-profile access), `VaultSeal` (seal/unseal).
 
 ## CLI Tools
 
@@ -197,6 +232,8 @@ anvil
 │   │   ├── hook-remove   Remove a hook
 │   │   ├── provider-add  Add a secret provider
 │   │   └── provider-remove Remove a secret provider
+│   ├── seal              Temporarily lock the vault
+│   ├── unseal            Unlock a sealed vault
 │   ├── share
 │   │   ├── export        Export secrets with passphrase encryption
 │   │   └── import        Import shared secrets
