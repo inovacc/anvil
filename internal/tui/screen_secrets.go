@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/inovacc/anvil/pkg/vault"
 )
@@ -11,7 +12,7 @@ import (
 type secretsModel struct {
 	profileName string
 	secrets     []vault.SecretInfo
-	cursor      int
+	table       table.Model
 	loaded      bool
 	confirm     string // confirming delete of this key
 	message     string
@@ -35,6 +36,34 @@ type secretActionMsg struct {
 	err     error
 }
 
+func newSecretsModel(profileName string, width, height int) secretsModel {
+	columns := tableColumns(width)
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(nil),
+		table.WithFocused(true),
+		table.WithHeight(max(1, height-8)),
+	)
+	t.SetStyles(tableStyles())
+	return secretsModel{
+		profileName: profileName,
+		table:       t,
+	}
+}
+
+func tableColumns(width int) []table.Column {
+	if width <= 0 {
+		width = 80
+	}
+	w := width - 4 // padding
+	return []table.Column{
+		{Title: "Key", Width: w * 30 / 100},
+		{Title: "Description", Width: w * 30 / 100},
+		{Title: "Created", Width: w * 20 / 100},
+		{Title: "Updated", Width: w * 20 / 100},
+	}
+}
+
 func (s secretsModel) loadData(v *vault.Vault, profile string) tea.Cmd {
 	return func() tea.Msg {
 		secrets, err := v.List(profile)
@@ -51,9 +80,20 @@ func (s secretsModel) Update(msg tea.Msg) (secretsModel, tea.Cmd) {
 		s.loaded = true
 		if msg.err == nil {
 			s.secrets = msg.secrets
-			if s.cursor >= len(s.secrets) {
-				s.cursor = max(0, len(s.secrets)-1)
+			rows := make([]table.Row, len(s.secrets))
+			for i, sec := range s.secrets {
+				updated := "-"
+				if !sec.UpdatedAt.IsZero() {
+					updated = sec.UpdatedAt.Format("2006-01-02 15:04")
+				}
+				rows[i] = table.Row{
+					sec.Key,
+					sec.Description,
+					sec.CreatedAt.Format("2006-01-02 15:04"),
+					updated,
+				}
 			}
+			s.table.SetRows(rows)
 		}
 	case secretRevealMsg:
 		if msg.err != nil {
@@ -96,40 +136,26 @@ func (s secretsModel) View(width int) string {
 		return b.String()
 	}
 
-	for i, sec := range s.secrets {
-		cursor := "  "
-		style := normalStyle
-		if i == s.cursor {
-			cursor = "> "
-			style = selectedStyle
-		}
+	b.WriteString(s.table.View())
+	b.WriteString("\n")
 
-		line := fmt.Sprintf("%s%s", cursor, sec.Key)
-		b.WriteString(style.Render(line))
-		if sec.Description != "" {
-			b.WriteString(dimStyle.Render(fmt.Sprintf(" — %s", sec.Description)))
-		}
-		b.WriteString("\n")
-
-		// Show revealed value inline
-		if s.revealKey == sec.Key && i == s.cursor {
-			b.WriteString(fmt.Sprintf("    %s\n", valueStyle.Render(s.revealValue)))
-		}
+	if s.revealKey != "" {
+		b.WriteString(fmt.Sprintf("  %s: %s\n", labelStyle.Render(s.revealKey), valueStyle.Render(s.revealValue)))
 	}
 
 	if s.message != "" {
-		b.WriteString("\n  " + s.message)
+		b.WriteString("  " + s.message + "\n")
 	}
 
-	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("  enter: reveal • n: new • d: delete • esc: back"))
 
 	return b.String()
 }
 
 func (s secretsModel) selectedKey() string {
-	if len(s.secrets) == 0 || s.cursor >= len(s.secrets) {
+	row := s.table.SelectedRow()
+	if len(row) == 0 {
 		return ""
 	}
-	return s.secrets[s.cursor].Key
+	return row[0]
 }

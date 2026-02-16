@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/lipgloss"
+)
 
 var (
 	titleStyle = lipgloss.NewStyle().
@@ -52,3 +55,19 @@ var (
 	blurredInputStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("241"))
 )
+
+func tableStyles() table.Styles {
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("62")).
+		BorderBottom(true).
+		Foreground(lipgloss.Color("111")).
+		Bold(true)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Bold(true)
+	s.Cell = s.Cell.
+		Foreground(lipgloss.Color("252"))
+	return s
+}

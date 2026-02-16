@@ -84,7 +84,7 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 
 ### Phase 7: Polish [COMPLETE]
 - [x] User-friendly error handling (UserError type, no usage dump, JSON error output)
-- [x] Interactive TUI mode (bubbletea/lipgloss — dashboard, profiles, secrets, secret form)
+- [x] Interactive TUI mode (bubbletea/lipgloss — dashboard, profiles, secrets table view, secret form)
 - [x] Auto-completion for shells
 - [x] Secret templates (CRUD + apply with variable interpolation, 5 built-in templates)
 - [x] Plugin system (event hooks, secret providers, custom commands via Go plugin interface)

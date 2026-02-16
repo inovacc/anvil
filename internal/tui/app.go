@@ -45,6 +45,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		if m.currentScreen == screenSecrets {
+			m.secrets.table.SetWidth(msg.Width)
+			m.secrets.table.SetHeight(max(1, msg.Height-8))
+			m.secrets.table.SetColumns(tableColumns(msg.Width))
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -145,7 +150,7 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.String() == "enter":
 		if name := m.profiles.selectedProfile(); name != "" && m.profiles.confirm == "" {
 			m.currentScreen = screenSecrets
-			m.secrets = secretsModel{profileName: name}
+			m.secrets = newSecretsModel(name, m.width, m.height)
 			return m, m.secrets.loadData(m.vault, name)
 		}
 	case msg.String() == "c":
@@ -238,18 +243,6 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.profiles.loadData(m.vault)
 	case msg.String() == "q":
 		return m, tea.Quit
-	case msg.String() == "up" || msg.String() == "k":
-		if m.secrets.confirm == "" && m.secrets.cursor > 0 {
-			m.secrets.cursor--
-			m.secrets.revealKey = ""
-			m.secrets.message = ""
-		}
-	case msg.String() == "down" || msg.String() == "j":
-		if m.secrets.confirm == "" && m.secrets.cursor < len(m.secrets.secrets)-1 {
-			m.secrets.cursor++
-			m.secrets.revealKey = ""
-			m.secrets.message = ""
-		}
 	case msg.String() == "enter":
 		if m.secrets.confirm == "" {
 			key := m.secrets.selectedKey()
@@ -303,6 +296,14 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return secretActionMsg{message: fmt.Sprintf("Secret %q deleted.", key)}
 			}
 		}
+	default:
+		if m.secrets.confirm == "" {
+			m.secrets.revealKey = ""
+			m.secrets.message = ""
+			var cmd tea.Cmd
+			m.secrets.table, cmd = m.secrets.table.Update(msg)
+			return m, cmd
+		}
 	}
 
 	return m, nil
@@ -346,7 +347,7 @@ func (m model) updateSecretForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		profile := m.secretForm.profileName
 		v := m.vault
 		m.currentScreen = screenSecrets
-		m.secrets = secretsModel{profileName: profile}
+		m.secrets = newSecretsModel(profile, m.width, m.height)
 		return m, tea.Batch(
 			func() tea.Msg {
 				if err := v.Set(key, value, profile, desc); err != nil {

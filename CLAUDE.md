@@ -65,7 +65,7 @@ anvil/
 │   ├── application/ # Application directory resolution (cross-platform)
 │   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID
 │   ├── sentinel/   # Time-limited release session management (sealbox packed encrypt)
-│   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles)
+│   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles — table view for secrets)
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
@@ -89,6 +89,9 @@ anvil/
 |---------|---------|
 | `github.com/inovacc/sealbox` | TPM 2.0 hardware-backed key sealing, AES-256-GCM packed encrypt, memory zeroing |
 | `github.com/spf13/cobra` | CLI framework |
+| `github.com/charmbracelet/bubbletea` | TUI framework |
+| `github.com/charmbracelet/bubbles` | TUI components (table, textinput) |
+| `github.com/charmbracelet/lipgloss` | TUI styling |
 | `golang.org/x/crypto` | HKDF-SHA256, bcrypt |
 | `modernc.org/sqlite` | Pure Go SQLite (no CGO) |
 
@@ -155,6 +158,7 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Global `--json` persistent flag on rootCmd inherited by all subcommands
 - Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/errors.go` formats them (text or JSON based on `--json`)
 - `SilenceErrors` and `SilenceUsage` are set on rootCmd; Cobra does not dump usage on errors
+- Secrets screen uses `bubbles/table` with 4 columns (Key, Description, Created, Updated); `newSecretsModel()` constructs it; `tableStyles()` in theme.go styles it
 - `visibleSubcommands()` in cmdtree.go filters hidden commands and "help"
 - TPM tests use `t.Skip("TPM not available")` when `!sealbox.IsAvailable()`
 - `pkg/vault` is the public module boundary — never expose `internal/` types in its signatures
