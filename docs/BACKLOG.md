@@ -56,6 +56,11 @@
 - **Effort:** Large
 - **Status:** DONE — `vault share export/import` commands with passphrase-based encryption
 
+### Sync
+- **Priority:** P3
+- **Description:** Gossip-based profile synchronization across machines (needs design refinement)
+- **Effort:** Large
+
 ### Technical Debt
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages

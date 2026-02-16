@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/inovacc/anvil/internal/application"
 	"github.com/inovacc/anvil/internal/crypto"
 	"github.com/inovacc/anvil/internal/store"
@@ -15,6 +16,20 @@ import (
 )
 
 const dbFileName = "vault.db"
+
+// DefaultDBPath returns the default vault database path.
+func DefaultDBPath() string {
+	dbPath, err := application.GetApplicationDirectory()
+	if err != nil {
+		return ""
+	}
+
+	if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		return envPath
+	}
+
+	return filepath.Join(dbPath, dbFileName)
+}
 
 // Vault provides encrypted secret storage organized by profiles.
 type Vault struct {
@@ -207,6 +222,11 @@ func (v *Vault) DBPath() string {
 	return v.dbPath
 }
 
+// Store returns the underlying store (for internal use by ScopedVault).
+func (v *Vault) storeRef() *store.Store {
+	return v.store
+}
+
 // ResolveDBPath resolves the vault database path without opening the vault.
 func ResolveDBPath(opts *Options) (string, error) {
 	dbPath, err := application.GetApplicationDirectory()
@@ -227,7 +247,7 @@ func ResolveDBPath(opts *Options) (string, error) {
 
 // === Profile operations ===
 
-// CreateProfile creates a new vault profile.
+// CreateProfile creates a new vault profile with an auto-generated UUID.
 func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
 	exists, err := v.store.ProfileExists(name)
 	if err != nil {
@@ -238,7 +258,9 @@ func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
 		return ErrProfileExists
 	}
 
-	if err := v.store.CreateProfile(name, description, isDefault); err != nil {
+	profileUUID := uuid.New().String()
+
+	if err := v.store.CreateProfile(name, description, isDefault, profileUUID); err != nil {
 		return err
 	}
 
@@ -301,8 +323,11 @@ func (v *Vault) ListProfiles() ([]ProfileInfo, error) {
 			return nil, fmt.Errorf("count secrets: %w", err)
 		}
 
+		profileUUID, _ := v.store.GetProfileUUID(row.Name)
+
 		info := ProfileInfo{
 			Name:        row.Name,
+			UUID:        profileUUID,
 			SecretCount: count,
 			CreatedAt:   row.CreatedAt,
 		}

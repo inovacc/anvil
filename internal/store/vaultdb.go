@@ -38,6 +38,11 @@ func Open(dbPath string) (*Store, error) {
 	// Idempotent migration: add seal_method column if missing (pre-v003 databases).
 	_, _ = db.Exec(`ALTER TABLE vault_sealed_key ADD COLUMN seal_method TEXT NOT NULL DEFAULT 'software'`)
 
+	// Idempotent migration: add uuid column to vault_profiles.
+	_, _ = db.Exec(`ALTER TABLE vault_profiles ADD COLUMN uuid TEXT`)
+	// Backfill existing rows with generated UUIDs.
+	_, _ = db.Exec(`UPDATE vault_profiles SET uuid = lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))) WHERE uuid IS NULL`)
+
 	return &Store{
 		db:      db,
 		queries: sqlc.New(db),
@@ -56,8 +61,8 @@ func (s *Store) Ping() error {
 
 // === Profile operations ===
 
-// CreateProfile creates a new vault profile.
-func (s *Store) CreateProfile(name, description string, isDefault bool) error {
+// CreateProfile creates a new vault profile with an optional UUID.
+func (s *Store) CreateProfile(name, description string, isDefault bool, profileUUID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -74,11 +79,57 @@ func (s *Store) CreateProfile(name, description string, isDefault bool) error {
 		def = 1
 	}
 
+	if profileUUID != "" {
+		_, err := s.db.ExecContext(ctx,
+			`INSERT INTO vault_profiles (name, uuid, description, is_default) VALUES (?, ?, ?, ?)`,
+			name, profileUUID, description, def)
+		return err
+	}
+
 	return s.queries.CreateProfile(ctx, sqlc.CreateProfileParams{
 		Name:        name,
 		Description: &description,
 		IsDefault:   &def,
 	})
+}
+
+// GetProfileByUUID retrieves a profile by its UUID.
+func (s *Store) GetProfileByUUID(uuid string) (sqlc.VaultProfile, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	row := s.db.QueryRowContext(context.Background(),
+		`SELECT id, name, description, is_default, created_at, updated_at FROM vault_profiles WHERE uuid = ? LIMIT 1`, uuid)
+
+	var p sqlc.VaultProfile
+	err := row.Scan(&p.ID, &p.Name, &p.Description, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt)
+	return p, err
+}
+
+// ProfileExistsByUUID checks if a profile with the given UUID exists.
+func (s *Store) ProfileExistsByUUID(uuid string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var count int64
+	err := s.db.QueryRowContext(context.Background(),
+		`SELECT COUNT(*) FROM vault_profiles WHERE uuid = ?`, uuid).Scan(&count)
+	return count > 0, err
+}
+
+// GetProfileUUID returns the UUID for a given profile name.
+func (s *Store) GetProfileUUID(name string) (string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var uuid sql.NullString
+	err := s.db.QueryRowContext(context.Background(),
+		`SELECT uuid FROM vault_profiles WHERE name = ?`, name).Scan(&uuid)
+	if err != nil {
+		return "", err
+	}
+
+	return uuid.String, nil
 }
 
 // GetProfile retrieves a profile by name.

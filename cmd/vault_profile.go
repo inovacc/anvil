@@ -71,7 +71,11 @@ var vaultProfileListCmd = &cobra.Command{
 				if p.Description != "" {
 					desc = fmt.Sprintf(" - %s", p.Description)
 				}
-				_, _ = fmt.Fprintf(w, "%s%s (%d secrets)%s\n", marker, p.Name, p.SecretCount, desc)
+				uuidStr := ""
+				if p.UUID != "" {
+					uuidStr = fmt.Sprintf(" [%s]", p.UUID)
+				}
+				_, _ = fmt.Fprintf(w, "%s%s%s (%d secrets)%s\n", marker, p.Name, uuidStr, p.SecretCount, desc)
 			}
 		})
 		return nil

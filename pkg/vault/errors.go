@@ -69,6 +69,12 @@ var (
 		Hint:    "Run 'profile vault env release' to release secrets",
 	}
 
+	// ErrProfileUUIDNotFound is returned when a profile UUID does not exist.
+	ErrProfileUUIDNotFound = &UserError{
+		Message: "profile UUID not found",
+		Hint:    "Verify the UUID and try again",
+	}
+
 	// ErrReleaseExpired is returned when the release session has expired.
 	ErrReleaseExpired = &UserError{
 		Message: "release session has expired",

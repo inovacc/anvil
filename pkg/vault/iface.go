@@ -76,6 +76,19 @@ type VaultBackup interface {
 	ShareImport(encrypted []byte, passphrase, targetProfile string) (*SharedExport, error)
 }
 
+// VaultScoped provides isolated, single-profile access to the vault.
+// External apps use this interface — they can only read/write secrets in their own profile.
+type VaultScoped interface {
+	Get(key string) (string, error)
+	Set(key, value, description string) error
+	Delete(key string) error
+	List() ([]SecretInfo, error)
+	Export() ([]SecretEntry, error)
+	Import(entries []SecretEntry) error
+	ProfileInfo() ProfileInfo
+	Close() error
+}
+
 // Compile-time interface satisfaction checks.
 var (
 	_ VaultReader      = (*Vault)(nil)

@@ -6,6 +6,7 @@ const Schema = `
 CREATE TABLE IF NOT EXISTS vault_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
+    uuid TEXT UNIQUE,
     description TEXT DEFAULT '',
     is_default INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

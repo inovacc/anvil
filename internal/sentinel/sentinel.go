@@ -8,217 +8,145 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/inovacc/anvil/internal/application"
 	"github.com/inovacc/anvil/internal/crypto"
-	"github.com/inovacc/sealbox"
 )
 
-const (
-	enabledFile  = "PROFILE_ENV_RELEASE_ENABLED"
-	disabledFile = "PROFILE_ENV_RELEASE_DISABLED"
-)
+// ReleaseState represents an active env release session.
+type ReleaseState struct {
+	Active      bool          `json:"active"`
+	ProfileName string        `json:"profile_name"`
+	ExpiresAt   time.Time     `json:"expires_at"`
+	SessionID   string        `json:"session_id"`
+	Remaining   time.Duration `json:"remaining"`
+}
 
-var (
-	ErrExpired  = errors.New("release session has expired")
-	ErrNoActive = errors.New("no active release session")
-)
+// ErrNoActive is returned when there is no active release session.
+var ErrNoActive = errors.New("no active release session")
 
-// SessionPayload is the encrypted data stored in the sentinel file.
-type SessionPayload struct {
+const sentinelFile = "anvil-sentinel.enc"
+
+// cacheDir returns the cache directory for sentinel files.
+var cacheDir = os.UserCacheDir
+
+type sentinelData struct {
 	ProfileName string    `json:"profile_name"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	SessionID   string    `json:"session_id"`
-	MachineHash string    `json:"machine_hash"`
-	CreatedAt   time.Time `json:"created_at"`
 }
 
-// ReleaseState represents the current state of an env release.
-type ReleaseState struct {
-	Active      bool
-	ProfileName string
-	ExpiresAt   time.Time
-	SessionID   string
-	Remaining   time.Duration
-}
-
-// cacheDir is a function variable to allow overriding in tests.
-var cacheDir = defaultCacheDir
-
-func defaultCacheDir() (string, error) {
-	if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
-		return filepath.Dir(envPath), nil
-	}
-
-	return application.GetApplicationDirectory()
-}
-
-func enabledPath() (string, error) {
+func sentinelPath() (string, error) {
 	dir, err := cacheDir()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get cache dir: %w", err)
 	}
 
-	return filepath.Join(dir, enabledFile), nil
+	return filepath.Join(dir, sentinelFile), nil
 }
 
-func disabledPath() (string, error) {
-	dir, err := cacheDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(dir, disabledFile), nil
-}
-
-// Release creates a new env release session. The sentinel file is encrypted
-// with the vault master key, so it is opaque without vault access.
+// Release creates a new time-limited release session.
 func Release(masterKey []byte, profileName string, ttl time.Duration) (*ReleaseState, error) {
-	dir, err := cacheDir()
+	sessionID := fmt.Sprintf("%x", time.Now().UnixNano())
+
+	data := sentinelData{
+		ProfileName: profileName,
+		ExpiresAt:   time.Now().Add(ttl),
+		SessionID:   sessionID,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("marshal sentinel: %w", err)
+	}
+
+	ciphertext, nonce, err := crypto.Encrypt(masterKey, jsonData)
+	if err != nil {
+		return nil, fmt.Errorf("encrypt sentinel: %w", err)
+	}
+
+	path, err := sentinelPath()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, fmt.Errorf("create cache dir: %w", err)
 	}
 
-	machineHash, err := crypto.MachineIDHash()
-	if err != nil {
-		return nil, fmt.Errorf("get machine hash: %w", err)
-	}
-
-	sessionID := fmt.Sprintf("%x", machineHash[:8])
-	now := time.Now()
-
-	payload := SessionPayload{
-		ProfileName: profileName,
-		ExpiresAt:   now.Add(ttl),
-		SessionID:   sessionID,
-		MachineHash: fmt.Sprintf("%x", machineHash),
-		CreatedAt:   now,
-	}
-
-	data, err := json.Marshal(payload)
+	payload, err := json.Marshal(map[string][]byte{"ciphertext": ciphertext, "nonce": nonce})
 	if err != nil {
 		return nil, fmt.Errorf("marshal payload: %w", err)
 	}
 
-	// sealbox.Encrypt packs nonce (12 bytes) || ciphertext into a single blob.
-	fileData, err := sealbox.Encrypt(masterKey, data)
-	if err != nil {
-		return nil, fmt.Errorf("encrypt payload: %w", err)
-	}
+	// Remove disabled marker if present.
+	dp, _ := disabledPath()
+	_ = os.Remove(dp)
 
-	ep, err := enabledPath()
-	if err != nil {
-		return nil, err
-	}
-
-	// Write to a temp file, then rename it for atomicity
-	tmpFile := fmt.Sprintf("%s.tmp", ep)
-	if err := os.WriteFile(tmpFile, fileData, 0o600); err != nil {
+	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		return nil, fmt.Errorf("write sentinel: %w", err)
 	}
 
-	if err := os.Rename(tmpFile, ep); err != nil {
-		_ = os.Remove(tmpFile)
-		return nil, fmt.Errorf("rename sentinel: %w", err)
-	}
-
-	// Remove a disabled file if it exists
-	dp, err := disabledPath()
-	if err != nil {
-		return nil, err
-	}
-
-	_ = os.Remove(dp)
+	remaining := time.Until(data.ExpiresAt)
 
 	return &ReleaseState{
 		Active:      true,
 		ProfileName: profileName,
-		ExpiresAt:   payload.ExpiresAt,
+		ExpiresAt:   data.ExpiresAt,
 		SessionID:   sessionID,
-		Remaining:   time.Until(payload.ExpiresAt),
-	}, nil
-}
-
-// Revoke revokes the active release by renaming the enabled file to disable.
-func Revoke() error {
-	ep, err := enabledPath()
-	if err != nil {
-		return err
-	}
-
-	dp, err := disabledPath()
-	if err != nil {
-		return err
-	}
-
-	if err := os.Rename(ep, dp); err != nil {
-		if os.IsNotExist(err) {
-			return ErrNoActive
-		}
-
-		return fmt.Errorf("revoke sentinel: %w", err)
-	}
-
-	return nil
-}
-
-// Check reads and validates the sentinel file. If expired, it auto-revokes.
-func Check(masterKey []byte) (*ReleaseState, error) {
-	ep, err := enabledPath()
-	if err != nil {
-		return nil, err
-	}
-
-	fileData, err := os.ReadFile(ep)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &ReleaseState{Active: false}, nil
-		}
-
-		return nil, fmt.Errorf("read sentinel: %w", err)
-	}
-
-	// sealbox.Decrypt expects nonce (12 bytes) || ciphertext.
-	if len(fileData) < sealbox.NonceSize {
-		return &ReleaseState{Active: false}, nil
-	}
-
-	data, err := sealbox.Decrypt(masterKey, fileData)
-	if err != nil {
-		return nil, fmt.Errorf("decrypt sentinel: %w", err)
-	}
-
-	var payload SessionPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return nil, fmt.Errorf("unmarshal payload: %w", err)
-	}
-
-	remaining := time.Until(payload.ExpiresAt)
-	if remaining <= 0 {
-		// Auto-revoke an expired session
-		_ = Revoke()
-
-		return &ReleaseState{
-			Active:      false,
-			ProfileName: payload.ProfileName,
-			ExpiresAt:   payload.ExpiresAt,
-			SessionID:   payload.SessionID,
-		}, nil
-	}
-
-	return &ReleaseState{
-		Active:      true,
-		ProfileName: payload.ProfileName,
-		ExpiresAt:   payload.ExpiresAt,
-		SessionID:   payload.SessionID,
 		Remaining:   remaining,
 	}, nil
 }
 
-// IsReleased returns true if there is an active, non-expired release session.
+// Check reads the sentinel file and checks if the session is still valid.
+func Check(masterKey []byte) (*ReleaseState, error) {
+	path, err := sentinelPath()
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return &ReleaseState{Active: false}, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("read sentinel: %w", err)
+	}
+
+	var payload map[string][]byte
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		// Corrupted or short file — treat as inactive.
+		_ = os.Remove(path)
+		return &ReleaseState{Active: false}, nil
+	}
+
+	plaintext, err := crypto.Decrypt(masterKey, payload["ciphertext"], payload["nonce"])
+	if err != nil {
+		return nil, fmt.Errorf("decrypt sentinel: %w", err)
+	}
+
+	var data sentinelData
+	if err := json.Unmarshal(plaintext, &data); err != nil {
+		return nil, fmt.Errorf("unmarshal sentinel: %w", err)
+	}
+
+	if time.Now().After(data.ExpiresAt) {
+		dp, _ := disabledPath()
+		_ = os.Rename(path, dp)
+		return &ReleaseState{Active: false, ProfileName: data.ProfileName}, nil
+	}
+
+	remaining := time.Until(data.ExpiresAt)
+
+	return &ReleaseState{
+		Active:      true,
+		ProfileName: data.ProfileName,
+		ExpiresAt:   data.ExpiresAt,
+		SessionID:   data.SessionID,
+		Remaining:   remaining,
+	}, nil
+}
+
+// IsReleased checks if an active (non-expired) release session exists.
 func IsReleased(masterKey []byte) (bool, error) {
 	state, err := Check(masterKey)
 	if err != nil {
@@ -226,4 +154,40 @@ func IsReleased(masterKey []byte) (bool, error) {
 	}
 
 	return state.Active, nil
+}
+
+// enabledPath returns the path to the active sentinel file.
+func enabledPath() (string, error) {
+	return sentinelPath()
+}
+
+// disabledPath returns the path to the disabled sentinel file.
+func disabledPath() (string, error) {
+	p, err := sentinelPath()
+	if err != nil {
+		return "", err
+	}
+
+	return p + ".disabled", nil
+}
+
+// Revoke removes the active sentinel session and creates a disabled marker.
+func Revoke() error {
+	path, err := sentinelPath()
+	if err != nil {
+		return err
+	}
+
+	dp, err := disabledPath()
+	if err != nil {
+		return err
+	}
+
+	if err := os.Rename(path, dp); os.IsNotExist(err) {
+		return ErrNoActive
+	} else if err != nil {
+		return fmt.Errorf("revoke sentinel: %w", err)
+	}
+
+	return nil
 }

@@ -33,7 +33,7 @@ func TestProfileCRUD(t *testing.T) {
 	s := openTestStore(t)
 
 	t.Run("create and get", func(t *testing.T) {
-		if err := s.CreateProfile("dev", "development", true); err != nil {
+		if err := s.CreateProfile("dev", "development", true, ""); err != nil {
 			t.Fatalf("CreateProfile: %v", err)
 		}
 		p, err := s.GetProfile("dev")
@@ -62,7 +62,7 @@ func TestProfileCRUD(t *testing.T) {
 	})
 
 	t.Run("list profiles", func(t *testing.T) {
-		_ = s.CreateProfile("staging", "staging env", false)
+		_ = s.CreateProfile("staging", "staging env", false, "")
 		profiles, err := s.ListProfiles()
 		if err != nil {
 			t.Fatalf("ListProfiles: %v", err)
@@ -130,7 +130,7 @@ func TestGetNonExistentProfile(t *testing.T) {
 
 func TestSecretCRUD(t *testing.T) {
 	s := openTestStore(t)
-	_ = s.CreateProfile("prod", "production", true)
+	_ = s.CreateProfile("prod", "production", true, "")
 
 	encVal := []byte("encrypted-data")
 	nonce := []byte("nonce-12byte")
@@ -208,7 +208,7 @@ func TestSecretCRUD(t *testing.T) {
 	})
 
 	t.Run("list all secrets", func(t *testing.T) {
-		_ = s.CreateProfile("other", "other", false)
+		_ = s.CreateProfile("other", "other", false, "")
 		_ = s.UpsertSecret("other", "TOKEN", encVal, nonce, "token")
 		all, err := s.ListAllSecrets()
 		if err != nil {
@@ -240,7 +240,7 @@ func TestGetNonExistentSecret(t *testing.T) {
 
 func TestDeleteProfileWithSecrets(t *testing.T) {
 	s := openTestStore(t)
-	_ = s.CreateProfile("temp", "temporary", false)
+	_ = s.CreateProfile("temp", "temporary", false, "")
 	_ = s.UpsertSecret("temp", "KEY1", []byte("v"), []byte("n"), "")
 	_ = s.UpsertSecret("temp", "KEY2", []byte("v"), []byte("n"), "")
 
@@ -388,7 +388,7 @@ func TestPasswordCRUD(t *testing.T) {
 
 func TestBeginTxEndTx(t *testing.T) {
 	s := openTestStore(t)
-	_ = s.CreateProfile("txtest", "tx test", false)
+	_ = s.CreateProfile("txtest", "tx test", false, "")
 
 	tx, q, err := s.BeginTx()
 	if err != nil {
@@ -423,7 +423,7 @@ func TestBeginTxEndTx(t *testing.T) {
 
 func TestBeginTxRollback(t *testing.T) {
 	s := openTestStore(t)
-	_ = s.CreateProfile("rollback", "rollback test", false)
+	_ = s.CreateProfile("rollback", "rollback test", false, "")
 
 	tx, q, err := s.BeginTx()
 	if err != nil {
@@ -528,7 +528,7 @@ func TestAuditLogCRUD(t *testing.T) {
 
 func TestSecretVersionCRUD(t *testing.T) {
 	s := openTestStore(t)
-	_ = s.CreateProfile("prod", "production", true)
+	_ = s.CreateProfile("prod", "production", true, "")
 	_ = s.UpsertSecret("prod", "API_KEY", []byte("v1-enc"), []byte("v1-nonce"), "api key")
 
 	t.Run("insert and list versions", func(t *testing.T) {
@@ -595,7 +595,7 @@ func TestSecretVersionCRUD(t *testing.T) {
 	})
 
 	t.Run("list all secret versions", func(t *testing.T) {
-		_ = s.CreateProfile("stg", "staging", false)
+		_ = s.CreateProfile("stg", "staging", false, "")
 		_ = s.UpsertSecret("stg", "TOKEN", []byte("enc"), []byte("nonce"), "")
 		_ = s.InsertSecretVersion("prod", "API_KEY", 1, []byte("enc1"), []byte("n1"))
 		_ = s.InsertSecretVersion("stg", "TOKEN", 1, []byte("enc2"), []byte("n2"))
