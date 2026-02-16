@@ -89,10 +89,10 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 
 | Package | Coverage | Status |
 |---------|----------|--------|
-| internal/crypto | 75.8% | Good |
-| internal/sentinel | 73.7% | Good |
+| internal/crypto | 74.0% | Good |
+| internal/sentinel | 71.8% | Good |
 | internal/store | 83.2% | Excellent |
 | internal/store/sqlc | N/A | Generated code |
 | internal/application | 72.7% | Good |
-| pkg/vault | 72.6% | Bounded by TPM branches + timeout |
-| cmd | 56.1% | 29 integration tests; crypto ops cause slow test runs |
+| pkg/vault | 70.5% | Bounded by TPM branches + timeout |
+| cmd | 57.5% | 31 integration tests; crypto ops cause slow test runs |

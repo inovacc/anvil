@@ -166,3 +166,5 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Plugin system: `PluginManager` loaded in `Open()` from `plugins.json` alongside vault DB; hooks fire on Set/Get/Delete via pre/post events; pre-hooks can block operations by returning `{"allow":false}`; post-hook errors are logged but never block
 - Plugin config (`plugins.json`) is separate from the vault DB — no schema migration needed
 - Gather command: `vault gather [dir]` recursively discovers `.env`/`.env.*`, `.json`, `.yaml`/`.yml` files; extracts secret-pattern keys (password, token, api_key, etc.); interactive by default, `--yes -p <profile>` for non-interactive
+- Sentinel `defaultCacheDir()` respects `ANVIL_DB_PATH` env var — ensures test isolation for sentinel files
+- Integration tests reset `--json` persistent flag in `execCmd()` to prevent state leakage between tests

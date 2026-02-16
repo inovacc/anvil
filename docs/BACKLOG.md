@@ -60,7 +60,7 @@
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** IN PROGRESS — application 72.7%, crypto 75.8%, sentinel 73.7%, store 83.2%, vault 72.6%, cmd 56.1%. Bounded by TPM branches and slow crypto ops.
+- **Status:** IN PROGRESS — application 72.7%, crypto 74.0%, sentinel 71.8%, store 83.2%, vault 70.5%, cmd 57.5%. Bounded by TPM branches and slow crypto ops.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands
