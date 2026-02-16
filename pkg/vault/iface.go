@@ -76,6 +76,12 @@ type VaultBackup interface {
 	ShareImport(encrypted []byte, passphrase, targetProfile string) (*SharedExport, error)
 }
 
+// VaultSeal provides seal/unseal operations.
+type VaultSeal interface {
+	Seal() error
+	IsSealed() bool
+}
+
 // VaultScoped provides isolated, single-profile access to the vault.
 // External apps use this interface — they can only read/write secrets in their own profile.
 type VaultScoped interface {
@@ -100,4 +106,5 @@ var (
 	_ VaultVersioning  = (*Vault)(nil)
 	_ VaultTemplate    = (*Vault)(nil)
 	_ VaultBackup      = (*Vault)(nil)
+	_ VaultSeal        = (*Vault)(nil)
 )

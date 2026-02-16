@@ -75,6 +75,17 @@ var (
 		Hint:    "Verify the UUID and try again",
 	}
 
+	// ErrVaultSealed is returned when the vault is temporarily sealed.
+	ErrVaultSealed = &UserError{
+		Message: "vault is sealed",
+		Hint:    "Run 'anvil vault unseal' to unlock the vault",
+	}
+
+	// ErrVaultNotSealed is returned when trying to unseal a vault that is not sealed.
+	ErrVaultNotSealed = &UserError{
+		Message: "vault is not sealed",
+	}
+
 	// ErrReadDenied is returned when scoped access attempts to read plaintext secrets.
 	ErrReadDenied = &UserError{
 		Message: "plaintext read denied for scoped access",

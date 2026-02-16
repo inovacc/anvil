@@ -136,6 +136,11 @@ func Open(opts *Options) (*Vault, error) {
 		dbPath = filepath.Join(dbPath, dbFileName)
 	}
 
+	// Check if vault is sealed before proceeding.
+	if _, err := os.Stat(dbPath + ".sealed"); err == nil {
+		return nil, ErrVaultSealed
+	}
+
 	vaultStore, err := store.Open(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
@@ -207,7 +212,87 @@ func Open(opts *Options) (*Vault, error) {
 	// Best-effort: load built-in templates if missing.
 	_ = v.LoadBuiltinTemplates()
 
+	// Best-effort: purge expired secret versions.
+	_, _ = v.PurgeExpiredVersions()
+
 	return v, nil
+}
+
+// sealFilePath returns the path to the seal marker file.
+func (v *Vault) sealFilePath() string {
+	return v.dbPath + ".sealed"
+}
+
+// checkSealed returns ErrVaultSealed if the vault is currently sealed.
+func (v *Vault) checkSealed() error {
+	if _, err := os.Stat(v.sealFilePath()); err == nil {
+		return ErrVaultSealed
+	}
+
+	return nil
+}
+
+// Seal temporarily locks the vault by creating a seal marker file.
+// All operations will return ErrVaultSealed until Unseal is called.
+func (v *Vault) Seal() error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(v.sealFilePath(), []byte("sealed"), 0o600); err != nil {
+		return fmt.Errorf("create seal file: %w", err)
+	}
+
+	crypto.ZeroBytes(v.masterKey)
+	v.masterKey = nil
+
+	v.logAudit("vault.seal", "", "", "")
+
+	return nil
+}
+
+// UnsealVault removes the seal marker file, allowing the vault to be opened again.
+// This is a package-level function because Open() is blocked while sealed.
+func UnsealVault(opts *Options) error {
+	dbPath, err := resolveDBPath(opts)
+	if err != nil {
+		return err
+	}
+
+	sealFile := dbPath + ".sealed"
+
+	if _, err := os.Stat(sealFile); os.IsNotExist(err) {
+		return ErrVaultNotSealed
+	}
+
+	if err := os.Remove(sealFile); err != nil {
+		return fmt.Errorf("remove seal file: %w", err)
+	}
+
+	return nil
+}
+
+func resolveDBPath(opts *Options) (string, error) {
+	dbPath, err := application.GetApplicationDirectory()
+	if err != nil {
+		return "", fmt.Errorf("get application directory: %w", err)
+	}
+
+	if opts != nil && opts.DBPath != "" {
+		dbPath = opts.DBPath
+	} else if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		dbPath = envPath
+	} else {
+		dbPath = filepath.Join(dbPath, dbFileName)
+	}
+
+	return dbPath, nil
+}
+
+// IsSealed returns whether the vault is currently sealed.
+func (v *Vault) IsSealed() bool {
+	_, err := os.Stat(v.sealFilePath())
+	return err == nil
 }
 
 // Close zeros the master key and closes the vault.
@@ -249,6 +334,10 @@ func ResolveDBPath(opts *Options) (string, error) {
 
 // CreateProfile creates a new vault profile with an auto-generated UUID.
 func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
 	exists, err := v.store.ProfileExists(name)
 	if err != nil {
 		return fmt.Errorf("check profile: %w", err)
@@ -271,6 +360,10 @@ func (v *Vault) CreateProfile(name, description string, isDefault bool) error {
 
 // DeleteProfile deletes a profile and all its secrets.
 func (v *Vault) DeleteProfile(name string) error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
 	exists, err := v.store.ProfileExists(name)
 	if err != nil {
 		return fmt.Errorf("check profile: %w", err)
@@ -291,6 +384,10 @@ func (v *Vault) DeleteProfile(name string) error {
 
 // UseProfile sets a profile as the default.
 func (v *Vault) UseProfile(name string) error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
 	exists, err := v.store.ProfileExists(name)
 	if err != nil {
 		return fmt.Errorf("check profile: %w", err)
@@ -311,6 +408,10 @@ func (v *Vault) UseProfile(name string) error {
 
 // ListProfiles returns all vault profiles with secret counts.
 func (v *Vault) ListProfiles() ([]ProfileInfo, error) {
+	if err := v.checkSealed(); err != nil {
+		return nil, err
+	}
+
 	rows, err := v.store.ListProfiles()
 	if err != nil {
 		return nil, fmt.Errorf("list profiles: %w", err)
@@ -377,6 +478,10 @@ func (v *Vault) resolveProfile(profileName string) (string, error) {
 // Set encrypts and stores a secret in the given profile (or default).
 // If the key already exists, the current value is archived as a version.
 func (v *Vault) Set(key, value, profileName, description string) error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
 		return err
@@ -408,6 +513,10 @@ func (v *Vault) Set(key, value, profileName, description string) error {
 
 // Get decrypts and returns a secret value.
 func (v *Vault) Get(key, profileName string) (string, error) {
+	if err := v.checkSealed(); err != nil {
+		return "", err
+	}
+
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
 		return "", err
@@ -440,6 +549,10 @@ func (v *Vault) Get(key, profileName string) (string, error) {
 
 // Delete removes a secret.
 func (v *Vault) Delete(key, profileName string) error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
 		return err
@@ -475,6 +588,10 @@ func (v *Vault) Delete(key, profileName string) error {
 
 // List returns metadata for all secrets in a profile.
 func (v *Vault) List(profileName string) ([]SecretInfo, error) {
+	if err := v.checkSealed(); err != nil {
+		return nil, err
+	}
+
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
 		return nil, err
@@ -507,6 +624,10 @@ func (v *Vault) List(profileName string) ([]SecretInfo, error) {
 
 // Export decrypts and returns all secrets from a profile.
 func (v *Vault) Export(profileName string) ([]SecretEntry, error) {
+	if err := v.checkSealed(); err != nil {
+		return nil, err
+	}
+
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
 		return nil, err
@@ -542,6 +663,10 @@ func (v *Vault) Export(profileName string) ([]SecretEntry, error) {
 
 // Import encrypts and stores multiple secrets into a profile.
 func (v *Vault) Import(entries []SecretEntry, profileName string) error {
+	if err := v.checkSealed(); err != nil {
+		return err
+	}
+
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
 		return err
@@ -565,6 +690,10 @@ func (v *Vault) Import(entries []SecretEntry, profileName string) error {
 
 // Status returns vault status information.
 func (v *Vault) Status() (*Status, error) {
+	if err := v.checkSealed(); err != nil {
+		return nil, err
+	}
+
 	profiles, err := v.store.ListProfiles()
 	if err != nil {
 		return nil, fmt.Errorf("list profiles: %w", err)

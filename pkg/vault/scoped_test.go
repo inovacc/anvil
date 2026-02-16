@@ -291,6 +291,93 @@ func TestScopedProfileInfo(t *testing.T) {
 	}
 }
 
+func TestSealAndUnseal(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.CreateProfile("test", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("KEY", "value", "test", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Seal the vault
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+
+	if !v.IsSealed() {
+		t.Error("expected IsSealed() = true after Seal()")
+	}
+
+	// All operations should fail
+	_, err = v.Get("KEY", "test")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Get on sealed vault: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.Set("KEY2", "val", "test", "")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Set on sealed vault: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.ListProfiles()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ListProfiles on sealed vault: expected ErrVaultSealed, got %v", err)
+	}
+
+	_ = v.Close()
+
+	// Open should fail while sealed
+	_, err = vault.Open(opts)
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Fatalf("Open on sealed vault: expected ErrVaultSealed, got %v", err)
+	}
+
+	// OpenScoped should also fail
+	_, err = vault.OpenScoped("any-uuid", opts)
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Fatalf("OpenScoped on sealed vault: expected ErrVaultSealed, got %v", err)
+	}
+
+	// Unseal
+	if err := vault.UnsealVault(opts); err != nil {
+		t.Fatalf("UnsealVault: %v", err)
+	}
+
+	// Unseal again should fail
+	err = vault.UnsealVault(opts)
+	if !errors.Is(err, vault.ErrVaultNotSealed) {
+		t.Fatalf("UnsealVault again: expected ErrVaultNotSealed, got %v", err)
+	}
+
+	// Open should work again
+	v2, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open after unseal: %v", err)
+	}
+	defer func() { _ = v2.Close() }()
+
+	val, err := v2.Get("KEY", "test")
+	if err != nil {
+		t.Fatalf("Get after unseal: %v", err)
+	}
+	if val != "value" {
+		t.Errorf("Get = %q, want %q", val, "value")
+	}
+}
+
 func TestMaskValue(t *testing.T) {
 	tests := []struct {
 		input string
