@@ -3,6 +3,7 @@ package vault_test
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/inovacc/anvil/pkg/vault"
@@ -83,82 +84,105 @@ func TestOpenScopedInvalidUUID(t *testing.T) {
 	}
 }
 
-func TestScopedCRUD(t *testing.T) {
+func TestScopedGetReturnsMasked(t *testing.T) {
 	sv, _, _ := initAndOpenScoped(t)
 
-	// Set
-	if err := sv.Set("API_KEY", "secret123", "test key"); err != nil {
+	if err := sv.Set("API_KEY", "supersecretvalue123", "test key"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 
-	// Get
 	val, err := sv.Get("API_KEY")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if val != "secret123" {
-		t.Errorf("Get = %q, want %q", val, "secret123")
+
+	// Must NOT return plaintext
+	if val == "supersecretvalue123" {
+		t.Fatal("Get returned plaintext — RBAC violation")
 	}
 
-	// List
+	// Must contain masking asterisks
+	if !strings.Contains(val, "*") {
+		t.Errorf("Get = %q, expected masked value with asterisks", val)
+	}
+
+	// Must preserve some visible chars (first 3 + last 3 for long values)
+	if !strings.HasPrefix(val, "sup") {
+		t.Errorf("masked value should start with 'sup', got %q", val)
+	}
+	if !strings.HasSuffix(val, "123") {
+		t.Errorf("masked value should end with '123', got %q", val)
+	}
+}
+
+func TestScopedGetNotFoundError(t *testing.T) {
+	sv, _, _ := initAndOpenScoped(t)
+
+	_, err := sv.Get("NONEXISTENT")
+	if !errors.Is(err, vault.ErrSecretNotFound) {
+		t.Fatalf("expected ErrSecretNotFound, got %v", err)
+	}
+}
+
+func TestScopedSetAndDelete(t *testing.T) {
+	sv, _, _ := initAndOpenScoped(t)
+
+	if err := sv.Set("KEY1", "value1", "desc"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
 	secrets, err := sv.List()
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(secrets) != 1 {
-		t.Fatalf("List len = %d, want 1", len(secrets))
-	}
-	if secrets[0].Key != "API_KEY" {
-		t.Errorf("List[0].Key = %q, want %q", secrets[0].Key, "API_KEY")
+	if len(secrets) != 1 || secrets[0].Key != "KEY1" {
+		t.Fatalf("List unexpected: %+v", secrets)
 	}
 
-	// Delete
-	if err := sv.Delete("API_KEY"); err != nil {
+	if err := sv.Delete("KEY1"); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 
-	_, err = sv.Get("API_KEY")
-	if !errors.Is(err, vault.ErrSecretNotFound) {
-		t.Fatalf("expected ErrSecretNotFound after delete, got %v", err)
+	secrets, err = sv.List()
+	if err != nil {
+		t.Fatalf("List after delete: %v", err)
+	}
+	if len(secrets) != 0 {
+		t.Errorf("expected 0 secrets after delete, got %d", len(secrets))
 	}
 }
 
-func TestScopedExportImport(t *testing.T) {
+func TestScopedExportDenied(t *testing.T) {
 	sv, _, _ := initAndOpenScoped(t)
 
 	if err := sv.Set("KEY1", "val1", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
-	if err := sv.Set("KEY2", "val2", ""); err != nil {
-		t.Fatalf("Set: %v", err)
-	}
 
-	entries, err := sv.Export()
-	if err != nil {
-		t.Fatalf("Export: %v", err)
+	_, err := sv.Export()
+	if !errors.Is(err, vault.ErrReadDenied) {
+		t.Fatalf("expected ErrReadDenied from Export, got %v", err)
 	}
-	if len(entries) != 2 {
-		t.Fatalf("Export len = %d, want 2", len(entries))
-	}
+}
 
-	// Delete and re-import
-	if err := sv.Delete("KEY1"); err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
-	if err := sv.Delete("KEY2"); err != nil {
-		t.Fatalf("Delete: %v", err)
+func TestScopedImportAllowed(t *testing.T) {
+	sv, _, _ := initAndOpenScoped(t)
+
+	entries := []vault.SecretEntry{
+		{Key: "IMPORTED_KEY", Value: "imported_val", Description: "imported"},
 	}
 
 	if err := sv.Import(entries); err != nil {
 		t.Fatalf("Import: %v", err)
 	}
 
-	val, err := sv.Get("KEY1")
+	// Verify it was stored (get returns masked)
+	val, err := sv.Get("IMPORTED_KEY")
 	if err != nil {
 		t.Fatalf("Get after import: %v", err)
 	}
-	if val != "val1" {
-		t.Errorf("Get = %q, want %q", val, "val1")
+	if !strings.Contains(val, "*") {
+		t.Errorf("expected masked value, got %q", val)
 	}
 }
 
@@ -170,7 +194,6 @@ func TestScopedIsolation(t *testing.T) {
 		t.Fatalf("Init: %v", err)
 	}
 
-	// Create two profiles via full vault
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -183,12 +206,9 @@ func TestScopedIsolation(t *testing.T) {
 		t.Fatalf("CreateProfile B: %v", err)
 	}
 
-	// Set a secret in profile-a via full vault
 	if err := v.Set("SHARED_KEY", "value-a", "profile-a", ""); err != nil {
 		t.Fatalf("Set in A: %v", err)
 	}
-
-	// Set a different secret in profile-b
 	if err := v.Set("SHARED_KEY", "value-b", "profile-b", ""); err != nil {
 		t.Fatalf("Set in B: %v", err)
 	}
@@ -208,39 +228,42 @@ func TestScopedIsolation(t *testing.T) {
 		}
 	}
 
+	// CLI (full Vault) can read plaintext
+	plainA, err := v.Get("SHARED_KEY", "profile-a")
+	if err != nil {
+		t.Fatalf("CLI Get A: %v", err)
+	}
+	if plainA != "value-a" {
+		t.Errorf("CLI got %q, want %q", plainA, "value-a")
+	}
+
 	_ = v.Close()
 
-	// Open scoped to profile-a
+	// Scoped A sees masked only
 	svA, err := vault.OpenScoped(uuidA, opts)
 	if err != nil {
 		t.Fatalf("OpenScoped A: %v", err)
 	}
 
-	val, err := svA.Get("SHARED_KEY")
+	maskedA, err := svA.Get("SHARED_KEY")
 	if err != nil {
-		t.Fatalf("Get from A: %v", err)
+		t.Fatalf("Scoped Get A: %v", err)
 	}
-	if val != "value-a" {
-		t.Errorf("scoped A got %q, want %q", val, "value-a")
+	if maskedA == "value-a" {
+		t.Error("scoped A returned plaintext — RBAC violation")
+	}
+	if !strings.Contains(maskedA, "*") {
+		t.Errorf("scoped A value not masked: %q", maskedA)
 	}
 
+	// Scoped B sees only its own secrets
 	_ = svA.Close()
 
-	// Open scoped to profile-b
 	svB, err := vault.OpenScoped(uuidB, opts)
 	if err != nil {
 		t.Fatalf("OpenScoped B: %v", err)
 	}
 
-	val, err = svB.Get("SHARED_KEY")
-	if err != nil {
-		t.Fatalf("Get from B: %v", err)
-	}
-	if val != "value-b" {
-		t.Errorf("scoped B got %q, want %q", val, "value-b")
-	}
-
-	// Profile B cannot see profile A's list
 	secrets, err := svB.List()
 	if err != nil {
 		t.Fatalf("List B: %v", err)
@@ -265,5 +288,27 @@ func TestScopedProfileInfo(t *testing.T) {
 	}
 	if info.Name != "scoped-test" {
 		t.Errorf("ProfileInfo().Name = %q, want %q", info.Name, "scoped-test")
+	}
+}
+
+func TestMaskValue(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"", "****"},
+		{"ab", "**"},
+		{"abcd", "****"},
+		{"abcde", "a***e"},
+		{"abcdefgh", "a******h"},
+		{"abcdefghij", "abc****hij"},
+		{"supersecretvalue123", "sup*************123"},
+	}
+
+	for _, tc := range tests {
+		got := vault.MaskValue(tc.input)
+		if got != tc.want {
+			t.Errorf("MaskValue(%q) = %q, want %q", tc.input, got, tc.want)
+		}
 	}
 }

@@ -75,6 +75,12 @@ var (
 		Hint:    "Verify the UUID and try again",
 	}
 
+	// ErrReadDenied is returned when scoped access attempts to read plaintext secrets.
+	ErrReadDenied = &UserError{
+		Message: "plaintext read denied for scoped access",
+		Hint:    "Scoped vault only allows masked reads and writes; use the CLI for full access",
+	}
+
 	// ErrReleaseExpired is returned when the release session has expired.
 	ErrReleaseExpired = &UserError{
 		Message: "release session has expired",
