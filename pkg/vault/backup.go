@@ -65,9 +65,9 @@ func (v *Vault) Backup(password string) ([]byte, error) {
 
 		bp.Secrets = entries
 
-		// Export version history for each secret.
+		// Export version history for each secret (internal decrypted access for backup only).
 		for _, e := range entries {
-			versions, err := v.SecretHistory(e.Key, p.Name)
+			versions, err := v.secretVersionsDecrypted(e.Key, p.Name)
 			if err != nil {
 				return nil, fmt.Errorf("history for %q/%q: %w", p.Name, e.Key, err)
 			}
@@ -160,7 +160,8 @@ func (v *Vault) Restore(encrypted []byte, password string) error {
 			return fmt.Errorf("encrypt version %d of %q: %w", ver.Version, ver.Key, err)
 		}
 
-		if err := v.store.InsertSecretVersion(ver.ProfileName, ver.Key, ver.Version, ciphertext, nonce); err != nil {
+		expiresAt := time.Now().Add(DefaultVersionRetention)
+		if err := v.store.InsertSecretVersion(ver.ProfileName, ver.Key, ver.Version, ciphertext, nonce, expiresAt); err != nil {
 			return fmt.Errorf("insert version %d of %q: %w", ver.Version, ver.Key, err)
 		}
 	}

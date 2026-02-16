@@ -602,9 +602,6 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if len(history) != 1 {
 			t.Fatalf("expected 1 version, got %d", len(history))
 		}
-		if history[0].Value != "value1" {
-			t.Errorf("version value = %q, want %q", history[0].Value, "value1")
-		}
 		if history[0].Version != 1 {
 			t.Errorf("version number = %d, want 1", history[0].Version)
 		}
@@ -726,12 +723,12 @@ func TestKeyRotationWithVersions(t *testing.T) {
 	if len(history) != 2 {
 		t.Fatalf("expected 2 versions, got %d", len(history))
 	}
-	// Ordered DESC: history[0] is version 2 (val2), history[1] is version 1 (val1).
-	if history[0].Value != "val2" {
-		t.Errorf("version 2 = %q, want %q", history[0].Value, "val2")
+	// Ordered DESC: history[0] is version 2, history[1] is version 1.
+	if history[0].Version != 2 {
+		t.Errorf("version[0] = %d, want 2", history[0].Version)
 	}
-	if history[1].Value != "val1" {
-		t.Errorf("version 1 = %q, want %q", history[1].Value, "val1")
+	if history[1].Version != 1 {
+		t.Errorf("version[1] = %d, want 1", history[1].Version)
 	}
 }
 

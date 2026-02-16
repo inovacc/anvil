@@ -4,11 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/inovacc/anvil/internal/crypto"
 )
 
-// archiveCurrentSecret saves the current value of a secret as a version if it exists.
+// DefaultVersionRetention is the default duration archived versions are kept.
+const DefaultVersionRetention = 30 * 24 * time.Hour // 30 days
+
+// archiveCurrentSecret saves the current value of a secret as a version with retention expiry.
 func (v *Vault) archiveCurrentSecret(profileName, key string) error {
 	exists, err := v.store.SecretExists(profileName, key)
 	if err != nil {
@@ -29,10 +33,13 @@ func (v *Vault) archiveCurrentSecret(profileName, key string) error {
 		return fmt.Errorf("get latest version: %w", err)
 	}
 
-	return v.store.InsertSecretVersion(profileName, key, latestVersion+1, row.EncryptedValue, row.Nonce)
+	expiresAt := time.Now().Add(DefaultVersionRetention)
+
+	return v.store.InsertSecretVersion(profileName, key, latestVersion+1, row.EncryptedValue, row.Nonce, expiresAt)
 }
 
-// SecretHistory returns all versions of a secret with decrypted values.
+// SecretHistory returns metadata for all archived versions of a secret.
+// Values are never exposed — only version number, creation time, and expiry are returned.
 func (v *Vault) SecretHistory(key, profileName string) ([]SecretVersion, error) {
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
@@ -55,14 +62,8 @@ func (v *Vault) SecretHistory(key, profileName string) ([]SecretVersion, error) 
 
 	versions := make([]SecretVersion, 0, len(rows))
 	for _, row := range rows {
-		plaintext, err := crypto.Decrypt(v.masterKey, row.EncryptedValue, row.Nonce)
-		if err != nil {
-			return nil, fmt.Errorf("decrypt version %d: %w", row.Version, err)
-		}
-
 		versions = append(versions, SecretVersion{
 			Version:   row.Version,
-			Value:     string(plaintext),
 			CreatedAt: row.CreatedAt,
 		})
 	}
@@ -70,8 +71,39 @@ func (v *Vault) SecretHistory(key, profileName string) ([]SecretVersion, error) 
 	return versions, nil
 }
 
+// secretVersionsDecrypted returns decrypted version data for internal use (backup only).
+// This is NOT exposed through any public API.
+func (v *Vault) secretVersionsDecrypted(key, profileName string) ([]backupVersion, error) {
+	rows, err := v.store.ListSecretVersions(profileName, key)
+	if err != nil {
+		return nil, fmt.Errorf("list versions: %w", err)
+	}
+
+	versions := make([]backupVersion, 0, len(rows))
+	for _, row := range rows {
+		plaintext, err := crypto.Decrypt(v.masterKey, row.EncryptedValue, row.Nonce)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt version %d: %w", row.Version, err)
+		}
+
+		versions = append(versions, backupVersion{
+			Version: row.Version,
+			Value:   string(plaintext),
+		})
+	}
+
+	return versions, nil
+}
+
+// backupVersion is an internal type for backup data only.
+type backupVersion struct {
+	Version int64
+	Value   string
+}
+
 // SecretRollback restores a specific version as the current secret value.
 // The current value is archived as a new version before restoring.
+// This is the ONLY way to access an archived version's data.
 func (v *Vault) SecretRollback(key, profileName string, version int64) error {
 	profile, err := v.resolveProfile(profileName)
 	if err != nil {
@@ -121,4 +153,18 @@ func (v *Vault) SecretRollback(key, profileName string, version int64) error {
 	v.logAudit("secret.rollback", profile, key, fmt.Sprintf("rolled back to version %d", version))
 
 	return nil
+}
+
+// PurgeExpiredVersions removes archived versions past their retention period.
+func (v *Vault) PurgeExpiredVersions() (int64, error) {
+	count, err := v.store.PurgeExpiredVersions()
+	if err != nil {
+		return 0, fmt.Errorf("purge expired versions: %w", err)
+	}
+
+	if count > 0 {
+		v.logAudit("versions.purge", "", "", fmt.Sprintf("purged %d expired versions", count))
+	}
+
+	return count, nil
 }

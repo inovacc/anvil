@@ -532,10 +532,10 @@ func TestSecretVersionCRUD(t *testing.T) {
 	_ = s.UpsertSecret("prod", "API_KEY", []byte("v1-enc"), []byte("v1-nonce"), "api key")
 
 	t.Run("insert and list versions", func(t *testing.T) {
-		if err := s.InsertSecretVersion("prod", "API_KEY", 1, []byte("v1-enc"), []byte("v1-nonce")); err != nil {
+		if err := s.InsertSecretVersion("prod", "API_KEY", 1, []byte("v1-enc"), []byte("v1-nonce"), time.Now().Add(30*24*time.Hour)); err != nil {
 			t.Fatalf("InsertSecretVersion: %v", err)
 		}
-		if err := s.InsertSecretVersion("prod", "API_KEY", 2, []byte("v2-enc"), []byte("v2-nonce")); err != nil {
+		if err := s.InsertSecretVersion("prod", "API_KEY", 2, []byte("v2-enc"), []byte("v2-nonce"), time.Now().Add(30*24*time.Hour)); err != nil {
 			t.Fatalf("InsertSecretVersion: %v", err)
 		}
 
@@ -597,8 +597,8 @@ func TestSecretVersionCRUD(t *testing.T) {
 	t.Run("list all secret versions", func(t *testing.T) {
 		_ = s.CreateProfile("stg", "staging", false, "")
 		_ = s.UpsertSecret("stg", "TOKEN", []byte("enc"), []byte("nonce"), "")
-		_ = s.InsertSecretVersion("prod", "API_KEY", 1, []byte("enc1"), []byte("n1"))
-		_ = s.InsertSecretVersion("stg", "TOKEN", 1, []byte("enc2"), []byte("n2"))
+		_ = s.InsertSecretVersion("prod", "API_KEY", 1, []byte("enc1"), []byte("n1"), time.Now().Add(30*24*time.Hour))
+		_ = s.InsertSecretVersion("stg", "TOKEN", 1, []byte("enc2"), []byte("n2"), time.Now().Add(30*24*time.Hour))
 
 		all, err := s.ListAllSecretVersions()
 		if err != nil {

@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS vault_secret_versions (
     encrypted_value BLOB NOT NULL,
     nonce BLOB NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME,
     FOREIGN KEY (profile_name) REFERENCES vault_profiles(name) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_vault_secret_versions_key ON vault_secret_versions(profile_name, key);

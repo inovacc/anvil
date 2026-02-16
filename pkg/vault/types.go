@@ -53,10 +53,10 @@ type AuditEntry struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// SecretVersion represents a historical version of a secret.
+// SecretVersion represents metadata for an archived secret version.
+// The value is never exposed — only rollback can restore it.
 type SecretVersion struct {
 	Version   int64     `json:"version"`
-	Value     string    `json:"value"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

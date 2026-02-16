@@ -43,6 +43,9 @@ func Open(dbPath string) (*Store, error) {
 	// Backfill existing rows with generated UUIDs.
 	_, _ = db.Exec(`UPDATE vault_profiles SET uuid = lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))) WHERE uuid IS NULL`)
 
+	// Idempotent migration: add expires_at column to vault_secret_versions.
+	_, _ = db.Exec(`ALTER TABLE vault_secret_versions ADD COLUMN expires_at DATETIME`)
+
 	return &Store{
 		db:      db,
 		queries: sqlc.New(db),
@@ -397,18 +400,29 @@ func (s *Store) PurgeAuditLog(before time.Time) error {
 
 // === Secret version operations ===
 
-// InsertSecretVersion archives an encrypted secret value as a version.
-func (s *Store) InsertSecretVersion(profileName, key string, version int64, encryptedValue, nonce []byte) error {
+// InsertSecretVersion archives an encrypted secret value as a version with a retention expiry.
+func (s *Store) InsertSecretVersion(profileName, key string, version int64, encryptedValue, nonce []byte, expiresAt time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.queries.InsertSecretVersion(context.Background(), sqlc.InsertSecretVersionParams{
-		ProfileName:    profileName,
-		Key:            key,
-		Version:        version,
-		EncryptedValue: encryptedValue,
-		Nonce:          nonce,
-	})
+	_, err := s.db.ExecContext(context.Background(),
+		`INSERT INTO vault_secret_versions (profile_name, key, version, encrypted_value, nonce, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		profileName, key, version, encryptedValue, nonce, expiresAt)
+	return err
+}
+
+// PurgeExpiredVersions deletes secret versions whose retention has expired.
+func (s *Store) PurgeExpiredVersions() (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result, err := s.db.ExecContext(context.Background(),
+		`DELETE FROM vault_secret_versions WHERE expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP`)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
 }
 
 // ListSecretVersions returns all versions for a secret, newest first.

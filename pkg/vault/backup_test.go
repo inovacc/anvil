@@ -152,9 +152,9 @@ func TestBackupRestoreWithVersionHistory(t *testing.T) {
 	if len(history) != 2 {
 		t.Fatalf("expected 2 versions, got %d", len(history))
 	}
-	// Ordered DESC: history[0] is version 2 (v2), history[1] is version 1 (v1).
-	if history[0].Value != "v2" {
-		t.Errorf("version 2 value = %q, want %q", history[0].Value, "v2")
+	// Ordered DESC: history[0] is version 2, history[1] is version 1.
+	if history[0].Version != 2 {
+		t.Errorf("version[0] = %d, want 2", history[0].Version)
 	}
 }
 
