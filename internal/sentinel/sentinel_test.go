@@ -314,3 +314,79 @@ func TestDisabledFileCleaned(t *testing.T) {
 		t.Error("expected disabled file to be removed after new release")
 	}
 }
+
+func TestRevokeAlreadyRevoked(t *testing.T) {
+	cleanup := setupTestDir(t)
+	defer cleanup()
+
+	key := testKey(t)
+
+	if _, err := Release(key, "test", 10*time.Minute); err != nil {
+		t.Fatalf("Release: %v", err)
+	}
+
+	if err := Revoke(); err != nil {
+		t.Fatalf("first Revoke: %v", err)
+	}
+
+	// Second revoke should return ErrNoActive.
+	err := Revoke()
+	if err != ErrNoActive {
+		t.Errorf("expected ErrNoActive, got %v", err)
+	}
+}
+
+func TestCheckShortFile(t *testing.T) {
+	cleanup := setupTestDir(t)
+	defer cleanup()
+
+	// Write a file too short to be valid.
+	ep, err := enabledPath()
+	if err != nil {
+		t.Fatalf("enabledPath: %v", err)
+	}
+
+	if err := os.WriteFile(ep, []byte("short"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	key := testKey(t)
+	state, err := Check(key)
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if state.Active {
+		t.Error("expected inactive for short file")
+	}
+}
+
+func TestCheckExpiredAutoRevokes(t *testing.T) {
+	cleanup := setupTestDir(t)
+	defer cleanup()
+
+	key := testKey(t)
+
+	// Create a session with very short TTL.
+	if _, err := Release(key, "test", 1*time.Millisecond); err != nil {
+		t.Fatalf("Release: %v", err)
+	}
+
+	time.Sleep(5 * time.Millisecond)
+
+	state, err := Check(key)
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if state.Active {
+		t.Error("expected inactive for expired session")
+	}
+	if state.ProfileName != "test" {
+		t.Errorf("ProfileName = %q, want %q", state.ProfileName, "test")
+	}
+
+	// After auto-revoke, the enabled file should be gone (renamed to disabled).
+	ep, _ := enabledPath()
+	if _, err := os.Stat(ep); !os.IsNotExist(err) {
+		t.Error("expected enabled file to be removed after auto-revoke")
+	}
+}

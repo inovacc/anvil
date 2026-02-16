@@ -66,11 +66,12 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 - [x] Secret versioning with rollback
 - [x] Backup and restore
 
-### Phase 6: Integration [IN PROGRESS]
+### Phase 6: Integration [COMPLETE]
 - [x] Shell auto-completion (bash, zsh, fish, powershell) with dynamic profile/secret completion
 - [x] Docker secrets bridge (`vault docker export/clean/compose`)
 - [x] CI/CD pipeline integration (GitHub Actions: release on tag, test on PR, build on main)
 - [x] Secret sharing between machines (encrypted export)
+- [x] Secret gathering (`vault gather` — recursive discovery of .env and config files with secret-pattern extraction)
 
 ### Phase 7: Polish [IN PROGRESS]
 - [x] User-friendly error handling (UserError type, no usage dump, JSON error output)
@@ -93,5 +94,5 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 | internal/store | 83.2% | Excellent |
 | internal/store/sqlc | N/A | Generated code |
 | internal/application | 72.7% | Good |
-| pkg/vault | 50.6% | Bounded by TPM branches + timeout |
-| cmd | 37.9% | 15 integration tests; many cmds need interactive input |
+| pkg/vault | 72.6% | Bounded by TPM branches + timeout |
+| cmd | 56.1% | 29 integration tests; crypto ops cause slow test runs |

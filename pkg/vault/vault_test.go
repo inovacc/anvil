@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/inovacc/anvil/pkg/vault"
 )
@@ -1070,5 +1071,263 @@ func TestImportOverwrite(t *testing.T) {
 	}
 	if val != "new" {
 		t.Errorf("got %q, want %q", val, "new")
+	}
+}
+
+func TestDBPath(t *testing.T) {
+	v, dbPath := initAndOpen(t)
+
+	if v.DBPath() != dbPath {
+		t.Errorf("DBPath() = %q, want %q", v.DBPath(), dbPath)
+	}
+}
+
+func TestDeletePassword(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	// Set a password.
+	if err := v.SetPassword("testpass1234"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	has, err := v.HasPassword()
+	if err != nil {
+		t.Fatalf("HasPassword: %v", err)
+	}
+	if !has {
+		t.Error("expected HasPassword = true")
+	}
+
+	// Delete it.
+	if err := v.DeletePassword(); err != nil {
+		t.Fatalf("DeletePassword: %v", err)
+	}
+
+	has, err = v.HasPassword()
+	if err != nil {
+		t.Fatalf("HasPassword after delete: %v", err)
+	}
+	if has {
+		t.Error("expected HasPassword = false after delete")
+	}
+}
+
+func TestVerifyPasswordNotSet(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.VerifyPassword("anything")
+	if !errors.Is(err, vault.ErrPasswordNotSet) {
+		t.Errorf("expected ErrPasswordNotSet, got %v", err)
+	}
+}
+
+func TestVerifyPasswordMismatch(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("correctpass1"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	err := v.VerifyPassword("wrongpass")
+	if !errors.Is(err, vault.ErrPasswordMismatch) {
+		t.Errorf("expected ErrPasswordMismatch, got %v", err)
+	}
+}
+
+func TestCreateDuplicateProfile(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("dup", "first", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	err := v.CreateProfile("dup", "second", false)
+	if !errors.Is(err, vault.ErrProfileExists) {
+		t.Errorf("expected ErrProfileExists, got %v", err)
+	}
+}
+
+func TestUseProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.UseProfile("nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestDeleteProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.DeleteProfile("nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestListProfilesWithDetails(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("prod", "production env", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.CreateProfile("staging", "staging env", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Add secrets to prod.
+	if err := v.Set("K1", "V1", "prod", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	profiles, err := v.ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles: %v", err)
+	}
+
+	if len(profiles) != 2 {
+		t.Fatalf("expected 2 profiles, got %d", len(profiles))
+	}
+
+	// Find prod profile.
+	var prod vault.ProfileInfo
+	for _, p := range profiles {
+		if p.Name == "prod" {
+			prod = p
+		}
+	}
+
+	if prod.Description != "production env" {
+		t.Errorf("Description = %q, want %q", prod.Description, "production env")
+	}
+	if !prod.IsDefault {
+		t.Error("expected prod to be default")
+	}
+	if prod.SecretCount != 1 {
+		t.Errorf("SecretCount = %d, want 1", prod.SecretCount)
+	}
+}
+
+func TestGetSecretNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("test", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	_, err := v.Get("NOPE", "test")
+	if !errors.Is(err, vault.ErrSecretNotFound) {
+		t.Errorf("expected ErrSecretNotFound, got %v", err)
+	}
+}
+
+func TestDeleteSecretNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("test", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	err := v.Delete("NOPE", "test")
+	if !errors.Is(err, vault.ErrSecretNotFound) {
+		t.Errorf("expected ErrSecretNotFound, got %v", err)
+	}
+}
+
+func TestSecretHistoryNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("test", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	_, err := v.SecretHistory("NOPE", "test")
+	if !errors.Is(err, vault.ErrSecretNotFound) {
+		t.Errorf("expected ErrSecretNotFound, got %v", err)
+	}
+}
+
+func TestRollbackInvalidVersion(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("test", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("KEY", "v1", "test", "desc"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("KEY", "v2", "test", "desc"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Version 999 doesn't exist.
+	err := v.SecretRollback("KEY", "test", 999)
+	if err == nil {
+		t.Error("expected error for invalid version")
+	}
+
+	ue, ok := vault.IsUserError(err)
+	if !ok {
+		t.Errorf("expected UserError, got %T", err)
+	} else if ue.Hint == "" {
+		t.Error("expected hint in UserError")
+	}
+}
+
+func TestGetStatusNotInitialized(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "nonexistent.db")
+	status, err := vault.GetStatus(&vault.Options{DBPath: dbPath})
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if status.Initialized {
+		t.Error("expected not initialized")
+	}
+}
+
+func TestEnvExportExplicitProfile(t *testing.T) {
+	v := initOpenWithPassword(t)
+
+	if err := v.CreateProfile("alt", "alt env", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("ALT_KEY", "alt_val", "alt", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	if _, err := v.EnvRelease("testpass", &vault.EnvReleaseOptions{TTL: 5 * time.Minute}); err != nil {
+		t.Fatalf("EnvRelease: %v", err)
+	}
+
+	// Export with explicit profile override.
+	entries, err := v.EnvExport("alt")
+	if err != nil {
+		t.Fatalf("EnvExport: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Key != "ALT_KEY" {
+		t.Errorf("unexpected entries: %+v", entries)
+	}
+}
+
+func TestEnvInlineGetExplicitProfile(t *testing.T) {
+	v := initOpenWithPassword(t)
+
+	if err := v.CreateProfile("alt", "alt env", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("ALT_SECRET", "secret_val", "alt", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	if _, err := v.EnvRelease("testpass", &vault.EnvReleaseOptions{TTL: 5 * time.Minute}); err != nil {
+		t.Fatalf("EnvRelease: %v", err)
+	}
+
+	val, err := v.EnvInlineGet("ALT_SECRET", "alt")
+	if err != nil {
+		t.Fatalf("EnvInlineGet: %v", err)
+	}
+	if val != "secret_val" {
+		t.Errorf("got %q, want %q", val, "secret_val")
 	}
 }

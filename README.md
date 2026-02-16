@@ -15,6 +15,7 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 - **Encrypted Sharing** — Cross-machine secret transfer with passphrase encryption
 - **Secret Templates** — 5 built-in templates (postgres, mysql, redis, aws, github-token) with variable interpolation
 - **Plugin System** — Event hooks (pre/post set, get, delete) and external secret providers
+- **Secret Gathering** — Auto-discover secrets from `.env`, JSON, and YAML config files in a directory tree
 - **Docker Bridge** — Export secrets as Docker files or Compose YAML snippets
 - **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`) for external consumers
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
@@ -95,6 +96,10 @@ anvil vault export --format env > .env
 # Import from file
 anvil vault import secrets.json
 anvil vault import .env --format env
+
+# Gather secrets from a project directory
+anvil vault gather ./myproject
+anvil vault gather --yes --profile myapp ./myproject
 ```
 
 ## JSON Output
@@ -160,6 +165,7 @@ anvil
 │   ├── list              List secrets in a profile
 │   ├── export            Export secrets in plaintext
 │   ├── import <file>     Import secrets from a file
+│   ├── gather [dir]      Discover and import secrets from files
 │   ├── rotate-key        Rotate the vault master key
 │   ├── audit             Show audit log entries
 │   ├── history <key>     Show version history for a secret

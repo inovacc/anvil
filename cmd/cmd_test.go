@@ -418,6 +418,348 @@ func TestErrorHandlingCLI(t *testing.T) {
 	}
 }
 
+func TestDockerExportCleanCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "DB_HOST", "localhost", "-p", "test")
+	execCmd(t, "vault", "set", "DB_PASS", "secret", "-p", "test")
+
+	dir := filepath.Join(t.TempDir(), "docker-secrets")
+
+	// Export.
+	stdout, stderr := execCmd(t, "vault", "docker", "export", dir, "-p", "test")
+	if stderr != "" {
+		t.Fatalf("docker export error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Exported 2") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Verify files exist.
+	data, err := os.ReadFile(filepath.Join(dir, "DB_HOST"))
+	if err != nil {
+		t.Fatalf("read secret file: %v", err)
+	}
+	if string(data) != "localhost" {
+		t.Errorf("expected 'localhost', got %q", string(data))
+	}
+
+	// Clean.
+	stdout, stderr = execCmd(t, "vault", "docker", "clean", dir, "-p", "test")
+	if stderr != "" {
+		t.Fatalf("docker clean error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Removed 2") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Verify files removed.
+	if _, err := os.Stat(filepath.Join(dir, "DB_HOST")); !os.IsNotExist(err) {
+		t.Error("expected secret file to be removed")
+	}
+}
+
+func TestDockerComposeCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "API_KEY", "key123", "-p", "test")
+
+	stdout, stderr := execCmd(t, "vault", "docker", "compose", "-p", "test")
+	if stderr != "" {
+		t.Fatalf("docker compose error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "secrets:") || !strings.Contains(stdout, "API_KEY") {
+		t.Errorf("unexpected compose output: %q", stdout)
+	}
+}
+
+func TestShareExportImportCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "SECRET", "val123", "-p", "test")
+
+	shareFile := filepath.Join(t.TempDir(), "shared.enc")
+
+	// Export.
+	stdout, stderr := execCmd(t, "vault", "share", "export", shareFile, "--profile", "test", "--passphrase", "testpass123")
+	if stderr != "" {
+		t.Fatalf("share export error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Shared export written") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Create target profile and import.
+	execCmd(t, "vault", "profile", "create", "imported")
+	stdout, stderr = execCmd(t, "vault", "share", "import", shareFile, "--profile", "imported", "--passphrase", "testpass123")
+	if stderr != "" {
+		t.Fatalf("share import error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Imported") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Verify imported.
+	stdout, _ = execCmd(t, "vault", "get", "SECRET", "-p", "imported")
+	if !strings.Contains(stdout, "val123") {
+		t.Errorf("expected imported secret, got: %q", stdout)
+	}
+}
+
+func TestRotateKeyCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "KEY1", "val1", "-p", "test")
+
+	// Set password first (required for rotate-key).
+	execCmd(t, "vault", "env", "password", "set", "--password", "mypassword1")
+
+	// Rotate.
+	stdout, stderr := execCmd(t, "vault", "rotate-key", "--password", "mypassword1")
+	if stderr != "" {
+		t.Fatalf("rotate-key error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "rotated successfully") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Verify secret still readable.
+	stdout, _ = execCmd(t, "vault", "get", "KEY1", "-p", "test")
+	if !strings.Contains(stdout, "val1") {
+		t.Errorf("expected secret after rotation, got: %q", stdout)
+	}
+}
+
+func TestBackupRestoreCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "BK_KEY", "bk_val", "-p", "test")
+
+	// Set password (required for backup).
+	execCmd(t, "vault", "env", "password", "set", "--password", "mypassword1")
+
+	backupFile := filepath.Join(t.TempDir(), "backup.enc")
+
+	// Backup.
+	stdout, stderr := execCmd(t, "vault", "backup", backupFile, "--password", "mypassword1")
+	if stderr != "" {
+		t.Fatalf("backup error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Backup written") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Create fresh vault for restore.
+	dbPath2 := filepath.Join(t.TempDir(), "vault2.db")
+	t.Setenv("ANVIL_DB_PATH", dbPath2)
+	if err := vault.Init(nil); err != nil {
+		t.Fatalf("vault.Init for restore: %v", err)
+	}
+
+	// Restore.
+	stdout, stderr = execCmd(t, "vault", "restore", backupFile, "--password", "mypassword1")
+	if stderr != "" {
+		t.Fatalf("restore error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "restored") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Verify secret is accessible.
+	stdout, _ = execCmd(t, "vault", "get", "BK_KEY", "-p", "test")
+	if !strings.Contains(stdout, "bk_val") {
+		t.Errorf("expected restored secret, got: %q", stdout)
+	}
+}
+
+func TestEnvPasswordSetCLI(t *testing.T) {
+	setupTestVault(t)
+
+	// Set password via non-interactive flag.
+	stdout, stderr := execCmd(t, "vault", "env", "password", "set", "--password", "mypassword1")
+	if stderr != "" {
+		t.Fatalf("password set error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Password set") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Update password.
+	stdout, stderr = execCmd(t, "vault", "env", "password", "set", "--password", "newpassword1", "--current", "mypassword1")
+	if stderr != "" {
+		t.Fatalf("password update error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Password set") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+}
+
+func TestEnvReleaseStatusRevokeCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "K1", "V1", "-p", "test")
+	execCmd(t, "vault", "env", "password", "set", "--password", "mypassword1")
+
+	// Clean up any stale sentinel from other tests.
+	execCmd(t, "vault", "env", "revoke")
+
+	// Status before release.
+	stdout, _ := execCmd(t, "vault", "env", "status")
+	if !strings.Contains(stdout, "inactive") {
+		t.Errorf("expected inactive status, got: %q", stdout)
+	}
+
+	// Release.
+	stdout, stderr := execCmd(t, "vault", "env", "release", "-p", "test", "--password", "mypassword1", "--ttl", "5m")
+	if stderr != "" {
+		t.Fatalf("release error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "released") {
+		t.Errorf("unexpected release output: %q", stdout)
+	}
+
+	// Status after release.
+	stdout, _ = execCmd(t, "vault", "env", "status")
+	if !strings.Contains(stdout, "active") {
+		t.Errorf("expected active status, got: %q", stdout)
+	}
+
+	// Env export.
+	stdout, stderr = execCmd(t, "vault", "env", "export", "-p", "test", "-f", "env")
+	if stderr != "" {
+		t.Fatalf("env export error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "K1=V1") {
+		t.Errorf("expected K1=V1 in env export, got: %q", stdout)
+	}
+
+	// Env export as shell export format.
+	stdout, _ = execCmd(t, "vault", "env", "export", "-p", "test", "-f", "export")
+	if !strings.Contains(stdout, "export K1=") {
+		t.Errorf("expected export format, got: %q", stdout)
+	}
+
+	// Revoke.
+	stdout, stderr = execCmd(t, "vault", "env", "revoke")
+	if stderr != "" {
+		t.Fatalf("revoke error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "revoked") {
+		t.Errorf("unexpected revoke output: %q", stdout)
+	}
+
+	// Status after revoke.
+	stdout, _ = execCmd(t, "vault", "env", "status")
+	if !strings.Contains(stdout, "inactive") {
+		t.Errorf("expected inactive after revoke, got: %q", stdout)
+	}
+}
+
+func TestCmdTreeCLI(t *testing.T) {
+	setupTestVault(t)
+
+	stdout, stderr := execCmd(t, "cmdtree")
+	if stderr != "" {
+		t.Fatalf("cmdtree error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "vault") || !strings.Contains(stdout, "anvil") {
+		t.Errorf("expected command tree, got: %q", stdout)
+	}
+}
+
+func TestCmdTreeJSONCLI(t *testing.T) {
+	setupTestVault(t)
+
+	stdout, _ := execCmd(t, "cmdtree", "--json")
+	var entries []cmdTreeEntry
+	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {
+		t.Fatalf("cmdtree JSON parse: %v\noutput: %q", err, stdout)
+	}
+	if len(entries) < 10 {
+		t.Errorf("expected many commands, got %d", len(entries))
+	}
+}
+
+func TestTemplateCreateDeleteCLI(t *testing.T) {
+	setupTestVault(t)
+
+	// Create a template file.
+	tmplFile := filepath.Join(t.TempDir(), "tmpl.yaml")
+	tmplContent := `name: mytest
+description: test template
+secrets:
+  - key: "{{.prefix}}_HOST"
+    value: "{{.host}}"
+  - key: "{{.prefix}}_PORT"
+    value: "{{.port}}"
+variables:
+  - name: prefix
+    description: Key prefix
+  - name: host
+    description: Hostname
+  - name: port
+    description: Port number
+`
+	if err := os.WriteFile(tmplFile, []byte(tmplContent), 0o644); err != nil {
+		t.Fatalf("write template: %v", err)
+	}
+
+	stdout, stderr := execCmd(t, "vault", "template", "create", tmplFile)
+	if stderr != "" {
+		t.Fatalf("template create error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "created") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Show.
+	stdout, stderr = execCmd(t, "vault", "template", "show", "mytest")
+	if stderr != "" {
+		t.Fatalf("template show error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "mytest") {
+		t.Errorf("unexpected show output: %q", stdout)
+	}
+
+	// Delete.
+	stdout, stderr = execCmd(t, "vault", "template", "delete", "mytest")
+	if stderr != "" {
+		t.Fatalf("template delete error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "deleted") {
+		t.Errorf("unexpected delete output: %q", stdout)
+	}
+}
+
+func TestDockerExportJSONCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "test", "--default")
+	execCmd(t, "vault", "set", "KEY", "val", "-p", "test")
+
+	dir := filepath.Join(t.TempDir(), "dsecrets")
+	stdout, _ := execCmd(t, "vault", "docker", "export", dir, "-p", "test", "--json")
+	var result map[string]any
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
+	}
+	if result["count"].(float64) != 1 {
+		t.Errorf("expected count 1, got %v", result["count"])
+	}
+}
+
+func TestEnvStatusJSONCLI(t *testing.T) {
+	setupTestVault(t)
+
+	stdout, _ := execCmd(t, "vault", "env", "status", "--json")
+	var result map[string]any
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
+	}
+	if result["active"] != false {
+		t.Errorf("expected active=false, got %v", result["active"])
+	}
+}
+
 func TestPluginIntegrationE2E(t *testing.T) {
 	dbPath := setupTestVault(t)
 	execCmd(t, "vault", "profile", "create", "test", "--default")
