@@ -610,6 +610,161 @@ func TestSecretVersionCRUD(t *testing.T) {
 	})
 }
 
+func TestProfileUUIDMethods(t *testing.T) {
+	s := openTestStore(t)
+
+	t.Run("create with UUID and get by UUID", func(t *testing.T) {
+		if err := s.CreateProfile("uuid-test", "test", false, "test-uuid-1234"); err != nil {
+			t.Fatalf("CreateProfile: %v", err)
+		}
+
+		p, err := s.GetProfileByUUID("test-uuid-1234")
+		if err != nil {
+			t.Fatalf("GetProfileByUUID: %v", err)
+		}
+		if p.Name != "uuid-test" {
+			t.Errorf("got name %q, want %q", p.Name, "uuid-test")
+		}
+	})
+
+	t.Run("profile exists by UUID", func(t *testing.T) {
+		exists, err := s.ProfileExistsByUUID("test-uuid-1234")
+		if err != nil {
+			t.Fatalf("ProfileExistsByUUID: %v", err)
+		}
+		if !exists {
+			t.Error("expected profile to exist")
+		}
+
+		exists, err = s.ProfileExistsByUUID("nonexistent")
+		if err != nil {
+			t.Fatalf("ProfileExistsByUUID: %v", err)
+		}
+		if exists {
+			t.Error("expected profile not to exist")
+		}
+	})
+
+	t.Run("get profile UUID by name", func(t *testing.T) {
+		uuid, err := s.GetProfileUUID("uuid-test")
+		if err != nil {
+			t.Fatalf("GetProfileUUID: %v", err)
+		}
+		if uuid != "test-uuid-1234" {
+			t.Errorf("got UUID %q, want %q", uuid, "test-uuid-1234")
+		}
+	})
+
+	t.Run("get UUID for nonexistent profile", func(t *testing.T) {
+		_, err := s.GetProfileUUID("ghost")
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("expected sql.ErrNoRows, got %v", err)
+		}
+	})
+
+	t.Run("get profile by nonexistent UUID", func(t *testing.T) {
+		_, err := s.GetProfileByUUID("no-such-uuid")
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("expected sql.ErrNoRows, got %v", err)
+		}
+	})
+}
+
+func TestTemplateCRUD(t *testing.T) {
+	s := openTestStore(t)
+
+	t.Run("create and get", func(t *testing.T) {
+		if err := s.CreateTemplate("db-url", "Database URL template", `postgres://{{.user}}:{{.pass}}@{{.host}}/{{.db}}`, false); err != nil {
+			t.Fatalf("CreateTemplate: %v", err)
+		}
+
+		tmpl, err := s.GetTemplate("db-url")
+		if err != nil {
+			t.Fatalf("GetTemplate: %v", err)
+		}
+		if tmpl.Name != "db-url" {
+			t.Errorf("got name %q, want %q", tmpl.Name, "db-url")
+		}
+	})
+
+	t.Run("list templates", func(t *testing.T) {
+		_ = s.CreateTemplate("api-key", "API key template", `{{.key}}`, true)
+
+		templates, err := s.ListTemplates()
+		if err != nil {
+			t.Fatalf("ListTemplates: %v", err)
+		}
+		if len(templates) < 2 {
+			t.Fatalf("got %d templates, want >= 2", len(templates))
+		}
+	})
+
+	t.Run("template exists", func(t *testing.T) {
+		exists, err := s.TemplateExists("db-url")
+		if err != nil {
+			t.Fatalf("TemplateExists: %v", err)
+		}
+		if !exists {
+			t.Error("expected template to exist")
+		}
+
+		exists, err = s.TemplateExists("nonexistent")
+		if err != nil {
+			t.Fatalf("TemplateExists: %v", err)
+		}
+		if exists {
+			t.Error("expected template not to exist")
+		}
+	})
+
+	t.Run("delete template", func(t *testing.T) {
+		if err := s.DeleteTemplate("db-url"); err != nil {
+			t.Fatalf("DeleteTemplate: %v", err)
+		}
+		exists, _ := s.TemplateExists("db-url")
+		if exists {
+			t.Error("template still exists after delete")
+		}
+	})
+}
+
+func TestPurgeExpiredVersions(t *testing.T) {
+	s := openTestStore(t)
+	_ = s.CreateProfile("purge-test", "purge test", true, "")
+	_ = s.UpsertSecret("purge-test", "KEY1", []byte("enc"), []byte("nonce"), "key")
+
+	// Insert an already-expired version.
+	expired := time.Now().Add(-1 * time.Hour)
+	if err := s.InsertSecretVersion("purge-test", "KEY1", 1, []byte("old-enc"), []byte("old-n"), expired); err != nil {
+		t.Fatalf("InsertSecretVersion (expired): %v", err)
+	}
+
+	// Insert a still-valid version.
+	future := time.Now().Add(30 * 24 * time.Hour)
+	if err := s.InsertSecretVersion("purge-test", "KEY1", 2, []byte("new-enc"), []byte("new-n"), future); err != nil {
+		t.Fatalf("InsertSecretVersion (valid): %v", err)
+	}
+
+	count, err := s.PurgeExpiredVersions()
+	if err != nil {
+		t.Fatalf("PurgeExpiredVersions: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("purged %d versions, want 1", count)
+	}
+
+	versions, err := s.ListSecretVersions("purge-test", "KEY1")
+	if err != nil {
+		t.Fatalf("ListSecretVersions: %v", err)
+	}
+	if len(versions) != 1 {
+		t.Errorf("got %d versions after purge, want 1", len(versions))
+	}
+	if versions[0].Version != 2 {
+		t.Errorf("remaining version = %d, want 2", versions[0].Version)
+	}
+}
+
 func TestClosePreventsFurtherOps(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	s, err := Open(dbPath)

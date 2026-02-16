@@ -868,6 +868,71 @@ func TestGatherExcludesCLI(t *testing.T) {
 	}
 }
 
+func TestSealUnsealCLI(t *testing.T) {
+	setupTestVault(t)
+	execCmd(t, "vault", "profile", "create", "seal-test", "--default")
+	execCmd(t, "vault", "set", "KEY1", "value1", "-p", "seal-test")
+
+	// Seal the vault.
+	stdout, _ := execCmd(t, "vault", "seal")
+	if !strings.Contains(stdout, "sealed") && !strings.Contains(stdout, "Sealed") {
+		t.Errorf("unexpected seal output: %q", stdout)
+	}
+
+	// Operations should fail while sealed.
+	_, stderr := execCmd(t, "vault", "get", "KEY1", "-p", "seal-test")
+	if !strings.Contains(stderr, "sealed") {
+		t.Errorf("expected sealed error, got stderr: %q", stderr)
+	}
+
+	// Unseal.
+	stdout, _ = execCmd(t, "vault", "unseal")
+	if !strings.Contains(stdout, "unsealed") && !strings.Contains(stdout, "Unsealed") {
+		t.Errorf("unexpected unseal output: %q", stdout)
+	}
+
+	// Operations should work again.
+	stdout, stderr = execCmd(t, "vault", "get", "KEY1", "-p", "seal-test")
+	if stderr != "" {
+		t.Errorf("get after unseal error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "value1") {
+		t.Errorf("expected value1, got: %q", stdout)
+	}
+}
+
+func TestSealUnsealJSONCLI(t *testing.T) {
+	setupTestVault(t)
+
+	stdout, _ := execCmd(t, "vault", "seal", "--json")
+	var result struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("JSON parse: %v (output: %q)", err, stdout)
+	}
+	if !strings.Contains(strings.ToLower(result.Message), "sealed") {
+		t.Errorf("unexpected message: %q", result.Message)
+	}
+
+	stdout, _ = execCmd(t, "vault", "unseal", "--json")
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("JSON parse: %v (output: %q)", err, stdout)
+	}
+	if !strings.Contains(strings.ToLower(result.Message), "unsealed") {
+		t.Errorf("unexpected message: %q", result.Message)
+	}
+}
+
+func TestUnsealNotSealedCLI(t *testing.T) {
+	setupTestVault(t)
+
+	_, stderr := execCmd(t, "vault", "unseal")
+	if !strings.Contains(stderr, "not sealed") {
+		t.Errorf("expected 'not sealed' error, got: %q", stderr)
+	}
+}
+
 func TestPluginIntegrationE2E(t *testing.T) {
 	dbPath := setupTestVault(t)
 	execCmd(t, "vault", "profile", "create", "test", "--default")

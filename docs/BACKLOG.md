@@ -56,6 +56,22 @@
 - **Effort:** Large
 - **Status:** DONE — `vault share export/import` commands with passphrase-based encryption
 
+### Access Control
+- **Priority:** P1
+- **Description:** UUID-based profile isolation for external apps (ScopedVault)
+- **Effort:** Large
+- **Status:** DONE — `OpenScoped(uuid)` with masked reads, denied export, write-allowed RBAC
+
+- **Priority:** P1
+- **Description:** Vault seal/unseal for temporary lockdown
+- **Effort:** Medium
+- **Status:** DONE — `vault seal` / `vault unseal` with file-based marker, all operations blocked when sealed
+
+- **Priority:** P1
+- **Description:** Version history lockdown — metadata only, rollback-only access
+- **Effort:** Medium
+- **Status:** DONE — archived versions show only version+timestamp, 30-day retention with auto-purge
+
 ### Sync
 - **Priority:** P3
 - **Description:** Gossip-based profile synchronization across machines (needs design refinement)
@@ -65,7 +81,7 @@
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** IN PROGRESS — application 72.7%, crypto 74.0%, sentinel 71.8%, store 83.2%, vault 70.5%, cmd 57.5%. Bounded by TPM branches and slow crypto ops.
+- **Status:** MOSTLY DONE — store 95.7%, sentinel 78.6%, crypto 75.8%, vault 74.0%, application 72.7%, cmd 69.3%. Remaining gaps bounded by TPM branches, platform-specific code, and error paths requiring mocking.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands

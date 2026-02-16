@@ -1,7 +1,7 @@
 # Project Roadmap
 
 ## Current Status
-**Overall Progress:** 90% Complete
+**Overall Progress:** 95% Complete
 
 ## Storage Compatibility Rule (MANDATORY)
 
@@ -60,6 +60,15 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 - [x] Interfaces: `VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`
 - [x] Compile-time interface satisfaction checks
 
+### Phase 4c: Profile Isolation & Access Control [COMPLETE]
+- [x] UUID-based profile identification (auto-generated on create)
+- [x] ScopedVault for external app isolation (UUID-only access, single profile)
+- [x] RBAC enforcement: scoped access returns masked values, denies plaintext export
+- [x] `VaultScoped` interface with compile-time satisfaction check
+- [x] Vault seal/unseal for temporary lockdown (`vault seal` / `vault unseal`)
+- [x] Version history lockdown: metadata-only (no plaintext), rollback-only access
+- [x] 30-day retention with automatic purge of expired versions
+
 ### Phase 5: Enhanced Security [COMPLETE]
 - [x] Master key rotation (`vault rotate-key` with transactional re-encryption)
 - [x] Audit logging (action, profile, key, detail, timestamp)
@@ -89,10 +98,10 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 
 | Package | Coverage | Status |
 |---------|----------|--------|
-| internal/crypto | 74.0% | Good |
-| internal/sentinel | 71.8% | Good |
-| internal/store | 83.2% | Excellent |
+| internal/store | 95.7% | Excellent |
+| internal/sentinel | 78.6% | Good — bounded by error path mocking |
+| internal/crypto | 75.8% | Good — bounded by TPM branches |
+| pkg/vault | 74.0% | Good — bounded by TPM + platform branches |
+| internal/application | 72.7% | Good — bounded by platform-specific paths |
+| cmd | 69.3% | 40+ integration tests; bounded by slow crypto ops |
 | internal/store/sqlc | N/A | Generated code |
-| internal/application | 72.7% | Good |
-| pkg/vault | 70.5% | Bounded by TPM branches + timeout |
-| cmd | 57.5% | 31 integration tests; crypto ops cause slow test runs |

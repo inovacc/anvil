@@ -1328,3 +1328,115 @@ func TestEnvInlineGetExplicitProfile(t *testing.T) {
 		t.Errorf("got %q, want %q", val, "secret_val")
 	}
 }
+
+func TestPurgeExpiredVersions(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("purge", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Set a secret, then update it (creates a version).
+	if err := v.Set("PK", "val1", "purge", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("PK", "val2", "purge", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Versions exist.
+	versions, err := v.SecretHistory("PK", "purge")
+	if err != nil {
+		t.Fatalf("SecretHistory: %v", err)
+	}
+	if len(versions) != 1 {
+		t.Fatalf("got %d versions, want 1", len(versions))
+	}
+
+	// Purge shouldn't remove anything (retention is 30 days).
+	count, err := v.PurgeExpiredVersions()
+	if err != nil {
+		t.Fatalf("PurgeExpiredVersions: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("purged %d, want 0 (nothing expired)", count)
+	}
+}
+
+func TestSealDoubleError(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+	defer func() { _ = vault.UnsealVault(opts) }()
+
+	_ = v.Close()
+
+	// Open should fail (vault is sealed).
+	_, err = vault.Open(opts)
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("expected ErrVaultSealed, got %v", err)
+	}
+}
+
+func TestSealedOperationsDenied(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.CreateProfile("sealed-ops", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.Set("K1", "V1", "sealed-ops", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+	defer func() {
+		_ = vault.UnsealVault(opts)
+		_ = v.Close()
+	}()
+
+	// All operations should return ErrVaultSealed.
+	_, err = v.List("sealed-ops")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("List: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.Export("sealed-ops")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Export: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.Delete("K1", "sealed-ops")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Delete: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.Import(nil, "sealed-ops")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Import: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.Status()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Status: expected ErrVaultSealed, got %v", err)
+	}
+}
