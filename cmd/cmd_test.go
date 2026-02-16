@@ -29,6 +29,8 @@ func execCmd(t *testing.T, args ...string) (stdout, stderr string) {
 	t.Helper()
 
 	cmd := GetRootCmd()
+	// Reset persistent flags to avoid leakage between tests.
+	_ = cmd.PersistentFlags().Set("json", "false")
 	outBuf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
 	cmd.SetOut(outBuf)
@@ -757,6 +759,112 @@ func TestEnvStatusJSONCLI(t *testing.T) {
 	}
 	if result["active"] != false {
 		t.Errorf("expected active=false, got %v", result["active"])
+	}
+}
+
+func TestGatherCLI(t *testing.T) {
+	setupTestVault(t)
+
+	// Create a temp project directory with secret files.
+	projDir := t.TempDir()
+
+	// .env file
+	if err := os.WriteFile(filepath.Join(projDir, ".env"), []byte("DB_HOST=localhost\nDB_PASS=secret\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// JSON config with secrets
+	if err := os.WriteFile(filepath.Join(projDir, "config.json"), []byte(`{"api_key":"abc123","name":"app"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Gather with --yes and --profile.
+	stdout, stderr := execCmd(t, "vault", "gather", projDir, "--yes", "--profile", "gathered")
+	if stderr != "" {
+		t.Fatalf("gather error: %s", stderr)
+	}
+	if !strings.Contains(stdout, "gathered") {
+		t.Errorf("unexpected output: %q", stdout)
+	}
+
+	// Verify secrets were imported.
+	stdout, _ = execCmd(t, "vault", "get", "DB_HOST", "-p", "gathered")
+	if !strings.Contains(stdout, "localhost") {
+		t.Errorf("expected DB_HOST=localhost, got: %q", stdout)
+	}
+
+	stdout, _ = execCmd(t, "vault", "get", "DB_PASS", "-p", "gathered")
+	if !strings.Contains(stdout, "secret") {
+		t.Errorf("expected DB_PASS=secret, got: %q", stdout)
+	}
+}
+
+func TestGatherJSONCLI(t *testing.T) {
+	setupTestVault(t)
+
+	projDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projDir, ".env"), []byte("TOKEN=xyz\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr := execCmd(t, "vault", "gather", projDir, "--yes", "--profile", "jtest", "--json")
+	if stderr != "" {
+		t.Fatalf("gather JSON error: %s", stderr)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
+	}
+	if result["profile"] != "jtest" {
+		t.Errorf("expected profile jtest, got %v", result["profile"])
+	}
+	if result["count"].(float64) != 1 {
+		t.Errorf("expected count 1, got %v", result["count"])
+	}
+}
+
+func TestGatherNoFilesCLI(t *testing.T) {
+	setupTestVault(t)
+
+	emptyDir := t.TempDir()
+	stdout, _ := execCmd(t, "vault", "gather", emptyDir, "--yes", "--profile", "empty")
+	if !strings.Contains(stdout, "No secret files found") {
+		t.Errorf("expected no files message, got: %q", stdout)
+	}
+}
+
+func TestGatherExcludesCLI(t *testing.T) {
+	setupTestVault(t)
+
+	projDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projDir, ".env"), []byte("ROOT_KEY=val\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	subDir := filepath.Join(projDir, "secrets")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, ".env"), []byte("SUB_KEY=val\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Gather excluding the "secrets" subdirectory.
+	stdout, stderr := execCmd(t, "vault", "gather", projDir, "--yes", "--profile", "excl", "--exclude", "secrets")
+	if stderr != "" {
+		t.Fatalf("gather error: %s", stderr)
+	}
+
+	// Should only have 1 secret from root .env.
+	stdout, _ = execCmd(t, "vault", "get", "ROOT_KEY", "-p", "excl")
+	if !strings.Contains(stdout, "val") {
+		t.Errorf("expected ROOT_KEY, got: %q", stdout)
+	}
+
+	// SUB_KEY should not exist.
+	_, stderr = execCmd(t, "vault", "get", "SUB_KEY", "-p", "excl")
+	if stderr == "" {
+		t.Error("expected error for excluded SUB_KEY")
 	}
 }
 

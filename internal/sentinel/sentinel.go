@@ -45,6 +45,10 @@ type ReleaseState struct {
 var cacheDir = defaultCacheDir
 
 func defaultCacheDir() (string, error) {
+	if envPath := os.Getenv("ANVIL_DB_PATH"); envPath != "" {
+		return filepath.Dir(envPath), nil
+	}
+
 	return application.GetApplicationDirectory()
 }
 
