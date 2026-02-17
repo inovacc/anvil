@@ -6,14 +6,14 @@ Go CLI application built with Cobra.
 
 - **Module**: `github.com/inovacc/anvil`
 - **Go version**: 1.25
-- **Architecture**: Hexagonal/Clean (cmd/, internal/, pkg/)
+- **Architecture**: Hexagonal/Clean (cmd/anvil/, internal/, pkg/)
 
 ## Build & Run
 
 ```bash
 task build          # Build to dist/
 task run            # Run the application
-go run .            # Run directly
+go run ./cmd/anvil  # Run directly
 ```
 
 ## Testing
@@ -55,7 +55,7 @@ task release:check      # Validate goreleaser config
 
 ```
 anvil/
-├── cmd/            # CLI commands (Cobra)
+├── cmd/anvil/      # CLI commands (Cobra) — binary name: anvil
 │   ├── output.go   # JSON/text output helper (outputResult, tableWriter)
 │   ├── errors.go   # User-friendly error formatting (handleError)
 │   ├── cmdtree.go  # Command tree visualization
@@ -80,7 +80,7 @@ anvil/
 ├── .golangci.yml   # Linter configuration
 ├── .goreleaser.yaml # Release configuration
 ├── .github/workflows/ # CI/CD (release on tag, test on PR, build on main)
-└── main.go         # Entry point
+└── main.go         # Entry point (in cmd/anvil/)
 ```
 
 ## Key Dependencies
@@ -153,16 +153,16 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 ## Conventions
 
 - Use `task` (Taskfile) for all automation
-- Use `glix install` instead of `go install` for CLI tools; use `glix install .` to install from a local directory
+- Use `glix install` instead of `go install` for CLI tools; use `go install ./cmd/anvil` to install locally
 - Table-driven tests, 80% coverage minimum
 - Mute unused returns: `_, _ = fmt.Fprintln(w, output)`
 - Use `log/slog` for structured logging
 - All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output; `--json` → JSON, default → tabwriter
   table
-- CLI list commands use `tableWriter(w)` from `cmd/output.go` for consistent `text/tabwriter` table output (header row
+- CLI list commands use `tableWriter(w)` from `cmd/anvil/output.go` for consistent `text/tabwriter` table output (header row
   in CAPS, tab-separated columns)
 - Global `--json` persistent flag on rootCmd inherited by all subcommands
-- Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/errors.go` formats
+- Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/anvil/errors.go` formats
   them (text or JSON based on `--json`)
 - `SilenceErrors` and `SilenceUsage` are set on rootCmd; Cobra does not dump usage on errors
 - All TUI list screens use `bubbles/table`: secrets (4 cols), profiles (5 cols), audit (5 cols), history (2 cols); each
@@ -181,6 +181,7 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Plugin system: `PluginManager` loaded in `Open()` from `plugins.json` alongside vault DB; hooks fire on Set/Get/Delete
   via pre/post events; pre-hooks can block operations by returning `{"allow":false}`; post-hook errors are logged but
   never block
+- `PluginManager` mutation methods (`AddHook`, `AddProvider`, `RemoveHook`, `RemoveProvider`) return `error` and are nil-safe
 - Plugin config (`plugins.json`) is separate from the vault DB — no schema migration needed
 - Gather command: `vault gather [dir]` recursively discovers `.env`/`.env.*`, `.json`, `.yaml`/`.yml` files; extracts
   secret-pattern keys (password, token, api_key, etc.); interactive by default, `--yes -p <profile>` for non-interactive
