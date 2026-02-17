@@ -15,6 +15,8 @@ const (
 	screenProfiles
 	screenSecrets
 	screenSecretForm
+	screenAudit
+	screenHistory
 )
 
 type model struct {
@@ -24,6 +26,8 @@ type model struct {
 	profiles      profilesModel
 	secrets       secretsModel
 	secretForm    secretFormModel
+	audit         auditModel
+	history       historyModel
 	width, height int
 	err           error
 }
@@ -45,10 +49,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if m.currentScreen == screenSecrets {
+		switch m.currentScreen {
+		case screenSecrets:
 			m.secrets.table.SetWidth(msg.Width)
 			m.secrets.table.SetHeight(max(1, msg.Height-8))
 			m.secrets.table.SetColumns(tableColumns(msg.Width))
+		case screenProfiles:
+			m.profiles.table.SetWidth(msg.Width)
+			m.profiles.table.SetHeight(max(1, msg.Height-8))
+			m.profiles.table.SetColumns(profileTableColumns(msg.Width))
+		case screenAudit:
+			m.audit.table.SetWidth(msg.Width)
+			m.audit.table.SetHeight(max(1, msg.Height-8))
+			m.audit.table.SetColumns(auditTableColumns(msg.Width))
+		case screenHistory:
+			m.history.table.SetWidth(msg.Width)
+			m.history.table.SetHeight(max(1, msg.Height-8))
+			m.history.table.SetColumns(historyTableColumns(msg.Width))
 		}
 		return m, nil
 
@@ -68,6 +85,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSecrets(msg)
 		case screenSecretForm:
 			return m.updateSecretForm(msg)
+		case screenAudit:
+			return m.updateAudit(msg)
+		case screenHistory:
+			return m.updateHistory(msg)
 		}
 	}
 
@@ -99,6 +120,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.secretForm, cmd = m.secretForm.Update(msg)
 		return m, cmd
+	case screenAudit:
+		var cmd tea.Cmd
+		m.audit, cmd = m.audit.Update(msg)
+		return m, cmd
+	case screenHistory:
+		var cmd tea.Cmd
+		m.history, cmd = m.history.Update(msg)
+		return m, cmd
 	}
 
 	return m, nil
@@ -114,6 +143,10 @@ func (m model) View() string {
 		return m.secrets.View(m.width)
 	case screenSecretForm:
 		return m.secretForm.View(m.width)
+	case screenAudit:
+		return m.audit.View(m.width)
+	case screenHistory:
+		return m.history.View(m.width)
 	}
 	return ""
 }
@@ -124,7 +157,12 @@ func (m model) updateDashboard(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "p":
 		m.currentScreen = screenProfiles
+		m.profiles = newProfilesModel(m.width, m.height)
 		return m, m.profiles.loadData(m.vault)
+	case "a":
+		m.currentScreen = screenAudit
+		m.audit = newAuditModel(m.width, m.height)
+		return m, m.audit.loadData(m.vault)
 	}
 	return m, nil
 }
@@ -137,16 +175,6 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.dashboard.loadData(m.vault)
 	case msg.String() == "q":
 		return m, tea.Quit
-	case msg.String() == "up" || msg.String() == "k":
-		if m.profiles.confirm == "" && m.profiles.cursor > 0 {
-			m.profiles.cursor--
-			m.profiles.message = ""
-		}
-	case msg.String() == "down" || msg.String() == "j":
-		if m.profiles.confirm == "" && m.profiles.cursor < len(m.profiles.profiles)-1 {
-			m.profiles.cursor++
-			m.profiles.message = ""
-		}
 	case msg.String() == "enter":
 		if name := m.profiles.selectedProfile(); name != "" && m.profiles.confirm == "" {
 			m.currentScreen = screenSecrets
@@ -196,6 +224,13 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	default:
+		if m.profiles.confirm == "" {
+			m.profiles.message = ""
+			var cmd tea.Cmd
+			m.profiles.table, cmd = m.profiles.table.Update(msg)
+			return m, cmd
+		}
 	}
 
 	return m, nil
@@ -240,6 +275,7 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.String() == "esc":
 		m.currentScreen = screenProfiles
 		m.secrets.message = ""
+		m.profiles = newProfilesModel(m.width, m.height)
 		return m, m.profiles.loadData(m.vault)
 	case msg.String() == "q":
 		return m, tea.Quit
@@ -262,6 +298,14 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					}
 					return secretRevealMsg{key: key, value: val}
 				}
+			}
+		}
+	case msg.String() == "h":
+		if m.secrets.confirm == "" {
+			if key := m.secrets.selectedKey(); key != "" {
+				m.currentScreen = screenHistory
+				m.history = newHistoryModel(key, m.secrets.profileName, m.width, m.height)
+				return m, m.history.loadData(m.vault)
 			}
 		}
 	case msg.String() == "c":
@@ -363,4 +407,32 @@ func (m model) updateSecretForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.secretForm, cmd = m.secretForm.Update(msg)
 	return m, cmd
+}
+
+func (m model) updateAudit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.currentScreen = screenDashboard
+		return m, m.dashboard.loadData(m.vault)
+	case "q":
+		return m, tea.Quit
+	default:
+		var cmd tea.Cmd
+		m.audit.table, cmd = m.audit.table.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m model) updateHistory(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.currentScreen = screenSecrets
+		return m, nil
+	case "q":
+		return m, tea.Quit
+	default:
+		var cmd tea.Cmd
+		m.history.table, cmd = m.history.table.Update(msg)
+		return m, cmd
+	}
 }

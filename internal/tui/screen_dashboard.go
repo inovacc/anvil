@@ -99,7 +99,7 @@ func (d dashboardModel) View(width int) string {
 
 	b.WriteString(box.Render(info.String()))
 	b.WriteString("\n\n")
-	b.WriteString(helpStyle.Render("  p: profiles • q: quit"))
+	b.WriteString(helpStyle.Render("  p: profiles • a: audit • q: quit"))
 
 	return b.String()
 }

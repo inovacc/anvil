@@ -58,6 +58,36 @@ func TestTableColumnsWidthProportions(t *testing.T) {
 	}
 }
 
+func TestProfileTableColumns(t *testing.T) {
+	cols := profileTableColumns(80)
+	if len(cols) != 5 {
+		t.Errorf("got %d cols, want 5", len(cols))
+	}
+	if cols[0].Title != "Name" {
+		t.Errorf("first col = %q, want Name", cols[0].Title)
+	}
+}
+
+func TestAuditTableColumns(t *testing.T) {
+	cols := auditTableColumns(80)
+	if len(cols) != 5 {
+		t.Errorf("got %d cols, want 5", len(cols))
+	}
+	if cols[0].Title != "Timestamp" {
+		t.Errorf("first col = %q, want Timestamp", cols[0].Title)
+	}
+}
+
+func TestHistoryTableColumns(t *testing.T) {
+	cols := historyTableColumns(80)
+	if len(cols) != 2 {
+		t.Errorf("got %d cols, want 2", len(cols))
+	}
+	if cols[0].Title != "Version" {
+		t.Errorf("first col = %q, want Version", cols[0].Title)
+	}
+}
+
 func TestTableStyles(t *testing.T) {
 	s := tableStyles()
 	// Just verify it doesn't panic and returns something
@@ -118,32 +148,22 @@ func TestSecretFormAccessors(t *testing.T) {
 
 func TestProfilesSelectedProfile(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		p := profilesModel{}
+		p := newProfilesModel(80, 40)
 		if got := p.selectedProfile(); got != "" {
 			t.Errorf("got %q, want empty", got)
 		}
 	})
 
-	t.Run("valid cursor", func(t *testing.T) {
-		p := profilesModel{
-			profiles: []vault.ProfileInfo{
-				{Name: "alpha"},
-				{Name: "beta"},
-			},
-			cursor: 1,
+	t.Run("with profiles", func(t *testing.T) {
+		p := newProfilesModel(80, 40)
+		p.profiles = []vault.ProfileInfo{
+			{Name: "alpha"},
+			{Name: "beta"},
 		}
-		if got := p.selectedProfile(); got != "beta" {
-			t.Errorf("got %q, want %q", got, "beta")
-		}
-	})
-
-	t.Run("out of bounds", func(t *testing.T) {
-		p := profilesModel{
-			profiles: []vault.ProfileInfo{{Name: "only"}},
-			cursor:   5,
-		}
-		if got := p.selectedProfile(); got != "" {
-			t.Errorf("got %q, want empty", got)
+		p, _ = p.Update(profilesLoadedMsg{profiles: p.profiles})
+		// First row should be selected by default
+		if got := p.selectedProfile(); got != "alpha" {
+			t.Errorf("got %q, want %q", got, "alpha")
 		}
 	})
 }
@@ -189,20 +209,20 @@ func TestDashboardModelUpdate(t *testing.T) {
 
 func TestProfilesModelUpdate(t *testing.T) {
 	t.Run("loaded", func(t *testing.T) {
-		p := profilesModel{cursor: 5}
+		p := newProfilesModel(80, 40)
 		profiles := []vault.ProfileInfo{{Name: "a"}, {Name: "b"}}
 		p, _ = p.Update(profilesLoadedMsg{profiles: profiles})
 		if !p.loaded {
 			t.Error("expected loaded")
 		}
-		// cursor should be clamped
-		if p.cursor != 1 {
-			t.Errorf("cursor = %d, want 1 (clamped)", p.cursor)
+		if len(p.profiles) != 2 {
+			t.Errorf("profiles count = %d, want 2", len(p.profiles))
 		}
 	})
 
 	t.Run("action success", func(t *testing.T) {
-		p := profilesModel{confirm: "delme"}
+		p := newProfilesModel(80, 40)
+		p.confirm = "delme"
 		p, _ = p.Update(profileActionMsg{message: "done"})
 		if p.confirm != "" {
 			t.Error("confirm should be reset")
@@ -213,7 +233,8 @@ func TestProfilesModelUpdate(t *testing.T) {
 	})
 
 	t.Run("action error", func(t *testing.T) {
-		p := profilesModel{confirm: "x"}
+		p := newProfilesModel(80, 40)
+		p.confirm = "x"
 		p, _ = p.Update(profileActionMsg{err: fmt.Errorf("boom")})
 		if p.confirm != "" {
 			t.Error("confirm should be reset")
@@ -349,7 +370,7 @@ func TestDashboardView(t *testing.T) {
 
 func TestProfilesView(t *testing.T) {
 	t.Run("not loaded", func(t *testing.T) {
-		p := profilesModel{}
+		p := newProfilesModel(80, 40)
 		v := p.View(80)
 		if !strings.Contains(v, "Loading") {
 			t.Error("expected Loading")
@@ -357,7 +378,8 @@ func TestProfilesView(t *testing.T) {
 	})
 
 	t.Run("empty profiles", func(t *testing.T) {
-		p := profilesModel{loaded: true}
+		p := newProfilesModel(80, 40)
+		p.loaded = true
 		v := p.View(80)
 		if !strings.Contains(v, "No profiles") {
 			t.Error("expected No profiles")
@@ -365,11 +387,10 @@ func TestProfilesView(t *testing.T) {
 	})
 
 	t.Run("confirm dialog", func(t *testing.T) {
-		p := profilesModel{
-			loaded:   true,
-			confirm:  "devprofile",
-			profiles: []vault.ProfileInfo{{Name: "devprofile"}},
-		}
+		p := newProfilesModel(80, 40)
+		p.loaded = true
+		p.confirm = "devprofile"
+		p.profiles = []vault.ProfileInfo{{Name: "devprofile"}}
 		v := p.View(80)
 		if !strings.Contains(v, "Delete profile") {
 			t.Error("expected delete confirmation")
@@ -377,14 +398,12 @@ func TestProfilesView(t *testing.T) {
 	})
 
 	t.Run("with profiles", func(t *testing.T) {
-		p := profilesModel{
-			loaded: true,
-			profiles: []vault.ProfileInfo{
-				{Name: "prod", IsDefault: true, SecretCount: 5, Description: "production"},
-				{Name: "dev", SecretCount: 2},
-			},
-			cursor: 0,
+		p := newProfilesModel(80, 40)
+		p.profiles = []vault.ProfileInfo{
+			{Name: "prod", IsDefault: true, SecretCount: 5, Description: "production"},
+			{Name: "dev", SecretCount: 2},
 		}
+		p, _ = p.Update(profilesLoadedMsg{profiles: p.profiles})
 		v := p.View(80)
 		if !strings.Contains(v, "prod") || !strings.Contains(v, "dev") {
 			t.Error("expected profile names")
@@ -524,6 +543,39 @@ func TestModelUpdateWindowSize(t *testing.T) {
 	}
 }
 
+func TestModelUpdateWindowSizeProfiles(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenProfiles
+	m.profiles = newProfilesModel(80, 40)
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	rm := result.(model)
+	if rm.width != 100 {
+		t.Errorf("width = %d, want 100", rm.width)
+	}
+}
+
+func TestModelUpdateWindowSizeAudit(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenAudit
+	m.audit = newAuditModel(80, 40)
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	rm := result.(model)
+	if rm.width != 100 {
+		t.Errorf("width = %d, want 100", rm.width)
+	}
+}
+
+func TestModelUpdateWindowSizeHistory(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenHistory
+	m.history = newHistoryModel("key", "p", 80, 40)
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	rm := result.(model)
+	if rm.width != 100 {
+		t.Errorf("width = %d, want 100", rm.width)
+	}
+}
+
 func TestModelUpdateWindowSizeNonSecrets(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screenDashboard
@@ -565,6 +617,16 @@ func TestUpdateDashboardNavigateToProfiles(t *testing.T) {
 	}
 }
 
+func TestUpdateDashboardNavigateToAudit(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenDashboard
+	result, _ := m.updateDashboard(keyMsg("a"))
+	rm := result.(model)
+	if rm.currentScreen != screenAudit {
+		t.Errorf("screen = %d, want %d", rm.currentScreen, screenAudit)
+	}
+}
+
 func TestUpdateDashboardUnhandledKey(t *testing.T) {
 	m := NewModel(nil)
 	_, cmd := m.updateDashboard(keyMsg("x"))
@@ -577,16 +639,16 @@ func TestUpdateDashboardUnhandledKey(t *testing.T) {
 
 func testProfilesModel() model {
 	m := NewModel(nil)
+	m.width = 80
+	m.height = 40
 	m.currentScreen = screenProfiles
-	m.profiles = profilesModel{
-		loaded: true,
-		profiles: []vault.ProfileInfo{
-			{Name: "alpha"},
-			{Name: "beta"},
-			{Name: "gamma"},
-		},
-		cursor: 1,
+	m.profiles = newProfilesModel(80, 40)
+	profiles := []vault.ProfileInfo{
+		{Name: "alpha"},
+		{Name: "beta"},
+		{Name: "gamma"},
 	}
+	m.profiles, _ = m.profiles.Update(profilesLoadedMsg{profiles: profiles})
 	return m
 }
 
@@ -610,68 +672,16 @@ func TestUpdateProfilesQuit(t *testing.T) {
 	}
 }
 
-func TestUpdateProfilesNavigateUp(t *testing.T) {
-	m := testProfilesModel()
-	m.profiles.cursor = 2
-	result, _ := m.updateProfiles(keyMsg("k"))
-	rm := result.(model)
-	if rm.profiles.cursor != 1 {
-		t.Errorf("cursor = %d, want 1", rm.profiles.cursor)
-	}
-}
-
-func TestUpdateProfilesNavigateUpAtTop(t *testing.T) {
-	m := testProfilesModel()
-	m.profiles.cursor = 0
-	result, _ := m.updateProfiles(specialKeyMsg(tea.KeyUp))
-	rm := result.(model)
-	if rm.profiles.cursor != 0 {
-		t.Errorf("cursor = %d, want 0 (clamped)", rm.profiles.cursor)
-	}
-}
-
-func TestUpdateProfilesNavigateDown(t *testing.T) {
-	m := testProfilesModel()
-	m.profiles.cursor = 0
-	result, _ := m.updateProfiles(keyMsg("j"))
-	rm := result.(model)
-	if rm.profiles.cursor != 1 {
-		t.Errorf("cursor = %d, want 1", rm.profiles.cursor)
-	}
-}
-
-func TestUpdateProfilesNavigateDownAtBottom(t *testing.T) {
-	m := testProfilesModel()
-	m.profiles.cursor = 2 // last index
-	result, _ := m.updateProfiles(specialKeyMsg(tea.KeyDown))
-	rm := result.(model)
-	if rm.profiles.cursor != 2 {
-		t.Errorf("cursor = %d, want 2 (clamped)", rm.profiles.cursor)
-	}
-}
-
-func TestUpdateProfilesNavigateBlockedDuringConfirm(t *testing.T) {
-	m := testProfilesModel()
-	m.profiles.confirm = "alpha"
-	m.profiles.cursor = 1
-	result, _ := m.updateProfiles(keyMsg("k"))
-	rm := result.(model)
-	if rm.profiles.cursor != 1 {
-		t.Errorf("cursor = %d, want 1 (blocked by confirm)", rm.profiles.cursor)
-	}
-}
-
 func TestUpdateProfilesEnter(t *testing.T) {
 	m := testProfilesModel()
-	m.width = 80
-	m.height = 40
 	result, _ := m.updateProfiles(specialKeyMsg(tea.KeyEnter))
 	rm := result.(model)
 	if rm.currentScreen != screenSecrets {
 		t.Errorf("screen = %d, want secrets", rm.currentScreen)
 	}
-	if rm.secrets.profileName != "beta" {
-		t.Errorf("profileName = %q, want beta", rm.secrets.profileName)
+	// First profile should be selected by default
+	if rm.secrets.profileName != "alpha" {
+		t.Errorf("profileName = %q, want alpha", rm.secrets.profileName)
 	}
 }
 
@@ -726,8 +736,9 @@ func TestUpdateProfilesDelete(t *testing.T) {
 	m := testProfilesModel()
 	result, _ := m.updateProfiles(keyMsg("d"))
 	rm := result.(model)
-	if rm.profiles.confirm != "beta" {
-		t.Errorf("confirm = %q, want beta", rm.profiles.confirm)
+	// First profile "alpha" should be selected
+	if rm.profiles.confirm != "alpha" {
+		t.Errorf("confirm = %q, want alpha", rm.profiles.confirm)
 	}
 }
 
@@ -748,14 +759,13 @@ func TestUpdateProfilesUseProfile(t *testing.T) {
 	}
 }
 
-func TestUpdateProfilesNavigationClearsMessage(t *testing.T) {
+func TestUpdateProfilesDefaultKey(t *testing.T) {
 	m := testProfilesModel()
 	m.profiles.message = "old message"
-	m.profiles.cursor = 1
-	result, _ := m.updateProfiles(keyMsg("j"))
+	result, _ := m.updateProfiles(keyMsg("x"))
 	rm := result.(model)
 	if rm.profiles.message != "" {
-		t.Error("navigation should clear message")
+		t.Error("default key should clear message")
 	}
 }
 
@@ -820,6 +830,18 @@ func TestUpdateSecretsEnterBlockedDuringConfirm(t *testing.T) {
 	_, cmd := m.updateSecrets(specialKeyMsg(tea.KeyEnter))
 	if cmd != nil {
 		t.Error("enter should be blocked during confirm")
+	}
+}
+
+func TestUpdateSecretsHistory(t *testing.T) {
+	m := testSecretsModel()
+	result, _ := m.updateSecrets(keyMsg("h"))
+	rm := result.(model)
+	if rm.currentScreen != screenHistory {
+		t.Errorf("screen = %d, want history", rm.currentScreen)
+	}
+	if rm.history.key != "K1" {
+		t.Errorf("history key = %q, want K1", rm.history.key)
 	}
 }
 
@@ -897,6 +919,52 @@ func TestUpdateSecretsDefaultKeyBlockedDuringConfirm(t *testing.T) {
 	// default branch skipped during confirm
 	if rm.secrets.revealKey != "K2" {
 		t.Error("reveal should not be cleared during confirm")
+	}
+}
+
+// --- updateAudit key tests ---
+
+func TestUpdateAuditEsc(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenAudit
+	m.audit = newAuditModel(80, 40)
+	result, _ := m.updateAudit(specialKeyMsg(tea.KeyEsc))
+	rm := result.(model)
+	if rm.currentScreen != screenDashboard {
+		t.Errorf("screen = %d, want dashboard", rm.currentScreen)
+	}
+}
+
+func TestUpdateAuditQuit(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenAudit
+	m.audit = newAuditModel(80, 40)
+	_, cmd := m.updateAudit(keyMsg("q"))
+	if cmd == nil {
+		t.Error("expected quit cmd")
+	}
+}
+
+// --- updateHistory key tests ---
+
+func TestUpdateHistoryEsc(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenHistory
+	m.history = newHistoryModel("key", "p", 80, 40)
+	result, _ := m.updateHistory(specialKeyMsg(tea.KeyEsc))
+	rm := result.(model)
+	if rm.currentScreen != screenSecrets {
+		t.Errorf("screen = %d, want secrets", rm.currentScreen)
+	}
+}
+
+func TestUpdateHistoryQuit(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenHistory
+	m.history = newHistoryModel("key", "p", 80, 40)
+	_, cmd := m.updateHistory(keyMsg("q"))
+	if cmd == nil {
+		t.Error("expected quit cmd")
 	}
 }
 
@@ -1073,6 +1141,30 @@ func TestModelUpdateDelegatesProfilesLoadedMsg(t *testing.T) {
 	}
 }
 
+func TestModelUpdateDelegatesAuditLoadedMsg(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenAudit
+	m.audit = newAuditModel(80, 40)
+
+	result, _ := m.Update(auditLoadedMsg{entries: []vault.AuditEntry{{Action: "set"}}})
+	rm := result.(model)
+	if !rm.audit.loaded {
+		t.Error("audit should be loaded")
+	}
+}
+
+func TestModelUpdateDelegatesHistoryLoadedMsg(t *testing.T) {
+	m := NewModel(nil)
+	m.currentScreen = screenHistory
+	m.history = newHistoryModel("key", "p", 80, 40)
+
+	result, _ := m.Update(historyLoadedMsg{versions: []vault.SecretVersion{{Version: 1, CreatedAt: time.Now()}}})
+	rm := result.(model)
+	if !rm.history.loaded {
+		t.Error("history should be loaded")
+	}
+}
+
 // --- Model.View for all screens ---
 
 func TestModelViewAllScreens(t *testing.T) {
@@ -1084,6 +1176,8 @@ func TestModelViewAllScreens(t *testing.T) {
 		{"profiles", screenProfiles},
 		{"secrets", screenSecrets},
 		{"secretForm", screenSecretForm},
+		{"audit", screenAudit},
+		{"history", screenHistory},
 	}
 	for _, tt := range screens {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1096,6 +1190,12 @@ func TestModelViewAllScreens(t *testing.T) {
 			}
 			if tt.screen == screenSecretForm {
 				m.secretForm = newSecretFormModel("p")
+			}
+			if tt.screen == screenAudit {
+				m.audit = newAuditModel(80, 40)
+			}
+			if tt.screen == screenHistory {
+				m.history = newHistoryModel("key", "p", 80, 40)
 			}
 			v := m.View()
 			if v == "" {
@@ -1117,15 +1217,81 @@ func TestModelViewUnknownScreen(t *testing.T) {
 // --- Profiles view with message ---
 
 func TestProfilesViewWithMessage(t *testing.T) {
-	p := profilesModel{
-		loaded:   true,
-		profiles: []vault.ProfileInfo{{Name: "test"}},
-		message:  "Profile deleted.",
-	}
+	p := newProfilesModel(80, 40)
+	p.loaded = true
+	p.profiles = []vault.ProfileInfo{{Name: "test"}}
+	p, _ = p.Update(profilesLoadedMsg{profiles: p.profiles})
+	p.message = "Profile deleted."
 	v := p.View(80)
 	if !strings.Contains(v, "Profile deleted.") {
 		t.Error("expected message in view")
 	}
+}
+
+// --- Audit view tests ---
+
+func TestAuditView(t *testing.T) {
+	t.Run("not loaded", func(t *testing.T) {
+		a := newAuditModel(80, 40)
+		v := a.View(80)
+		if !strings.Contains(v, "Loading") {
+			t.Error("expected Loading")
+		}
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		a := newAuditModel(80, 40)
+		a.loaded = true
+		v := a.View(80)
+		if !strings.Contains(v, "No audit") {
+			t.Error("expected No audit")
+		}
+	})
+
+	t.Run("with entries", func(t *testing.T) {
+		a := newAuditModel(80, 40)
+		entries := []vault.AuditEntry{
+			{Action: "set", ProfileName: "default", SecretKey: "API_KEY", CreatedAt: time.Now()},
+		}
+		a, _ = a.Update(auditLoadedMsg{entries: entries})
+		v := a.View(80)
+		if !strings.Contains(v, "set") {
+			t.Error("expected action in view")
+		}
+	})
+}
+
+// --- History view tests ---
+
+func TestHistoryView(t *testing.T) {
+	t.Run("not loaded", func(t *testing.T) {
+		h := newHistoryModel("key", "p", 80, 40)
+		v := h.View(80)
+		if !strings.Contains(v, "Loading") {
+			t.Error("expected Loading")
+		}
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		h := newHistoryModel("key", "p", 80, 40)
+		h.loaded = true
+		v := h.View(80)
+		if !strings.Contains(v, "No version") {
+			t.Error("expected No version")
+		}
+	})
+
+	t.Run("with versions", func(t *testing.T) {
+		h := newHistoryModel("key", "p", 80, 40)
+		versions := []vault.SecretVersion{
+			{Version: 1, CreatedAt: time.Now()},
+		}
+		h, _ = h.Update(historyLoadedMsg{versions: versions})
+		v := h.View(80)
+		if !strings.Contains(v, "v1") {
+			t.Error("expected version in view")
+		}
+	})
 }
 
 // --- secretsLoadedMsg with error ---
@@ -1158,12 +1324,38 @@ func TestSecretsModelUpdateActionError(t *testing.T) {
 // --- profilesLoadedMsg with error ---
 
 func TestProfilesModelUpdateLoadError(t *testing.T) {
-	p := profilesModel{}
+	p := newProfilesModel(80, 40)
 	p, _ = p.Update(profilesLoadedMsg{err: fmt.Errorf("load failed")})
 	if !p.loaded {
 		t.Error("expected loaded even on error")
 	}
 	if len(p.profiles) != 0 {
 		t.Error("profiles should be empty on error")
+	}
+}
+
+// --- Audit model update error ---
+
+func TestAuditModelUpdateLoadError(t *testing.T) {
+	a := newAuditModel(80, 40)
+	a, _ = a.Update(auditLoadedMsg{err: fmt.Errorf("audit failed")})
+	if !a.loaded {
+		t.Error("expected loaded even on error")
+	}
+	if len(a.entries) != 0 {
+		t.Error("entries should be empty on error")
+	}
+}
+
+// --- History model update error ---
+
+func TestHistoryModelUpdateLoadError(t *testing.T) {
+	h := newHistoryModel("key", "p", 80, 40)
+	h, _ = h.Update(historyLoadedMsg{err: fmt.Errorf("history failed")})
+	if !h.loaded {
+		t.Error("expected loaded even on error")
+	}
+	if len(h.versions) != 0 {
+		t.Error("versions should be empty on error")
 	}
 }

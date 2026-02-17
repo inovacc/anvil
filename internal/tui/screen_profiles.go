@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/inovacc/anvil/pkg/vault"
 )
 
 type profilesModel struct {
 	profiles []vault.ProfileInfo
-	cursor   int
+	table    table.Model
 	loaded   bool
 	confirm  string // non-empty = confirming delete of this profile
 	message  string // success/error feedback
@@ -25,6 +26,32 @@ type profileActionMsg struct {
 	action  string
 	message string
 	err     error
+}
+
+func newProfilesModel(width, height int) profilesModel {
+	columns := profileTableColumns(width)
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(nil),
+		table.WithFocused(true),
+		table.WithHeight(max(1, height-8)),
+	)
+	t.SetStyles(tableStyles())
+	return profilesModel{table: t}
+}
+
+func profileTableColumns(width int) []table.Column {
+	if width <= 0 {
+		width = 80
+	}
+	w := width - 4
+	return []table.Column{
+		{Title: "Name", Width: w * 25 / 100},
+		{Title: "Default", Width: w * 10 / 100},
+		{Title: "Secrets", Width: w * 10 / 100},
+		{Title: "Description", Width: w * 30 / 100},
+		{Title: "Created", Width: w * 25 / 100},
+	}
 }
 
 func (p profilesModel) loadData(v *vault.Vault) tea.Cmd {
@@ -43,9 +70,25 @@ func (p profilesModel) Update(msg tea.Msg) (profilesModel, tea.Cmd) {
 		p.loaded = true
 		if msg.err == nil {
 			p.profiles = msg.profiles
-			if p.cursor >= len(p.profiles) {
-				p.cursor = max(0, len(p.profiles)-1)
+			rows := make([]table.Row, len(p.profiles))
+			for i, prof := range p.profiles {
+				def := ""
+				if prof.IsDefault {
+					def = "*"
+				}
+				created := "-"
+				if !prof.CreatedAt.IsZero() {
+					created = prof.CreatedAt.Format("2006-01-02 15:04")
+				}
+				rows[i] = table.Row{
+					prof.Name,
+					def,
+					fmt.Sprintf("%d", prof.SecretCount),
+					prof.Description,
+					created,
+				}
 			}
+			p.table.SetRows(rows)
 		}
 	case profileActionMsg:
 		if msg.err != nil {
@@ -81,40 +124,22 @@ func (p profilesModel) View(width int) string {
 		return b.String()
 	}
 
-	for i, prof := range p.profiles {
-		cursor := "  "
-		style := normalStyle
-		if i == p.cursor {
-			cursor = "> "
-			style = selectedStyle
-		}
-
-		marker := ""
-		if prof.IsDefault {
-			marker = " *"
-		}
-
-		line := fmt.Sprintf("%s%s%s (%d secrets)", cursor, prof.Name, marker, prof.SecretCount)
-		b.WriteString(style.Render(line))
-		if prof.Description != "" {
-			b.WriteString(dimStyle.Render(fmt.Sprintf(" — %s", prof.Description)))
-		}
-		b.WriteString("\n")
-	}
+	b.WriteString(p.table.View())
+	b.WriteString("\n")
 
 	if p.message != "" {
-		b.WriteString("\n  " + p.message)
+		b.WriteString("  " + p.message + "\n")
 	}
 
-	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("  enter: secrets • c: create • d: delete • u: set default • esc: back"))
 
 	return b.String()
 }
 
 func (p profilesModel) selectedProfile() string {
-	if len(p.profiles) == 0 || p.cursor >= len(p.profiles) {
+	row := p.table.SelectedRow()
+	if len(row) == 0 {
 		return ""
 	}
-	return p.profiles[p.cursor].Name
+	return row[0]
 }

@@ -62,21 +62,26 @@ var vaultProfileListCmd = &cobra.Command{
 				return
 			}
 
+			tw := tableWriter(w)
+			_, _ = fmt.Fprintln(tw, "NAME\tDEFAULT\tSECRETS\tDESCRIPTION\tCREATED")
 			for _, p := range profiles {
-				marker := "  "
+				def := ""
 				if p.IsDefault {
-					marker = "* "
+					def = "*"
 				}
-				desc := ""
-				if p.Description != "" {
-					desc = fmt.Sprintf(" - %s", p.Description)
+				created := "-"
+				if !p.CreatedAt.IsZero() {
+					created = p.CreatedAt.Format("2006-01-02 15:04:05")
 				}
-				uuidStr := ""
-				if p.UUID != "" {
-					uuidStr = fmt.Sprintf(" [%s]", p.UUID)
-				}
-				_, _ = fmt.Fprintf(w, "%s%s%s (%d secrets)%s\n", marker, p.Name, uuidStr, p.SecretCount, desc)
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n",
+					p.Name,
+					def,
+					p.SecretCount,
+					p.Description,
+					created,
+				)
 			}
+			_ = tw.Flush()
 		})
 		return nil
 	},

@@ -147,7 +147,7 @@ func (s secretsModel) View(width int) string {
 		b.WriteString("  " + s.message + "\n")
 	}
 
-	b.WriteString(helpStyle.Render("  enter: reveal • n: new • d: delete • esc: back"))
+	b.WriteString(helpStyle.Render("  enter: reveal • h: history • n: new • d: delete • esc: back"))
 
 	return b.String()
 }

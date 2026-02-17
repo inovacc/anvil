@@ -35,9 +35,12 @@ var vaultHistoryCmd = &cobra.Command{
 
 		outputResult(cmd, versions, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Version history for %q (%d versions):\n\n", args[0], len(versions))
+			tw := tableWriter(cmd.OutOrStdout())
+			_, _ = fmt.Fprintln(tw, "VERSION\tCREATED")
 			for _, ver := range versions {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  v%d  %s\n", ver.Version, ver.CreatedAt.Format("2006-01-02 15:04:05"))
+				_, _ = fmt.Fprintf(tw, "v%d\t%s\n", ver.Version, ver.CreatedAt.Format("2006-01-02 15:04:05"))
 			}
+			_ = tw.Flush()
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nUse 'anvil vault rollback %s <version>' to restore.\n", args[0])
 		})
 		return nil

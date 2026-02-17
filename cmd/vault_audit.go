@@ -38,20 +38,18 @@ var vaultAuditCmd = &cobra.Command{
 				return
 			}
 
+			tw := tableWriter(cmd.OutOrStdout())
+			_, _ = fmt.Fprintln(tw, "TIMESTAMP\tACTION\tPROFILE\tKEY\tDETAIL")
 			for _, e := range entries {
-				line := fmt.Sprintf("[%s] %-16s profile=%-10s",
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 					e.CreatedAt.Format("2006-01-02 15:04:05"),
 					e.Action,
 					e.ProfileName,
+					e.SecretKey,
+					e.Detail,
 				)
-				if e.SecretKey != "" {
-					line += fmt.Sprintf(" key=%s", e.SecretKey)
-				}
-				if e.Detail != "" {
-					line += fmt.Sprintf(" detail=%s", e.Detail)
-				}
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			}
+			_ = tw.Flush()
 		})
 
 		return nil

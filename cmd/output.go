@@ -3,6 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 )
@@ -23,4 +25,9 @@ func outputResult(cmd *cobra.Command, jsonData any, textFn func()) {
 	}
 
 	textFn()
+}
+
+// tableWriter creates a tabwriter with consistent settings for CLI table output.
+func tableWriter(w io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 }

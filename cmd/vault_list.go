@@ -31,13 +31,21 @@ var vaultListCmd = &cobra.Command{
 				return
 			}
 
+			tw := tableWriter(w)
+			_, _ = fmt.Fprintln(tw, "KEY\tDESCRIPTION\tCREATED\tUPDATED")
 			for _, s := range secrets {
-				desc := ""
-				if s.Description != "" {
-					desc = fmt.Sprintf(" - %s", s.Description)
+				updated := "-"
+				if !s.UpdatedAt.IsZero() {
+					updated = s.UpdatedAt.Format("2006-01-02 15:04:05")
 				}
-				_, _ = fmt.Fprintf(w, "  %s%s\n", s.Key, desc)
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
+					s.Key,
+					s.Description,
+					s.CreatedAt.Format("2006-01-02 15:04:05"),
+					updated,
+				)
 			}
+			_ = tw.Flush()
 		})
 		return nil
 	},
