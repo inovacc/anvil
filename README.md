@@ -1,10 +1,12 @@
 # anvil
 
-Machine-bound encrypted vault and profile manager. Store and manage secrets organized by profiles, bound to the current machine.
+Machine-bound encrypted vault and profile manager. Store and manage secrets organized by profiles, bound to the current
+machine.
 
 ## Features
 
-- **TPM 2.0 Hardware-Backed Sealing** — Master key sealed to TPM hardware when available, software HKDF fallback otherwise
+- **TPM 2.0 Hardware-Backed Sealing** — Master key sealed to TPM hardware when available, software HKDF fallback
+  otherwise
 - **Machine-Bound Encryption** — AES-256-GCM with HKDF-SHA256, non-portable by design
 - **Profile Management** — Organize secrets into named profiles with default selection
 - **Secret CRUD** — Set, get, delete, list, export, and import encrypted secrets
@@ -17,10 +19,12 @@ Machine-bound encrypted vault and profile manager. Store and manage secrets orga
 - **Plugin System** — Event hooks (pre/post set, get, delete) and external secret providers
 - **Secret Gathering** — Auto-discover secrets from `.env`, JSON, and YAML config files in a directory tree
 - **Docker Bridge** — Export secrets as Docker files or Compose YAML snippets
-- **Profile Isolation** — UUID-based `ScopedVault` for external apps: single-profile access with RBAC (masked reads, denied export)
+- **Profile Isolation** — UUID-based `ScopedVault` for external apps: single-profile access with RBAC (masked reads,
+  denied export)
 - **Vault Seal/Unseal** — Temporarily lock all vault operations with `vault seal` / `vault unseal`
 - **Version Lockdown** — Archived versions are metadata-only with 30-day retention; accessible only via rollback
-- **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`, `VaultPassword`, `VaultScoped`) for external consumers
+- **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`,
+  `VaultPassword`, `VaultScoped`) for external consumers
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
 - **Inline Secret Access** — Single secret retrieval via `--env-inline` flag
@@ -75,6 +79,7 @@ anvil vault tui
 ```
 
 Navigate with keyboard shortcuts:
+
 - **Dashboard**: vault status overview. `p` to browse profiles, `q` to quit
 - **Profiles**: `↑`/`↓` to navigate, `Enter` to view secrets, `c` to create, `d` to delete, `u` to set default
 - **Secrets**: `Enter` to reveal value, `n` to create, `d` to delete
@@ -188,7 +193,8 @@ func NewService(reader vault.VaultReader) *Service {
 }
 ```
 
-Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (password ops), `VaultScoped` (isolated single-profile access), `VaultSeal` (seal/unseal).
+Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (
+password ops), `VaultScoped` (isolated single-profile access), `VaultSeal` (seal/unseal).
 
 ## CLI Tools
 
@@ -263,7 +269,8 @@ anvil
 
 ## Security
 
-- **TPM 2.0 sealing** — master key hardware-bound via [sealbox](https://github.com/inovacc/sealbox); cannot be extracted even with full disk access
+- **TPM 2.0 sealing** — master key hardware-bound via [sealbox](https://github.com/inovacc/sealbox); cannot be extracted
+  even with full disk access
 - **Software fallback** — HKDF-SHA256 key derivation for machines without TPM (macOS, VMs)
 - **AES-256-GCM** encryption for all stored secrets
 - **bcrypt** password hashing for env release gate

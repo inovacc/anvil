@@ -351,10 +351,12 @@ func TestCheckShortFile(t *testing.T) {
 	}
 
 	key := testKey(t)
+
 	state, err := Check(key)
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
+
 	if state.Active {
 		t.Error("expected inactive for short file")
 	}
@@ -377,9 +379,11 @@ func TestCheckExpiredAutoRevokes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
+
 	if state.Active {
 		t.Error("expected inactive for expired session")
 	}
+
 	if state.ProfileName != "test" {
 		t.Errorf("ProfileName = %q, want %q", state.ProfileName, "test")
 	}

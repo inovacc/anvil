@@ -13,17 +13,21 @@ import (
 
 func TestUnsealVaultHappyPath(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	if err := v.Seal(); err != nil {
 		t.Fatalf("Seal: %v", err)
 	}
+
 	_ = v.Close()
 
 	// Unseal
@@ -36,11 +40,13 @@ func TestUnsealVaultHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open after unseal: %v", err)
 	}
+
 	_ = v2.Close()
 }
 
 func TestUnsealVaultNotSealed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -56,14 +62,17 @@ func TestUnsealVaultNotSealed(t *testing.T) {
 
 func TestSealAlreadySealed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()
@@ -84,14 +93,17 @@ func TestSealAlreadySealed(t *testing.T) {
 
 func TestIsSealed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()
@@ -114,14 +126,17 @@ func TestIsSealed(t *testing.T) {
 
 func TestSetWhileSealed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()
@@ -145,14 +160,17 @@ func TestSetWhileSealed(t *testing.T) {
 
 func TestGetWhileSealed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()
@@ -161,6 +179,7 @@ func TestGetWhileSealed(t *testing.T) {
 	if err := v.CreateProfile("test", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("KEY", "val", "test", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -179,14 +198,17 @@ func TestGetWhileSealed(t *testing.T) {
 
 func TestCreateProfileWhileSealed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()
@@ -235,10 +257,12 @@ func TestAllSentinelErrors(t *testing.T) {
 		if s.Error() == "" {
 			t.Errorf("sentinel error has empty message")
 		}
+
 		ue, ok := vault.IsUserError(s)
 		if !ok {
 			t.Errorf("IsUserError(%q) = false", s.Error())
 		}
+
 		if ue.Message == "" {
 			t.Errorf("sentinel %q has empty message", s.Error())
 		}
@@ -253,6 +277,7 @@ func TestAuditLogEntryFields(t *testing.T) {
 	if err := v.CreateProfile("af", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("AKEY", "aval", "af", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -268,15 +293,19 @@ func TestAuditLogEntryFields(t *testing.T) {
 			if e.ProfileName != "af" {
 				t.Errorf("profile = %q, want 'af'", e.ProfileName)
 			}
+
 			if e.SecretKey != "AKEY" {
 				t.Errorf("key = %q, want 'AKEY'", e.SecretKey)
 			}
+
 			if e.CreatedAt.IsZero() {
 				t.Error("CreatedAt should not be zero")
 			}
+
 			return
 		}
 	}
+
 	t.Error("secret.set audit entry not found")
 }
 
@@ -320,6 +349,7 @@ func TestRotationAuditLog(t *testing.T) {
 	if err := v.SetPassword("rotpass1"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.CreateProfile("r", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -334,12 +364,14 @@ func TestRotationAuditLog(t *testing.T) {
 	}
 
 	found := false
+
 	for _, e := range entries {
 		if e.Action == "key.rotate" {
 			found = true
 			break
 		}
 	}
+
 	if !found {
 		t.Error("expected key.rotate audit entry")
 	}
@@ -349,14 +381,17 @@ func TestRotationAuditLog(t *testing.T) {
 
 func TestSealAuditLog(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()
@@ -394,6 +429,7 @@ func TestImportWithDescriptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
+
 	if len(exported) != 2 {
 		t.Fatalf("expected 2, got %d", len(exported))
 	}
@@ -422,9 +458,11 @@ func TestListSecretsTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+
 	if len(secrets) != 1 {
 		t.Fatalf("expected 1 secret, got %d", len(secrets))
 	}
+
 	if secrets[0].CreatedAt.IsZero() {
 		t.Error("CreatedAt should not be zero")
 	}
@@ -458,6 +496,7 @@ func TestProfileUUID(t *testing.T) {
 	if len(profiles) != 1 {
 		t.Fatalf("expected 1 profile, got %d", len(profiles))
 	}
+
 	if profiles[0].UUID == "" {
 		t.Error("expected non-empty UUID")
 	}
@@ -472,7 +511,8 @@ func TestMultipleProfilesWithSecrets(t *testing.T) {
 		if err := v.CreateProfile(name, "", name == "p1"); err != nil {
 			t.Fatalf("CreateProfile %s: %v", name, err)
 		}
-		for i := 0; i < 3; i++ {
+
+		for i := range 3 {
 			key := name + "_K" + string(rune('0'+i))
 			if err := v.Set(key, "val", name, ""); err != nil {
 				t.Fatalf("Set %s: %v", key, err)
@@ -484,9 +524,11 @@ func TestMultipleProfilesWithSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.ProfileCount != 3 {
 		t.Errorf("ProfileCount = %d, want 3", status.ProfileCount)
 	}
+
 	if status.SecretCount != 9 {
 		t.Errorf("SecretCount = %d, want 9", status.SecretCount)
 	}
@@ -499,32 +541,38 @@ func TestPluginManagerGetFromProviderScript(t *testing.T) {
 	configPath := filepath.Join(dir, "plugins.json")
 
 	var cmd string
+
 	if os.Getenv("GOOS") == "windows" || filepath.Separator == '\\' {
 		scriptPath := filepath.Join(dir, "provider.bat")
 		if err := os.WriteFile(scriptPath, []byte("@echo off\r\necho test_value"), 0o700); err != nil {
 			t.Fatalf("write script: %v", err)
 		}
+
 		cmd = scriptPath
 	} else {
 		scriptPath := filepath.Join(dir, "provider.sh")
 		if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\necho test_value"), 0o700); err != nil {
 			t.Fatalf("write script: %v", err)
 		}
+
 		cmd = scriptPath
 	}
 
 	pm := vault.NewPluginManager(configPath)
 	pm.AddProvider("test", cmd, "ext/")
+
 	if err := pm.SaveConfig(); err != nil {
 		t.Fatalf("SaveConfig: %v", err)
 	}
 
 	// Reload
 	pm2 := vault.NewPluginManager(configPath)
+
 	val, err := pm2.GetFromProvider("test", "anykey", "anyprofile")
 	if err != nil {
 		t.Fatalf("GetFromProvider: %v", err)
 	}
+
 	if val != "test_value" {
 		t.Errorf("provider value = %q, want 'test_value'", val)
 	}
@@ -538,6 +586,7 @@ func TestBackupRestoreWithVersions(t *testing.T) {
 	if err := v.SetPassword("backuppass"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.CreateProfile("bk", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -546,6 +595,7 @@ func TestBackupRestoreWithVersions(t *testing.T) {
 	if err := v.Set("BK", "v1", "bk", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("BK", "v2", "bk", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -554,18 +604,22 @@ func TestBackupRestoreWithVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Backup: %v", err)
 	}
+
 	_ = v.Close()
 
 	// Restore into new vault
 	dbPath2 := filepath.Join(t.TempDir(), "vault2.db")
+
 	opts2 := &vault.Options{DBPath: dbPath2}
 	if err := vault.Init(opts2); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v2, err := vault.Open(opts2)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() { _ = v2.Close() }()
 
 	if err := v2.Restore(encrypted, "backuppass"); err != nil {
@@ -577,6 +631,7 @@ func TestBackupRestoreWithVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "v2" {
 		t.Errorf("value = %q, want 'v2'", val)
 	}
@@ -585,10 +640,12 @@ func TestBackupRestoreWithVersions(t *testing.T) {
 	if err := v2.SecretRollback("BK", "bk", 1); err != nil {
 		t.Fatalf("SecretRollback: %v", err)
 	}
+
 	val, err = v2.Get("BK", "bk")
 	if err != nil {
 		t.Fatalf("Get after rollback: %v", err)
 	}
+
 	if val != "v1" {
 		t.Errorf("after rollback = %q, want 'v1'", val)
 	}
@@ -602,9 +659,11 @@ func TestRestoreWrongPasswordExtra(t *testing.T) {
 	if err := v.SetPassword("correct1"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.CreateProfile("bk2", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("K", "V", "bk2", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -616,14 +675,17 @@ func TestRestoreWrongPasswordExtra(t *testing.T) {
 
 	// Restore with wrong password
 	dbPath2 := filepath.Join(t.TempDir(), "vault2.db")
+
 	opts2 := &vault.Options{DBPath: dbPath2}
 	if err := vault.Init(opts2); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v2, err := vault.Open(opts2)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	defer func() { _ = v2.Close() }()
 
 	err = v2.Restore(encrypted, "wrongpass")
@@ -640,9 +702,11 @@ func TestShareExportImportExtra(t *testing.T) {
 	if err := v.CreateProfile("sh", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("S1", "sv1", "sh", "shared secret"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("S2", "sv2", "sh", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -656,6 +720,7 @@ func TestShareExportImportExtra(t *testing.T) {
 	if err := v.CreateProfile("sh-imported", "", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if _, err := v.ShareImport(encrypted, "sharepass", "sh-imported"); err != nil {
 		t.Fatalf("ShareImport: %v", err)
 	}
@@ -664,6 +729,7 @@ func TestShareExportImportExtra(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "sv1" {
 		t.Errorf("value = %q, want 'sv1'", val)
 	}
@@ -675,6 +741,7 @@ func TestShareImportWrongPassExtra(t *testing.T) {
 	if err := v.CreateProfile("sh2", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("SK", "SV", "sh2", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -687,6 +754,7 @@ func TestShareImportWrongPassExtra(t *testing.T) {
 	if err := v.CreateProfile("sh2-imp", "", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	_, err = v.ShareImport(encrypted, "wrongpassphrase", "sh2-imp")
 	if err == nil {
 		t.Fatal("expected error for wrong passphrase")

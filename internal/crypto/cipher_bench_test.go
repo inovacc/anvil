@@ -9,6 +9,7 @@ func BenchmarkEncrypt(b *testing.B) {
 	plaintext := []byte("secret-value-for-benchmark-testing")
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		_, _, _ = Encrypt(key, plaintext)
 	}
@@ -20,6 +21,7 @@ func BenchmarkDecrypt(b *testing.B) {
 	ciphertext, nonce, _ := Encrypt(key, plaintext)
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		_, _ = Decrypt(key, ciphertext, nonce)
 	}
@@ -30,6 +32,7 @@ func BenchmarkEncryptLarge(b *testing.B) {
 	plaintext := make([]byte, 64*1024) // 64KB
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		_, _, _ = Encrypt(key, plaintext)
 	}
@@ -39,6 +42,7 @@ func BenchmarkDeriveKey(b *testing.B) {
 	salt, _ := GenerateSalt()
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		_, _ = DeriveKey("machine-id-value", salt)
 	}

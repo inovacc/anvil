@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ var vaultPluginListCmd = &cobra.Command{
 
 		type output struct {
 			Hooks     []vault.HookConfig     `json:"hooks"`
-			Providers []vault.ProviderConfig  `json:"providers"`
+			Providers []vault.ProviderConfig `json:"providers"`
 		}
 
 		out := output{

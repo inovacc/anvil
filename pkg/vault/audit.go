@@ -28,9 +28,11 @@ func (v *Vault) AuditLog(limit int64) ([]AuditEntry, error) {
 		if r.SecretKey != nil {
 			e.SecretKey = *r.SecretKey
 		}
+
 		if r.Detail != nil {
 			e.Detail = *r.Detail
 		}
+
 		entries = append(entries, e)
 	}
 
@@ -54,9 +56,11 @@ func (v *Vault) AuditLogByProfile(profileName string, limit int64) ([]AuditEntry
 		if r.SecretKey != nil {
 			e.SecretKey = *r.SecretKey
 		}
+
 		if r.Detail != nil {
 			e.Detail = *r.Detail
 		}
+
 		entries = append(entries, e)
 	}
 

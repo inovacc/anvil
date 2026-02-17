@@ -80,80 +80,94 @@ func NewModel(v *vault.Vault) model {
 	// Default to Status screen
 	sb.moveCursorToScreen(screenStatus)
 
-	return model{
+	m := model{
 		vault:         v,
 		sidebar:       sb,
 		currentScreen: screenStatus,
 		focus:         focusSidebar,
 	}
+	m.initScreen(screenStatus)
+
+	return m
 }
 
 func (m model) Init() tea.Cmd {
 	return m.loadScreenData(screenStatus)
 }
 
-func (m model) loadScreenData(sc screen) tea.Cmd {
-	contentWidth := m.contentWidth()
-	contentHeight := m.contentHeight()
+// initScreen initializes the model for the given screen. Must be called on
+// the model that will be returned (not a copy).
+func (m *model) initScreen(sc screen) {
+	w := m.contentWidth()
+	h := m.contentHeight()
 
-	switch sc { //nolint:exhaustive // screenSecretForm has no load
+	switch sc { //nolint:exhaustive // screenSecretForm initialized elsewhere
 	case screenStatus:
 		m.status = newStatusModel()
-		return m.status.loadData(m.vault)
 	case screenProfiles:
-		m.profiles = newProfilesModel(contentWidth, contentHeight)
-		return m.profiles.loadData(m.vault)
+		m.profiles = newProfilesModel(w, h)
 	case screenSecrets:
-		m.secrets = newSecretsModel(m.secrets.profileName, contentWidth, contentHeight)
-		return m.secrets.loadData(m.vault, m.secrets.profileName)
+		m.secrets = newSecretsModel(m.secrets.profileName, w, h)
 	case screenAudit:
-		m.audit = newAuditModel(contentWidth, contentHeight)
-		return m.audit.loadData(m.vault)
+		m.audit = newAuditModel(w, h)
 	case screenHistory:
-		m.history = newHistoryModel(m.history.key, m.history.profileName, contentWidth, contentHeight)
-		return m.history.loadData(m.vault)
+		m.history = newHistoryModel(m.history.key, m.history.profileName, w, h)
 	case screenPassword:
 		m.password = newPasswordScreenModel()
-		return m.password.loadData(m.vault)
 	case screenKeyRotation:
 		m.keyRotation = newKeyRotationModel()
-		return nil
 	case screenSeal:
 		m.seal = newSealScreenModel()
-		return m.seal.loadData(m.vault)
 	case screenEnvRelease:
 		m.envRelease = newEnvReleaseModel()
-		return nil
 	case screenEnvStatus:
 		m.envStatus = newEnvStatusModel()
-		return m.envStatus.loadData(m.vault)
 	case screenEnvExport:
 		m.envExport = newEnvExportModel()
-		return nil
 	case screenTemplates:
-		m.templates = newTemplatesModel(contentWidth, contentHeight)
-		return m.templates.loadData(m.vault)
+		m.templates = newTemplatesModel(w, h)
 	case screenTemplateApply:
 		m.templateApply = newTemplateApplyModel()
-		return m.templateApply.loadData(m.vault)
 	case screenBackup:
 		m.backup = newBackupScreenModel()
-		return nil
 	case screenShare:
 		m.share = newShareScreenModel()
-		return nil
 	case screenDocker:
 		m.docker = newDockerScreenModel()
-		return nil
 	case screenPlugins:
-		m.plugins = newPluginsModel(contentWidth, contentHeight)
-		return m.plugins.loadData(m.vault)
+		m.plugins = newPluginsModel(w, h)
 	case screenGather:
 		m.gather = newGatherScreenModel()
-		return nil
 	case screenImportExport:
 		m.importExport = newImportExportModel()
-		return nil
+	}
+}
+
+// loadScreenData returns a command that fetches data for the given screen.
+func (m model) loadScreenData(sc screen) tea.Cmd {
+	switch sc { //nolint:exhaustive // not all screens need async data
+	case screenStatus:
+		return m.status.loadData(m.vault)
+	case screenProfiles:
+		return m.profiles.loadData(m.vault)
+	case screenSecrets:
+		return m.secrets.loadData(m.vault, m.secrets.profileName)
+	case screenAudit:
+		return m.audit.loadData(m.vault)
+	case screenHistory:
+		return m.history.loadData(m.vault)
+	case screenPassword:
+		return m.password.loadData(m.vault)
+	case screenSeal:
+		return m.seal.loadData(m.vault)
+	case screenEnvStatus:
+		return m.envStatus.loadData(m.vault)
+	case screenTemplates:
+		return m.templates.loadData(m.vault)
+	case screenTemplateApply:
+		return m.templateApply.loadData(m.vault)
+	case screenPlugins:
+		return m.plugins.loadData(m.vault)
 	}
 
 	return nil
@@ -230,6 +244,7 @@ func (m model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentScreen = sc
 			m.focus = focusContent
 			m.sidebar.focused = false
+			m.initScreen(sc)
 
 			return m, m.loadScreenData(sc)
 		}

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -47,6 +47,7 @@ func runPasswordSet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = v.Close() }()
 
 	has, err := v.HasPassword()
@@ -62,21 +63,26 @@ func runPasswordSet(cmd *cobra.Command, args []string) error {
 			if currentPw == "" {
 				return fmt.Errorf("--current is required when updating an existing password")
 			}
+
 			if err := v.VerifyPassword(currentPw); err != nil {
 				return err
 			}
 		}
+
 		if len(flagPw) < 8 {
 			return fmt.Errorf("password must be at least 8 characters")
 		}
+
 		if err := v.SetPassword(flagPw); err != nil {
 			return err
 		}
+
 		outputResult(cmd, struct {
 			Message string `json:"message"`
 		}{"Password set successfully."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
 		})
+
 		return nil
 	}
 
@@ -86,6 +92,7 @@ func runPasswordSet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if err := v.VerifyPassword(current); err != nil {
 			return err
 		}
@@ -95,6 +102,7 @@ func runPasswordSet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if len(password) < 8 {
 		return fmt.Errorf("password must be at least 8 characters")
 	}
@@ -103,6 +111,7 @@ func runPasswordSet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if password != confirm {
 		return fmt.Errorf("passwords do not match")
 	}
@@ -116,6 +125,7 @@ func runPasswordSet(cmd *cobra.Command, args []string) error {
 	}{"Password set successfully."}, func() {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
 	})
+
 	return nil
 }
 
@@ -124,18 +134,21 @@ func runPasswordReset(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = v.Close() }()
 
 	has, err := v.HasPassword()
 	if err != nil {
 		return err
 	}
+
 	if !has {
 		outputResult(cmd, struct {
 			Message string `json:"message"`
 		}{"No password is set."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No password is set.")
 		})
+
 		return nil
 	}
 
@@ -143,6 +156,7 @@ func runPasswordReset(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if err := v.VerifyPassword(current); err != nil {
 		return err
 	}
@@ -159,6 +173,7 @@ func runPasswordReset(cmd *cobra.Command, args []string) error {
 	}{"Password removed."}, func() {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password removed.")
 	})
+
 	return nil
 }
 

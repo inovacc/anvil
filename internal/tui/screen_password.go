@@ -33,6 +33,7 @@ func newPasswordScreenModel() passwordScreenModel {
 	ti.Width = 40
 	ti.PromptStyle = focusedInputStyle
 	ti.TextStyle = focusedInputStyle
+
 	return passwordScreenModel{input: ti}
 }
 
@@ -56,10 +57,14 @@ func (p passwordScreenModel) Update(msg tea.Msg) (passwordScreenModel, tea.Cmd) 
 		} else {
 			p.message = successStyle.Render(msg.message)
 		}
+
 		return p, p.loadData(nil) // will be called with vault in handleKey
 	}
+
 	var cmd tea.Cmd
+
 	p.input, cmd = p.input.Update(msg)
+
 	return p, cmd
 }
 
@@ -71,11 +76,14 @@ func (p passwordScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (password
 			p.message = errorStyle.Render("Password must be at least 8 characters.")
 			return p, nil
 		}
+
 		p.input.SetValue("")
+
 		return p, func() tea.Msg {
 			if err := v.SetPassword(pw); err != nil {
 				return passwordActionMsg{err: err}
 			}
+
 			return passwordActionMsg{message: "Password set successfully."}
 		}
 	case "d":
@@ -84,13 +92,18 @@ func (p passwordScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (password
 				if err := v.DeletePassword(); err != nil {
 					return passwordActionMsg{err: err}
 				}
+
 				_ = v.EnvRevoke()
+
 				return passwordActionMsg{message: "Password removed."}
 			}
 		}
 	}
+
 	var cmd tea.Cmd
+
 	p.input, cmd = p.input.Update(msg)
+
 	return p, cmd
 }
 
@@ -110,6 +123,7 @@ func (p passwordScreenModel) View(width int) string {
 	} else {
 		b.WriteString(dimStyle.Render("  No password configured."))
 	}
+
 	b.WriteString("\n\n")
 
 	b.WriteString("  " + inputLabelStyle.Render("New Password") + "\n")

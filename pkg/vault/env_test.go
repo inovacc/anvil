@@ -12,14 +12,17 @@ import (
 func initOpenWithPassword(t *testing.T) *vault.Vault {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = v.Close() })
 
 	if err := v.SetPassword("testpass"); err != nil {
@@ -46,9 +49,11 @@ func TestEnvReleaseAndStatus(t *testing.T) {
 	if !state.Active {
 		t.Error("expected active release")
 	}
+
 	if state.ProfileName != "default" {
 		t.Errorf("ProfileName = %q, want %q", state.ProfileName, "default")
 	}
+
 	if state.SessionID == "" {
 		t.Error("expected non-empty session ID")
 	}
@@ -57,6 +62,7 @@ func TestEnvReleaseAndStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvStatus: %v", err)
 	}
+
 	if !status.Active {
 		t.Error("expected active status")
 	}
@@ -100,6 +106,7 @@ func TestEnvRevokeAndStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvStatus: %v", err)
 	}
+
 	if status.Active {
 		t.Error("expected inactive after revoke")
 	}
@@ -136,6 +143,7 @@ func TestEnvExportWithRelease(t *testing.T) {
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 entry, got %d", len(entries))
 	}
+
 	if entries[0].Key != "API_KEY" || entries[0].Value != "secret123" {
 		t.Errorf("unexpected entry: %+v", entries[0])
 	}
@@ -167,6 +175,7 @@ func TestEnvInlineGetWithRelease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvInlineGet: %v", err)
 	}
+
 	if val != "value42" {
 		t.Errorf("got %q, want %q", val, "value42")
 	}
@@ -180,6 +189,7 @@ func TestEnvReleaseTTLExactBounds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvRelease at min TTL: %v", err)
 	}
+
 	if !state.Active {
 		t.Error("expected active release at min TTL")
 	}
@@ -192,6 +202,7 @@ func TestEnvReleaseTTLExactBounds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvRelease at max TTL: %v", err)
 	}
+
 	if !state.Active {
 		t.Error("expected active release at max TTL")
 	}
@@ -207,6 +218,7 @@ func TestEnvStatusNoSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvStatus: %v", err)
 	}
+
 	if status.Active {
 		t.Error("expected inactive status when no session")
 	}

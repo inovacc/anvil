@@ -1,15 +1,17 @@
 # Backlog
 
 ## Priority Levels
-| Priority | Timeline |
-|----------|----------|
-| P1 | First month |
-| P2 | First quarter |
-| P3 | Future |
+
+| Priority | Timeline      |
+|----------|---------------|
+| P1       | First month   |
+| P2       | First quarter |
+| P3       | Future        |
 
 ## Items
 
 ### Security
+
 - **Priority:** P1
 - **Description:** Add master key rotation support
 - **Effort:** Large
@@ -26,6 +28,7 @@
 - **Status:** DONE — `vault history <key>` and `vault rollback <key> <version>` commands
 
 ### Usability
+
 - **Priority:** P1
 - **Description:** Shell auto-completion (bash, zsh, fish, powershell)
 - **Effort:** Medium
@@ -34,14 +37,17 @@
 - **Priority:** P2
 - **Description:** Interactive TUI with bubbletea
 - **Effort:** Large
-- **Status:** DONE — `vault tui` command with dashboard, profile browser, secrets table view (Key/Description/Created/Updated columns), and secret form screens
+- **Status:** DONE — `vault tui` command with dashboard, profile browser, secrets table view (
+  Key/Description/Created/Updated columns), and secret form screens
 
 - **Priority:** P3
 - **Description:** Secret templates for common patterns (database URLs, API keys)
 - **Effort:** Small
-- **Status:** DONE — `vault template` commands (create, list, show, delete, apply), 5 built-in templates (postgres, mysql, redis, aws, github-token), variable interpolation via text/template
+- **Status:** DONE — `vault template` commands (create, list, show, delete, apply), 5 built-in templates (postgres,
+  mysql, redis, aws, github-token), variable interpolation via text/template
 
 ### Integration
+
 - **Priority:** P2
 - **Description:** Docker secrets bridge for container environments
 - **Effort:** Medium
@@ -58,6 +64,7 @@
 - **Status:** DONE — `vault share export/import` commands with passphrase-based encryption
 
 ### Access Control
+
 - **Priority:** P1
 - **Description:** UUID-based profile isolation for external apps (ScopedVault)
 - **Effort:** Large
@@ -74,20 +81,25 @@
 - **Status:** DONE — archived versions show only version+timestamp, 30-day retention with auto-purge
 
 ### Sync
+
 - **Priority:** P3
 - **Description:** Gossip-based profile synchronization across machines (needs design refinement)
 - **Effort:** Large
 
 ### Technical Debt
+
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** MOSTLY DONE — store 95.7%, sentinel 78.6%, crypto 75.8%, vault 75.9%, application 72.7%, cmd 71.3%, tui 50.5%. Remaining gaps bounded by TPM branches, platform-specific code, and vault-dependent TUI paths requiring mocking.
+- **Status:** MOSTLY DONE — store 95.7%, sentinel 78.6%, crypto 75.8%, vault 75.9%, application 72.7%, cmd 71.3%, tui
+  50.5%. Remaining gaps bounded by TPM branches, platform-specific code, and vault-dependent TUI paths requiring
+  mocking.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands
 - **Effort:** Medium
-- **Status:** DONE — `cmd/cmd_test.go` with 15 integration tests (init, profiles, secrets, audit, versioning, export/import, templates, plugins, errors, E2E plugin hook)
+- **Status:** DONE — `cmd/cmd_test.go` with 15 integration tests (init, profiles, secrets, audit, versioning,
+  export/import, templates, plugins, errors, E2E plugin hook)
 
 - **Priority:** P3
 - **Description:** Benchmark encryption/decryption performance

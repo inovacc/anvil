@@ -60,6 +60,7 @@ func TestAuditLogByProfile(t *testing.T) {
 	if err := v.CreateProfile("a", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.CreateProfile("b", "", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -67,6 +68,7 @@ func TestAuditLogByProfile(t *testing.T) {
 	if err := v.Set("K", "V", "a", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("K", "V", "b", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -112,6 +114,7 @@ func TestAuditLogOnImportExport(t *testing.T) {
 	if !actions["secret.import"] {
 		t.Error("missing secret.import audit entry")
 	}
+
 	if !actions["secret.export"] {
 		t.Error("missing secret.export audit entry")
 	}
@@ -123,6 +126,7 @@ func TestPurgeAuditLog(t *testing.T) {
 	if err := v.CreateProfile("purge", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("K", "V", "purge", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -131,6 +135,7 @@ func TestPurgeAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AuditLog: %v", err)
 	}
+
 	if len(entries) == 0 {
 		t.Fatal("expected audit entries before purge")
 	}
@@ -144,6 +149,7 @@ func TestPurgeAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AuditLog: %v", err)
 	}
+
 	if len(entries) != 0 {
 		t.Errorf("expected 0 entries after purge, got %d", len(entries))
 	}

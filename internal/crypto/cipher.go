@@ -138,6 +138,7 @@ func IsTPMAvailable() bool {
 	if os.Getenv("ANVIL_SKIP_TPM") != "" {
 		return false
 	}
+
 	return sealbox.IsAvailable()
 }
 

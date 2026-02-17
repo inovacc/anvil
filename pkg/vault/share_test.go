@@ -10,6 +10,7 @@ func TestShareExportAndImport(t *testing.T) {
 	if err := v.Set("secret1", "value1", "default", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("secret2", "value2", "default", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -33,6 +34,7 @@ func TestShareExportAndImport(t *testing.T) {
 	if export.ProfileName != "default" {
 		t.Errorf("expected original profile name %q, got %q", "default", export.ProfileName)
 	}
+
 	if len(export.Secrets) != 2 {
 		t.Errorf("expected 2 secrets, got %d", len(export.Secrets))
 	}
@@ -41,6 +43,7 @@ func TestShareExportAndImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "value1" {
 		t.Errorf("got %q, want %q", val, "value1")
 	}
@@ -58,6 +61,7 @@ func TestShareImportWrongPassphrase(t *testing.T) {
 	}
 
 	v2 := setupWithProfile(t)
+
 	_, err = v2.ShareImport(encrypted, "wrong", "default")
 	if err == nil {
 		t.Fatal("expected error for wrong passphrase")
@@ -77,6 +81,7 @@ func TestShareImportUsesOriginalProfile(t *testing.T) {
 
 	// Import with empty target profile — should use "default".
 	v2 := setupWithProfile(t)
+
 	export, err := v2.ShareImport(encrypted, "pass", "")
 	if err != nil {
 		t.Fatalf("ShareImport: %v", err)
@@ -90,6 +95,7 @@ func TestShareImportUsesOriginalProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "val" {
 		t.Errorf("got %q, want %q", val, "val")
 	}

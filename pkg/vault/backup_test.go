@@ -8,10 +8,12 @@ import (
 
 func setupWithProfile(t *testing.T) *vault.Vault {
 	t.Helper()
+
 	v, _ := initAndOpen(t)
 	if err := v.CreateProfile("default", "default profile", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	return v
 }
 
@@ -21,9 +23,11 @@ func TestBackupAndRestore(t *testing.T) {
 	if err := v.SetPassword("testpass"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.Set("db-url", "postgres://localhost/test", "default", "database URL"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("api-key", "sk-12345", "default", "API key"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -32,6 +36,7 @@ func TestBackupAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Backup: %v", err)
 	}
+
 	if len(encrypted) == 0 {
 		t.Fatal("Backup returned empty data")
 	}
@@ -46,6 +51,7 @@ func TestBackupAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get after restore: %v", err)
 	}
+
 	if val != "postgres://localhost/test" {
 		t.Errorf("got %q, want %q", val, "postgres://localhost/test")
 	}
@@ -54,6 +60,7 @@ func TestBackupAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get after restore: %v", err)
 	}
+
 	if val != "sk-12345" {
 		t.Errorf("got %q, want %q", val, "sk-12345")
 	}
@@ -76,6 +83,7 @@ func TestRestoreWrongPassword(t *testing.T) {
 	if err := v.SetPassword("testpass"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.Set("key", "val", "default", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -86,6 +94,7 @@ func TestRestoreWrongPassword(t *testing.T) {
 	}
 
 	v2, _ := initAndOpen(t)
+
 	err = v2.Restore(encrypted, "wrongpass")
 	if err == nil {
 		t.Fatal("expected error for wrong password on restore")
@@ -104,6 +113,7 @@ func isUserError(err error, target **vault.UserError) bool {
 	if ok {
 		*target = ue
 	}
+
 	return ok
 }
 
@@ -117,9 +127,11 @@ func TestBackupRestoreWithVersionHistory(t *testing.T) {
 	if err := v.Set("KEY", "v1", "default", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("KEY", "v2", "default", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("KEY", "v3", "default", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -140,6 +152,7 @@ func TestBackupRestoreWithVersionHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "v3" {
 		t.Errorf("current value = %q, want %q", val, "v3")
 	}
@@ -149,6 +162,7 @@ func TestBackupRestoreWithVersionHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SecretHistory: %v", err)
 	}
+
 	if len(history) != 2 {
 		t.Fatalf("expected 2 versions, got %d", len(history))
 	}
@@ -163,6 +177,7 @@ func TestBackupRestoreWithPassword(t *testing.T) {
 	if err := v.SetPassword("testpass"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.Set("K", "V", "default", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -186,6 +201,7 @@ func TestBackupRestoreWithPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HasPassword: %v", err)
 	}
+
 	if !has {
 		t.Error("expected password to be restored")
 	}

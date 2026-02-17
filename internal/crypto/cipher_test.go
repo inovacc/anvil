@@ -209,6 +209,7 @@ func TestMachineIDHash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MachineIDHash second call: %v", err)
 	}
+
 	if !bytes.Equal(hash, hash2) {
 		t.Error("MachineIDHash should be stable across calls")
 	}
@@ -321,6 +322,7 @@ func TestDecryptInvalidData(t *testing.T) {
 	// Wrong key for valid ciphertext.
 	key2, _ := GenerateKey()
 	ct, nonce, _ := Encrypt(key, []byte("hello"))
+
 	_, err = Decrypt(key2, ct, nonce)
 	if err == nil {
 		t.Error("expected error for wrong key")
@@ -335,16 +337,19 @@ func TestDeriveKeyEdgeCases(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeriveKey empty: %v", err)
 	}
+
 	if len(key) != 32 {
 		t.Errorf("key length = %d, want 32", len(key))
 	}
 
 	// Long passphrase.
 	longPass := string(bytes.Repeat([]byte("a"), 10000))
+
 	key2, err := DeriveKey(longPass, salt)
 	if err != nil {
 		t.Fatalf("DeriveKey long: %v", err)
 	}
+
 	if len(key2) != 32 {
 		t.Errorf("key length = %d, want 32", len(key2))
 	}
@@ -360,6 +365,7 @@ func TestGenerateKeyLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateKey: %v", err)
 	}
+
 	key2, err := GenerateKey()
 	if err != nil {
 		t.Fatalf("GenerateKey: %v", err)
@@ -368,6 +374,7 @@ func TestGenerateKeyLength(t *testing.T) {
 	if len(key1) != 32 {
 		t.Errorf("key length = %d, want 32", len(key1))
 	}
+
 	if bytes.Equal(key1, key2) {
 		t.Error("two generated keys should not be equal")
 	}

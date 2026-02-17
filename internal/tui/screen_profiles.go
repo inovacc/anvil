@@ -37,6 +37,7 @@ func newProfilesModel(width, height int) profilesModel {
 		table.WithHeight(max(1, height-8)),
 	)
 	t.SetStyles(tableStyles())
+
 	return profilesModel{table: t}
 }
 
@@ -44,7 +45,9 @@ func profileTableColumns(width int) []table.Column {
 	if width <= 0 {
 		width = 80
 	}
+
 	w := width - 4
+
 	return []table.Column{
 		{Title: "Name", Width: w * 25 / 100},
 		{Title: "Default", Width: w * 10 / 100},
@@ -60,6 +63,7 @@ func (p profilesModel) loadData(v *vault.Vault) tea.Cmd {
 		if err != nil {
 			return profilesLoadedMsg{err: err}
 		}
+
 		return profilesLoadedMsg{profiles: profiles}
 	}
 }
@@ -70,16 +74,19 @@ func (p profilesModel) Update(msg tea.Msg) (profilesModel, tea.Cmd) {
 		p.loaded = true
 		if msg.err == nil {
 			p.profiles = msg.profiles
+
 			rows := make([]table.Row, len(p.profiles))
 			for i, prof := range p.profiles {
 				def := ""
 				if prof.IsDefault {
 					def = "*"
 				}
+
 				created := "-"
 				if !prof.CreatedAt.IsZero() {
 					created = prof.CreatedAt.Format("2006-01-02 15:04")
 				}
+
 				rows[i] = table.Row{
 					prof.Name,
 					def,
@@ -88,6 +95,7 @@ func (p profilesModel) Update(msg tea.Msg) (profilesModel, tea.Cmd) {
 					created,
 				}
 			}
+
 			p.table.SetRows(rows)
 		}
 	case profileActionMsg:
@@ -96,8 +104,10 @@ func (p profilesModel) Update(msg tea.Msg) (profilesModel, tea.Cmd) {
 		} else {
 			p.message = successStyle.Render(msg.message)
 		}
+
 		p.confirm = ""
 	}
+
 	return p, nil
 }
 
@@ -116,6 +126,7 @@ func (p profilesModel) View(width int) string {
 		b.WriteString(dimStyle.Render("  No profiles found. Press c to create one."))
 		b.WriteString("\n\n")
 		b.WriteString(helpStyle.Render("  c: create • esc: back • q: quit"))
+
 		return b.String()
 	}
 
@@ -141,5 +152,6 @@ func (p profilesModel) selectedProfile() string {
 	if len(row) == 0 {
 		return ""
 	}
+
 	return row[0]
 }

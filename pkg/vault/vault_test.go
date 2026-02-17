@@ -14,15 +14,19 @@ func initAndOpen(t *testing.T) (*vault.Vault, string) {
 	t.Helper()
 	t.Setenv("ANVIL_SKIP_TPM", "1")
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = v.Close() })
+
 	return v, dbPath
 }
 
@@ -75,15 +79,19 @@ func TestProfileCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListProfiles: %v", err)
 		}
+
 		if len(profiles) != 1 {
 			t.Fatalf("expected 1 profile, got %d", len(profiles))
 		}
+
 		if profiles[0].Name != "dev" {
 			t.Errorf("Name = %q, want %q", profiles[0].Name, "dev")
 		}
+
 		if profiles[0].Description != "development" {
 			t.Errorf("Description = %q, want %q", profiles[0].Description, "development")
 		}
+
 		if !profiles[0].IsDefault {
 			t.Error("expected IsDefault = true")
 		}
@@ -100,13 +108,16 @@ func TestProfileCRUD(t *testing.T) {
 		if err := v.CreateProfile("staging", "staging env", false); err != nil {
 			t.Fatalf("CreateProfile: %v", err)
 		}
+
 		if err := v.UseProfile("staging"); err != nil {
 			t.Fatalf("UseProfile: %v", err)
 		}
+
 		profiles, err := v.ListProfiles()
 		if err != nil {
 			t.Fatalf("ListProfiles: %v", err)
 		}
+
 		for _, p := range profiles {
 			if p.Name == "staging" && !p.IsDefault {
 				t.Error("expected staging to be default")
@@ -125,10 +136,12 @@ func TestProfileCRUD(t *testing.T) {
 		if err := v.DeleteProfile("staging"); err != nil {
 			t.Fatalf("DeleteProfile: %v", err)
 		}
+
 		profiles, err := v.ListProfiles()
 		if err != nil {
 			t.Fatalf("ListProfiles: %v", err)
 		}
+
 		for _, p := range profiles {
 			if p.Name == "staging" {
 				t.Error("staging should have been deleted")
@@ -155,10 +168,12 @@ func TestSecretCRUD(t *testing.T) {
 		if err := v.Set("API_KEY", "secret123", "test", "api key"); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		val, err := v.Get("API_KEY", "test")
 		if err != nil {
 			t.Fatalf("Get: %v", err)
 		}
+
 		if val != "secret123" {
 			t.Errorf("Get = %q, want %q", val, "secret123")
 		}
@@ -168,10 +183,12 @@ func TestSecretCRUD(t *testing.T) {
 		if err := v.Set("DB_PASS", "pass456", "", "database password"); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		val, err := v.Get("DB_PASS", "")
 		if err != nil {
 			t.Fatalf("Get: %v", err)
 		}
+
 		if val != "pass456" {
 			t.Errorf("Get = %q, want %q", val, "pass456")
 		}
@@ -181,10 +198,12 @@ func TestSecretCRUD(t *testing.T) {
 		if err := v.Set("API_KEY", "newsecret", "test", "updated"); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		val, err := v.Get("API_KEY", "test")
 		if err != nil {
 			t.Fatalf("Get: %v", err)
 		}
+
 		if val != "newsecret" {
 			t.Errorf("Get = %q, want %q", val, "newsecret")
 		}
@@ -195,6 +214,7 @@ func TestSecretCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if len(secrets) != 2 {
 			t.Fatalf("expected 2 secrets, got %d", len(secrets))
 		}
@@ -204,6 +224,7 @@ func TestSecretCRUD(t *testing.T) {
 		if err := v.Delete("DB_PASS", "test"); err != nil {
 			t.Fatalf("Delete: %v", err)
 		}
+
 		_, err := v.Get("DB_PASS", "test")
 		if !errors.Is(err, vault.ErrSecretNotFound) {
 			t.Fatalf("expected ErrSecretNotFound, got %v", err)
@@ -233,6 +254,7 @@ func TestSecretCRUD(t *testing.T) {
 
 	t.Run("no default profile error", func(t *testing.T) {
 		vv, _ := initAndOpen(t)
+
 		_, err := vv.Get("key", "")
 		if !errors.Is(err, vault.ErrNoDefaultProfile) {
 			t.Fatalf("expected ErrNoDefaultProfile, got %v", err)
@@ -277,9 +299,11 @@ func TestExportImport(t *testing.T) {
 			t.Errorf("missing key %q", want.Key)
 			continue
 		}
+
 		if got.Value != want.Value {
 			t.Errorf("key %q: value = %q, want %q", want.Key, got.Value, want.Value)
 		}
+
 		if got.Description != want.Description {
 			t.Errorf("key %q: description = %q, want %q", want.Key, got.Description, want.Description)
 		}
@@ -294,6 +318,7 @@ func TestPasswordOperations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("HasPassword: %v", err)
 		}
+
 		if has {
 			t.Error("expected no password set")
 		}
@@ -310,10 +335,12 @@ func TestPasswordOperations(t *testing.T) {
 		if err := v.SetPassword("mypass"); err != nil {
 			t.Fatalf("SetPassword: %v", err)
 		}
+
 		has, err := v.HasPassword()
 		if err != nil {
 			t.Fatalf("HasPassword: %v", err)
 		}
+
 		if !has {
 			t.Error("expected password to be set")
 		}
@@ -336,10 +363,12 @@ func TestPasswordOperations(t *testing.T) {
 		if err := v.DeletePassword(); err != nil {
 			t.Fatalf("DeletePassword: %v", err)
 		}
+
 		has, err := v.HasPassword()
 		if err != nil {
 			t.Fatalf("HasPassword: %v", err)
 		}
+
 		if has {
 			t.Error("expected password to be deleted")
 		}
@@ -378,6 +407,7 @@ func TestKeyRotation(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Get %q after rotation: %v", k, err)
 		}
+
 		if got != want {
 			t.Errorf("Get %q = %q, want %q", k, got, want)
 		}
@@ -387,6 +417,7 @@ func TestKeyRotation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.KeyVersion < 2 {
 		t.Errorf("KeyVersion = %d, want >= 2", status.KeyVersion)
 	}
@@ -425,18 +456,23 @@ func TestStatus(t *testing.T) {
 	if !status.Initialized {
 		t.Error("expected Initialized = true")
 	}
+
 	if status.DBPath != dbPath {
 		t.Errorf("DBPath = %q, want %q", status.DBPath, dbPath)
 	}
+
 	if status.ProfileCount != 0 {
 		t.Errorf("ProfileCount = %d, want 0", status.ProfileCount)
 	}
+
 	if status.SecretCount != 0 {
 		t.Errorf("SecretCount = %d, want 0", status.SecretCount)
 	}
+
 	if status.KeyVersion != 1 {
 		t.Errorf("KeyVersion = %d, want 1", status.KeyVersion)
 	}
+
 	if status.PasswordSet {
 		t.Error("expected PasswordSet = false")
 	}
@@ -444,9 +480,11 @@ func TestStatus(t *testing.T) {
 	if err := v.CreateProfile("p1", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("k1", "v1", "p1", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("k2", "v2", "p1", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -455,9 +493,11 @@ func TestStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.ProfileCount != 1 {
 		t.Errorf("ProfileCount = %d, want 1", status.ProfileCount)
 	}
+
 	if status.SecretCount != 2 {
 		t.Errorf("SecretCount = %d, want 2", status.SecretCount)
 	}
@@ -467,10 +507,12 @@ func TestGetStatus(t *testing.T) {
 	t.Run("uninitialized", func(t *testing.T) {
 		dbPath := filepath.Join(t.TempDir(), "vault.db")
 		opts := &vault.Options{DBPath: dbPath}
+
 		status, err := vault.GetStatus(opts)
 		if err != nil {
 			t.Fatalf("GetStatus: %v", err)
 		}
+
 		if status.Initialized {
 			t.Error("expected Initialized = false")
 		}
@@ -478,14 +520,17 @@ func TestGetStatus(t *testing.T) {
 
 	t.Run("initialized", func(t *testing.T) {
 		dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 		opts := &vault.Options{DBPath: dbPath}
 		if err := vault.Init(opts); err != nil {
 			t.Fatalf("Init: %v", err)
 		}
+
 		status, err := vault.GetStatus(opts)
 		if err != nil {
 			t.Fatalf("GetStatus: %v", err)
 		}
+
 		if !status.Initialized {
 			t.Error("expected Initialized = true")
 		}
@@ -498,6 +543,7 @@ func TestSecretIsolationBetweenProfiles(t *testing.T) {
 	if err := v.CreateProfile("alpha", "", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.CreateProfile("beta", "", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -505,6 +551,7 @@ func TestSecretIsolationBetweenProfiles(t *testing.T) {
 	if err := v.Set("SHARED_KEY", "alpha_value", "alpha", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("SHARED_KEY", "beta_value", "beta", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -513,6 +560,7 @@ func TestSecretIsolationBetweenProfiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get alpha: %v", err)
 	}
+
 	betaVal, err := v.Get("SHARED_KEY", "beta")
 	if err != nil {
 		t.Fatalf("Get beta: %v", err)
@@ -521,6 +569,7 @@ func TestSecretIsolationBetweenProfiles(t *testing.T) {
 	if alphaVal != "alpha_value" {
 		t.Errorf("alpha = %q, want %q", alphaVal, "alpha_value")
 	}
+
 	if betaVal != "beta_value" {
 		t.Errorf("beta = %q, want %q", betaVal, "beta_value")
 	}
@@ -532,6 +581,7 @@ func TestDeleteProfileRemovesProfile(t *testing.T) {
 	if err := v.CreateProfile("temp", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.DeleteProfile("temp"); err != nil {
 		t.Fatalf("DeleteProfile: %v", err)
 	}
@@ -540,6 +590,7 @@ func TestDeleteProfileRemovesProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListProfiles: %v", err)
 	}
+
 	for _, p := range profiles {
 		if p.Name == "temp" {
 			t.Error("profile should have been deleted")
@@ -567,6 +618,7 @@ func TestExportEmptyProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
+
 	if len(entries) != 0 {
 		t.Errorf("expected 0 entries, got %d", len(entries))
 	}
@@ -583,10 +635,12 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err := v.Set("KEY", "value1", "ver", "first"); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		history, err := v.SecretHistory("KEY", "ver")
 		if err != nil {
 			t.Fatalf("SecretHistory: %v", err)
 		}
+
 		if len(history) != 0 {
 			t.Errorf("expected 0 versions, got %d", len(history))
 		}
@@ -596,13 +650,16 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err := v.Set("KEY", "value2", "ver", "second"); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		history, err := v.SecretHistory("KEY", "ver")
 		if err != nil {
 			t.Fatalf("SecretHistory: %v", err)
 		}
+
 		if len(history) != 1 {
 			t.Fatalf("expected 1 version, got %d", len(history))
 		}
+
 		if history[0].Version != 1 {
 			t.Errorf("version number = %d, want 1", history[0].Version)
 		}
@@ -612,10 +669,12 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err := v.Set("KEY", "value3", "ver", "third"); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		history, err := v.SecretHistory("KEY", "ver")
 		if err != nil {
 			t.Fatalf("SecretHistory: %v", err)
 		}
+
 		if len(history) != 2 {
 			t.Fatalf("expected 2 versions, got %d", len(history))
 		}
@@ -625,10 +684,12 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err := v.SecretRollback("KEY", "ver", 1); err != nil {
 			t.Fatalf("SecretRollback: %v", err)
 		}
+
 		val, err := v.Get("KEY", "ver")
 		if err != nil {
 			t.Fatalf("Get: %v", err)
 		}
+
 		if val != "value1" {
 			t.Errorf("after rollback, value = %q, want %q", val, "value1")
 		}
@@ -637,6 +698,7 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SecretHistory: %v", err)
 		}
+
 		if len(history) != 3 {
 			t.Errorf("expected 3 versions after rollback, got %d", len(history))
 		}
@@ -660,9 +722,11 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err := v.Set("TEMP", "a", "ver", ""); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		if err := v.Set("TEMP", "b", "ver", ""); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		if err := v.Delete("TEMP", "ver"); err != nil {
 			t.Fatalf("Delete: %v", err)
 		}
@@ -671,10 +735,12 @@ func TestSecretVersioningAndRollback(t *testing.T) {
 		if err := v.Set("TEMP", "fresh", "ver", ""); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
+
 		history, err := v.SecretHistory("TEMP", "ver")
 		if err != nil {
 			t.Fatalf("SecretHistory: %v", err)
 		}
+
 		if len(history) != 0 {
 			t.Errorf("expected 0 versions after delete+recreate, got %d", len(history))
 		}
@@ -687,6 +753,7 @@ func TestKeyRotationWithVersions(t *testing.T) {
 	if err := v.SetPassword("rotpass"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.CreateProfile("rv", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -695,9 +762,11 @@ func TestKeyRotationWithVersions(t *testing.T) {
 	if err := v.Set("KEY", "val1", "rv", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("KEY", "val2", "rv", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("KEY", "val3", "rv", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -712,6 +781,7 @@ func TestKeyRotationWithVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "val3" {
 		t.Errorf("current = %q, want %q", val, "val3")
 	}
@@ -721,6 +791,7 @@ func TestKeyRotationWithVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SecretHistory: %v", err)
 	}
+
 	if len(history) != 2 {
 		t.Fatalf("expected 2 versions, got %d", len(history))
 	}
@@ -728,6 +799,7 @@ func TestKeyRotationWithVersions(t *testing.T) {
 	if history[0].Version != 2 {
 		t.Errorf("version[0] = %d, want 2", history[0].Version)
 	}
+
 	if history[1].Version != 1 {
 		t.Errorf("version[1] = %d, want 1", history[1].Version)
 	}
@@ -775,9 +847,11 @@ func TestDoubleRotation(t *testing.T) {
 	if err := v.SetPassword("pass"); err != nil {
 		t.Fatalf("SetPassword: %v", err)
 	}
+
 	if err := v.CreateProfile("dr", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("KEY", "original", "dr", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -786,10 +860,12 @@ func TestDoubleRotation(t *testing.T) {
 	if err := v.RotateKey("pass"); err != nil {
 		t.Fatalf("RotateKey #1: %v", err)
 	}
+
 	status, err := v.Status()
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.KeyVersion != 2 {
 		t.Errorf("KeyVersion after first rotation = %d, want 2", status.KeyVersion)
 	}
@@ -798,10 +874,12 @@ func TestDoubleRotation(t *testing.T) {
 	if err := v.RotateKey("pass"); err != nil {
 		t.Fatalf("RotateKey #2: %v", err)
 	}
+
 	status, err = v.Status()
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.KeyVersion != 3 {
 		t.Errorf("KeyVersion after second rotation = %d, want 3", status.KeyVersion)
 	}
@@ -811,6 +889,7 @@ func TestDoubleRotation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get after double rotation: %v", err)
 	}
+
 	if val != "original" {
 		t.Errorf("value = %q, want %q", val, "original")
 	}
@@ -832,6 +911,7 @@ func TestRotateEmptyVault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.KeyVersion != 2 {
 		t.Errorf("KeyVersion = %d, want 2", status.KeyVersion)
 	}
@@ -843,6 +923,7 @@ func TestResolveDBPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveDBPath: %v", err)
 		}
+
 		if path != "/custom/vault.db" {
 			t.Errorf("got %q, want /custom/vault.db", path)
 		}
@@ -850,10 +931,12 @@ func TestResolveDBPath(t *testing.T) {
 
 	t.Run("from env var", func(t *testing.T) {
 		t.Setenv("ANVIL_DB_PATH", "/env/vault.db")
+
 		path, err := vault.ResolveDBPath(nil)
 		if err != nil {
 			t.Fatalf("ResolveDBPath: %v", err)
 		}
+
 		if path != "/env/vault.db" {
 			t.Errorf("got %q, want /env/vault.db", path)
 		}
@@ -861,10 +944,12 @@ func TestResolveDBPath(t *testing.T) {
 
 	t.Run("default path", func(t *testing.T) {
 		t.Setenv("ANVIL_DB_PATH", "")
+
 		path, err := vault.ResolveDBPath(nil)
 		if err != nil {
 			t.Fatalf("ResolveDBPath: %v", err)
 		}
+
 		if path == "" {
 			t.Error("expected non-empty default path")
 		}
@@ -877,17 +962,19 @@ func TestStatusWithMultipleProfiles(t *testing.T) {
 	if err := v.CreateProfile("p1", "", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.CreateProfile("p2", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
 
 	// Add secrets to both profiles.
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if err := v.Set("K"+string(rune('A'+i)), "val", "p1", ""); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
 	}
-	for i := 0; i < 2; i++ {
+
+	for i := range 2 {
 		if err := v.Set("K"+string(rune('X'+i)), "val", "p2", ""); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
@@ -897,12 +984,15 @@ func TestStatusWithMultipleProfiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}
+
 	if status.ProfileCount != 2 {
 		t.Errorf("ProfileCount = %d, want 2", status.ProfileCount)
 	}
+
 	if status.SecretCount != 5 {
 		t.Errorf("SecretCount = %d, want 5", status.SecretCount)
 	}
+
 	if status.SealMethod == "" {
 		t.Error("expected SealMethod to be set")
 	}
@@ -924,6 +1014,7 @@ func TestImportEmptyList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+
 	if len(secrets) != 0 {
 		t.Errorf("expected 0 secrets, got %d", len(secrets))
 	}
@@ -948,9 +1039,11 @@ func TestListSecretsWithDescriptionAndUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+
 	if len(secrets) != 1 {
 		t.Fatalf("expected 1 secret, got %d", len(secrets))
 	}
+
 	if secrets[0].Key != "KEY1" {
 		t.Errorf("Key = %q, want KEY1", secrets[0].Key)
 	}
@@ -968,6 +1061,7 @@ func TestGetStatusWithEnvVar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
+
 	if !status.Initialized {
 		t.Error("expected initialized")
 	}
@@ -984,6 +1078,7 @@ func TestDeleteProfileCascadesVersions(t *testing.T) {
 	if err := v.Set("KEY", "v1", "cascade", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("KEY", "v2", "cascade", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -998,6 +1093,7 @@ func TestDeleteProfileCascadesVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListProfiles: %v", err)
 	}
+
 	for _, p := range profiles {
 		if p.Name == "cascade" {
 			t.Error("profile should be deleted")
@@ -1015,6 +1111,7 @@ func TestExportWithDescriptions(t *testing.T) {
 	if err := v.Set("K1", "V1", "exp2", "desc1"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("K2", "V2", "exp2", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1023,6 +1120,7 @@ func TestExportWithDescriptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
+
 	if len(entries) != 2 {
 		t.Fatalf("expected 2, got %d", len(entries))
 	}
@@ -1054,6 +1152,7 @@ func TestImportOverwrite(t *testing.T) {
 	if err := v.CreateProfile("imp", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("K1", "original", "imp", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1067,6 +1166,7 @@ func TestImportOverwrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "new" {
 		t.Errorf("got %q, want %q", val, "new")
 	}
@@ -1092,6 +1192,7 @@ func TestDeletePassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HasPassword: %v", err)
 	}
+
 	if !has {
 		t.Error("expected HasPassword = true")
 	}
@@ -1105,6 +1206,7 @@ func TestDeletePassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HasPassword after delete: %v", err)
 	}
+
 	if has {
 		t.Error("expected HasPassword = false after delete")
 	}
@@ -1169,6 +1271,7 @@ func TestListProfilesWithDetails(t *testing.T) {
 	if err := v.CreateProfile("prod", "production env", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.CreateProfile("staging", "staging env", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -1189,6 +1292,7 @@ func TestListProfilesWithDetails(t *testing.T) {
 
 	// Find prod profile.
 	var prod vault.ProfileInfo
+
 	for _, p := range profiles {
 		if p.Name == "prod" {
 			prod = p
@@ -1198,9 +1302,11 @@ func TestListProfilesWithDetails(t *testing.T) {
 	if prod.Description != "production env" {
 		t.Errorf("Description = %q, want %q", prod.Description, "production env")
 	}
+
 	if !prod.IsDefault {
 		t.Error("expected prod to be default")
 	}
+
 	if prod.SecretCount != 1 {
 		t.Errorf("SecretCount = %d, want 1", prod.SecretCount)
 	}
@@ -1251,9 +1357,11 @@ func TestRollbackInvalidVersion(t *testing.T) {
 	if err := v.CreateProfile("test", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("KEY", "v1", "test", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("KEY", "v2", "test", "desc"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1274,10 +1382,12 @@ func TestRollbackInvalidVersion(t *testing.T) {
 
 func TestGetStatusNotInitialized(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "nonexistent.db")
+
 	status, err := vault.GetStatus(&vault.Options{DBPath: dbPath})
 	if err != nil {
 		t.Fatalf("GetStatus: %v", err)
 	}
+
 	if status.Initialized {
 		t.Error("expected not initialized")
 	}
@@ -1289,6 +1399,7 @@ func TestEnvExportExplicitProfile(t *testing.T) {
 	if err := v.CreateProfile("alt", "alt env", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("ALT_KEY", "alt_val", "alt", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1302,6 +1413,7 @@ func TestEnvExportExplicitProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvExport: %v", err)
 	}
+
 	if len(entries) != 1 || entries[0].Key != "ALT_KEY" {
 		t.Errorf("unexpected entries: %+v", entries)
 	}
@@ -1313,6 +1425,7 @@ func TestEnvInlineGetExplicitProfile(t *testing.T) {
 	if err := v.CreateProfile("alt", "alt env", false); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("ALT_SECRET", "secret_val", "alt", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1325,6 +1438,7 @@ func TestEnvInlineGetExplicitProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnvInlineGet: %v", err)
 	}
+
 	if val != "secret_val" {
 		t.Errorf("got %q, want %q", val, "secret_val")
 	}
@@ -1341,6 +1455,7 @@ func TestPurgeExpiredVersions(t *testing.T) {
 	if err := v.Set("PK", "val1", "purge", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
+
 	if err := v.Set("PK", "val2", "purge", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1350,6 +1465,7 @@ func TestPurgeExpiredVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SecretHistory: %v", err)
 	}
+
 	if len(versions) != 1 {
 		t.Fatalf("got %d versions, want 1", len(versions))
 	}
@@ -1359,6 +1475,7 @@ func TestPurgeExpiredVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PurgeExpiredVersions: %v", err)
 	}
+
 	if count != 0 {
 		t.Errorf("purged %d, want 0 (nothing expired)", count)
 	}
@@ -1366,10 +1483,12 @@ func TestPurgeExpiredVersions(t *testing.T) {
 
 func TestSealDoubleError(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1378,6 +1497,7 @@ func TestSealDoubleError(t *testing.T) {
 	if err := v.Seal(); err != nil {
 		t.Fatalf("Seal: %v", err)
 	}
+
 	defer func() { _ = vault.UnsealVault(opts) }()
 
 	_ = v.Close()
@@ -1391,10 +1511,12 @@ func TestSealDoubleError(t *testing.T) {
 
 func TestSealedOperationsDenied(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1403,6 +1525,7 @@ func TestSealedOperationsDenied(t *testing.T) {
 	if err := v.CreateProfile("sealed-ops", "", true); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	if err := v.Set("K1", "V1", "sealed-ops", ""); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1410,6 +1533,7 @@ func TestSealedOperationsDenied(t *testing.T) {
 	if err := v.Seal(); err != nil {
 		t.Fatalf("Seal: %v", err)
 	}
+
 	defer func() {
 		_ = vault.UnsealVault(opts)
 		_ = v.Close()

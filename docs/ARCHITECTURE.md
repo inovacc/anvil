@@ -619,7 +619,8 @@ graph TD
     Text --> Stdout
 ```
 
-All commands use `outputResult(cmd, jsonData, textFn)` for consistent dual-mode output. The `--json` flag is a persistent flag on the root command, inherited by all subcommands.
+All commands use `outputResult(cmd, jsonData, textFn)` for consistent dual-mode output. The `--json` flag is a
+persistent flag on the root command, inherited by all subcommands.
 
 ## Error Handling
 
@@ -653,17 +654,17 @@ graph TD
 
 ## Security Model
 
-| Layer | Mechanism | Purpose |
-|-------|-----------|---------|
-| TPM key sealing | `sealbox.NewKeyManager().SealKey()` via TPM 2.0 | Master key hardware-bound; cannot be extracted even with full disk access |
-| Software fallback | HKDF-SHA256(machineID, salt) derives wrapping key | Fallback for machines without TPM (macOS, VMs) |
-| Seal method discriminator | `seal_method` column (`"tpm"` or `"software"`) | Vault knows which unseal path to use |
-| Machine binding | SHA-256(MachineID) stored at init, verified at open (software path) | Vault non-portable across machines |
-| Secret encryption | AES-256-GCM per secret, random nonce | Each secret independently encrypted |
-| Sentinel encryption | `sealbox.Encrypt` (packed nonce\|\|ciphertext) | Sentinel file is opaque without vault master key |
-| Env release gate | bcrypt password + time-limited sentinel file | Secrets require explicit release |
-| Auto-revoke | Check() expires sessions past TTL | No background cleanup needed |
-| Memory zeroing | `sealbox.SecureZero()` on vault Close and after Init | Master key does not linger in process memory |
-| Singleton tables | `CHECK (id = 1)` constraint | Exactly one sealed key and password |
-| FK cascade | `ON DELETE CASCADE` on secrets | Deleting profile removes all its secrets |
-| SQLite safety | WAL mode, busy timeout, max 1 connection, mutex | Concurrent access without corruption |
+| Layer                     | Mechanism                                                           | Purpose                                                                   |
+|---------------------------|---------------------------------------------------------------------|---------------------------------------------------------------------------|
+| TPM key sealing           | `sealbox.NewKeyManager().SealKey()` via TPM 2.0                     | Master key hardware-bound; cannot be extracted even with full disk access |
+| Software fallback         | HKDF-SHA256(machineID, salt) derives wrapping key                   | Fallback for machines without TPM (macOS, VMs)                            |
+| Seal method discriminator | `seal_method` column (`"tpm"` or `"software"`)                      | Vault knows which unseal path to use                                      |
+| Machine binding           | SHA-256(MachineID) stored at init, verified at open (software path) | Vault non-portable across machines                                        |
+| Secret encryption         | AES-256-GCM per secret, random nonce                                | Each secret independently encrypted                                       |
+| Sentinel encryption       | `sealbox.Encrypt` (packed nonce\|\|ciphertext)                      | Sentinel file is opaque without vault master key                          |
+| Env release gate          | bcrypt password + time-limited sentinel file                        | Secrets require explicit release                                          |
+| Auto-revoke               | Check() expires sessions past TTL                                   | No background cleanup needed                                              |
+| Memory zeroing            | `sealbox.SecureZero()` on vault Close and after Init                | Master key does not linger in process memory                              |
+| Singleton tables          | `CHECK (id = 1)` constraint                                         | Exactly one sealed key and password                                       |
+| FK cascade                | `ON DELETE CASCADE` on secrets                                      | Deleting profile removes all its secrets                                  |
+| SQLite safety             | WAL mode, busy timeout, max 1 connection, mutex                     | Concurrent access without corruption                                      |

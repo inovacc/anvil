@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"github.com/inovacc/anvil/pkg/vault"
@@ -29,6 +29,7 @@ func completeProfileNames(_ *cobra.Command, args []string, _ string) ([]string, 
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+
 	defer func() { _ = v.Close() }()
 
 	profiles, err := v.ListProfiles()
@@ -53,6 +54,7 @@ func completeSecretKeys(cmd *cobra.Command, args []string, _ string) ([]string, 
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+
 	defer func() { _ = v.Close() }()
 
 	profileName, _ := cmd.Flags().GetString("profile")

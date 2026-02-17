@@ -19,7 +19,9 @@ SELECT id, sealed_data, nonce, key_salt, version, machine_id_hash, created_at, u
 
 func (q *Queries) GetSealedKey(ctx context.Context) (VaultSealedKey, error) {
 	row := q.db.QueryRowContext(ctx, getSealedKey)
+
 	var i VaultSealedKey
+
 	err := row.Scan(
 		&i.ID,
 		&i.SealedData,
@@ -31,6 +33,7 @@ func (q *Queries) GetSealedKey(ctx context.Context) (VaultSealedKey, error) {
 		&i.UpdatedAt,
 		&i.SealMethod,
 	)
+
 	return i, err
 }
 
@@ -40,8 +43,11 @@ SELECT COUNT(*) FROM vault_sealed_key WHERE id = 1
 
 func (q *Queries) HasSealedKey(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, hasSealedKey)
+
 	var count int64
+
 	err := row.Scan(&count)
+
 	return count, err
 }
 
@@ -76,5 +82,6 @@ func (q *Queries) UpsertSealedKey(ctx context.Context, arg UpsertSealedKeyParams
 		arg.MachineIDHash,
 		arg.SealMethod,
 	)
+
 	return err
 }

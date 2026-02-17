@@ -85,15 +85,15 @@ anvil/
 
 ## Key Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `github.com/inovacc/sealbox` | TPM 2.0 hardware-backed key sealing, AES-256-GCM packed encrypt, memory zeroing |
-| `github.com/spf13/cobra` | CLI framework |
-| `github.com/charmbracelet/bubbletea` | TUI framework |
-| `github.com/charmbracelet/bubbles` | TUI components (table, textinput) |
-| `github.com/charmbracelet/lipgloss` | TUI styling |
-| `golang.org/x/crypto` | HKDF-SHA256, bcrypt |
-| `modernc.org/sqlite` | Pure Go SQLite (no CGO) |
+| Package                              | Purpose                                                                         |
+|--------------------------------------|---------------------------------------------------------------------------------|
+| `github.com/inovacc/sealbox`         | TPM 2.0 hardware-backed key sealing, AES-256-GCM packed encrypt, memory zeroing |
+| `github.com/spf13/cobra`             | CLI framework                                                                   |
+| `github.com/charmbracelet/bubbletea` | TUI framework                                                                   |
+| `github.com/charmbracelet/bubbles`   | TUI components (table, textinput)                                               |
+| `github.com/charmbracelet/lipgloss`  | TUI styling                                                                     |
+| `golang.org/x/crypto`                | HKDF-SHA256, bcrypt                                                             |
+| `modernc.org/sqlite`                 | Pure Go SQLite (no CGO)                                                         |
 
 ## Security Architecture
 
@@ -101,8 +101,10 @@ anvil/
 
 Vault init tries TPM 2.0 first, falls back to software HKDF:
 
-- **TPM path** (`seal_method = "tpm"`): `sealbox.NewKeyManager()` → `km.SealKey(masterKey)` → JSON-serialized `SealedData` stored in `vault_sealed_key.sealed_data`; `nonce` and `key_salt` are NULL
-- **Software path** (`seal_method = "software"`): `HKDF-SHA256(machineID, salt)` derives wrapping key → AES-256-GCM encrypts master key; `nonce` and `key_salt` stored alongside
+- **TPM path** (`seal_method = "tpm"`): `sealbox.NewKeyManager()` → `km.SealKey(masterKey)` → JSON-serialized
+  `SealedData` stored in `vault_sealed_key.sealed_data`; `nonce` and `key_salt` are NULL
+- **Software path** (`seal_method = "software"`): `HKDF-SHA256(machineID, salt)` derives wrapping key → AES-256-GCM
+  encrypts master key; `nonce` and `key_salt` stored alongside
 - The `seal_method` column discriminates which unseal path `Open()` uses
 - TPM platform support: Linux (`/dev/tpmrm0`), Windows (TBS); macOS falls back to software
 
@@ -122,7 +124,8 @@ Vault init tries TPM 2.0 first, falls back to software HKDF:
 
 - **No dropping/renaming** tables, columns, or indexes — only additive changes
 - **Every schema change** gets a new numbered migration (`migrations/NNN_*.sql`) that is idempotent
-- **Auto-migrate on open**: `store.Open()` detects the current schema version and applies pending migrations transparently
+- **Auto-migrate on open**: `store.Open()` detects the current schema version and applies pending migrations
+  transparently
 - **Sealed key & sentinel format changes** must read old formats and convert in-place
 - **Backups from any prior version** must remain importable
 - **Every migration must have a test** that creates a pre-migration DB and verifies data survives
@@ -154,12 +157,16 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Table-driven tests, 80% coverage minimum
 - Mute unused returns: `_, _ = fmt.Fprintln(w, output)`
 - Use `log/slog` for structured logging
-- All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output; `--json` → JSON, default → tabwriter table
-- CLI list commands use `tableWriter(w)` from `cmd/output.go` for consistent `text/tabwriter` table output (header row in CAPS, tab-separated columns)
+- All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output; `--json` → JSON, default → tabwriter
+  table
+- CLI list commands use `tableWriter(w)` from `cmd/output.go` for consistent `text/tabwriter` table output (header row
+  in CAPS, tab-separated columns)
 - Global `--json` persistent flag on rootCmd inherited by all subcommands
-- Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/errors.go` formats them (text or JSON based on `--json`)
+- Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/errors.go` formats
+  them (text or JSON based on `--json`)
 - `SilenceErrors` and `SilenceUsage` are set on rootCmd; Cobra does not dump usage on errors
-- All TUI list screens use `bubbles/table`: secrets (4 cols), profiles (5 cols), audit (5 cols), history (2 cols); each has a `newXModel()` constructor, `xTableColumns()` for sizing, and resize handling in `Update()`
+- All TUI list screens use `bubbles/table`: secrets (4 cols), profiles (5 cols), audit (5 cols), history (2 cols); each
+  has a `newXModel()` constructor, `xTableColumns()` for sizing, and resize handling in `Update()`
 - TUI navigation: dashboard → `p` profiles → `enter` secrets → `h` history; dashboard → `a` audit; `esc` goes back
 - `tableStyles()` in theme.go provides shared table styling for all TUI screens
 - `visibleSubcommands()` in cmdtree.go filters hidden commands and "help"
@@ -171,8 +178,11 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Secret versioning: `Set` archives previous value; `Delete` removes version history
 - Key rotation uses `rotateKeyTx()` helper to isolate transaction scope from audit logging (avoids mutex deadlock)
 - Docker bridge: `vault docker export` writes one file per secret; `vault docker compose` generates YAML snippet
-- Plugin system: `PluginManager` loaded in `Open()` from `plugins.json` alongside vault DB; hooks fire on Set/Get/Delete via pre/post events; pre-hooks can block operations by returning `{"allow":false}`; post-hook errors are logged but never block
+- Plugin system: `PluginManager` loaded in `Open()` from `plugins.json` alongside vault DB; hooks fire on Set/Get/Delete
+  via pre/post events; pre-hooks can block operations by returning `{"allow":false}`; post-hook errors are logged but
+  never block
 - Plugin config (`plugins.json`) is separate from the vault DB — no schema migration needed
-- Gather command: `vault gather [dir]` recursively discovers `.env`/`.env.*`, `.json`, `.yaml`/`.yml` files; extracts secret-pattern keys (password, token, api_key, etc.); interactive by default, `--yes -p <profile>` for non-interactive
+- Gather command: `vault gather [dir]` recursively discovers `.env`/`.env.*`, `.json`, `.yaml`/`.yml` files; extracts
+  secret-pattern keys (password, token, api_key, etc.); interactive by default, `--yes -p <profile>` for non-interactive
 - Sentinel `defaultCacheDir()` respects `ANVIL_DB_PATH` env var — ensures test isolation for sentinel files
 - Integration tests reset `--json` persistent flag in `execCmd()` to prevent state leakage between tests

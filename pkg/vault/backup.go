@@ -11,11 +11,11 @@ import (
 
 // BackupData represents a full vault backup in plaintext (before encryption).
 type BackupData struct {
-	Version   int                  `json:"version"`
-	CreatedAt time.Time            `json:"created_at"`
-	Profiles  []BackupProfile      `json:"profiles"`
-	Password  []byte               `json:"password_hash,omitempty"`
-	Versions  []BackupSecretVer    `json:"secret_versions,omitempty"`
+	Version   int               `json:"version"`
+	CreatedAt time.Time         `json:"created_at"`
+	Profiles  []BackupProfile   `json:"profiles"`
+	Password  []byte            `json:"password_hash,omitempty"`
+	Versions  []BackupSecretVer `json:"secret_versions,omitempty"`
 }
 
 // BackupProfile represents a profile and its secrets in a backup.

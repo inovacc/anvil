@@ -21,9 +21,11 @@ func TestIsUserError(t *testing.T) {
 		if !ok {
 			t.Fatal("expected ok")
 		}
+
 		if ue.Message != "profile not found" {
 			t.Errorf("Message = %q", ue.Message)
 		}
+
 		if ue.Hint == "" {
 			t.Error("expected non-empty hint")
 		}
@@ -31,10 +33,12 @@ func TestIsUserError(t *testing.T) {
 
 	t.Run("wrapped UserError", func(t *testing.T) {
 		wrapped := fmt.Errorf("outer: %w", vault.ErrPasswordMismatch)
+
 		ue, ok := vault.IsUserError(wrapped)
 		if !ok {
 			t.Fatal("expected ok for wrapped error")
 		}
+
 		if ue.Message != "incorrect password" {
 			t.Errorf("Message = %q", ue.Message)
 		}

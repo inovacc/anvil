@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"testing"
@@ -150,9 +150,11 @@ func TestParseEnvData(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("parseEnvData() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if len(got) != len(tt.want) {
 				t.Fatalf("parseEnvData() got %d entries, want %d\ngot:  %+v\nwant: %+v", len(got), len(tt.want), got, tt.want)
 			}
+
 			for i := range got {
 				if got[i].Key != tt.want[i].Key || got[i].Value != tt.want[i].Value {
 					t.Errorf("entry[%d] = {%q, %q}, want {%q, %q}", i, got[i].Key, got[i].Value, tt.want[i].Key, tt.want[i].Value)

@@ -11,15 +11,19 @@ import (
 func benchVault(b *testing.B) *vault.Vault {
 	b.Helper()
 	dbPath := filepath.Join(b.TempDir(), "vault.db")
+
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {
 		b.Fatalf("Init: %v", err)
 	}
+
 	v, err := vault.Open(opts)
 	if err != nil {
 		b.Fatalf("Open: %v", err)
 	}
+
 	b.Cleanup(func() { _ = v.Close() })
+
 	return v
 }
 
@@ -67,6 +71,7 @@ func BenchmarkVaultList(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		_, err := v.List("bench")
 		if err != nil {
@@ -88,6 +93,7 @@ func BenchmarkVaultExport(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		_, err := v.Export("bench")
 		if err != nil {

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ func TestAicontextCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("aicontext error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "CLI") {
 		t.Errorf("expected CLI markdown output, got: %q", stdout)
 	}
@@ -34,6 +35,7 @@ func TestAicontextCompactCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("aicontext compact error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "CLI") {
 		t.Errorf("expected compact output, got: %q", stdout)
 	}
@@ -51,6 +53,7 @@ func TestAicontextCategoryCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("aicontext error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "vault") {
 		t.Errorf("expected vault in output, got: %q", stdout[:min(len(stdout), 200)])
 	}
@@ -61,10 +64,12 @@ func TestAicontextJSONCLI(t *testing.T) {
 
 	// Without category filter, should get all commands
 	stdout, _ := execCmd(t, "aicontext", "--json")
+
 	var commands []aiCommandInfo
 	if err := json.Unmarshal([]byte(stdout), &commands); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if len(commands) == 0 {
 		t.Error("expected at least 1 command")
 	}
@@ -74,10 +79,12 @@ func TestAicontextCategoryFilterEmpty(t *testing.T) {
 	setupTestVault(t)
 
 	stdout, _ := execCmd(t, "aicontext", "--category", "nonexistent_category_xyz", "--json")
+
 	var commands []aiCommandInfo
 	if err := json.Unmarshal([]byte(stdout), &commands); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if len(commands) != 0 {
 		t.Errorf("expected 0 commands for nonexistent category, got %d", len(commands))
 	}
@@ -90,6 +97,7 @@ func TestEnvInlineCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "test", "--default")
 	execCmd(t, "vault", "set", "INLINE_KEY", "inline_val", "-p", "test")
 	execCmd(t, "vault", "env", "password", "set", "--password", "mypassword1")
+
 	execCmd(t, "vault", "env", "release", "-p", "test", "--password", "mypassword1", "--ttl", "5m")
 	defer execCmd(t, "vault", "env", "revoke")
 
@@ -97,6 +105,7 @@ func TestEnvInlineCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("env-inline error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "inline_val") {
 		t.Errorf("expected inline_val, got: %q", stdout)
 	}
@@ -107,6 +116,7 @@ func TestEnvInlineJSONCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "test", "--default")
 	execCmd(t, "vault", "set", "INLINE_J", "jval", "-p", "test")
 	execCmd(t, "vault", "env", "password", "set", "--password", "mypassword1")
+
 	execCmd(t, "vault", "env", "release", "-p", "test", "--password", "mypassword1", "--ttl", "5m")
 	defer execCmd(t, "vault", "env", "revoke")
 
@@ -114,6 +124,7 @@ func TestEnvInlineJSONCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("env-inline JSON error: %s", stderr)
 	}
+
 	var result struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
@@ -121,6 +132,7 @@ func TestEnvInlineJSONCLI(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if result.Value != "jval" {
 		t.Errorf("value = %q, want %q", result.Value, "jval")
 	}
@@ -168,12 +180,15 @@ func TestCompleteProfileNames(t *testing.T) {
 	if directive != cobra.ShellCompDirectiveNoFileComp {
 		t.Error("expected NoFileComp directive")
 	}
+
 	found := false
+
 	for _, n := range names {
 		if n == "comp-test" {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Errorf("expected comp-test in completions, got: %v", names)
 	}
@@ -184,6 +199,7 @@ func TestCompleteProfileNamesAlreadyHasArgs(t *testing.T) {
 	if directive != cobra.ShellCompDirectiveNoFileComp {
 		t.Error("expected NoFileComp directive")
 	}
+
 	if len(names) != 0 {
 		t.Errorf("expected empty completions when args present, got: %v", names)
 	}
@@ -201,12 +217,15 @@ func TestCompleteSecretKeys(t *testing.T) {
 	if directive != cobra.ShellCompDirectiveNoFileComp {
 		t.Error("expected NoFileComp directive")
 	}
+
 	found := false
+
 	for _, k := range keys {
 		if k == "COMP_KEY_1" {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Errorf("expected COMP_KEY_1 in completions, got: %v", keys)
 	}
@@ -220,6 +239,7 @@ func TestCompleteSecretKeysAlreadyHasArgs(t *testing.T) {
 	if directive != cobra.ShellCompDirectiveNoFileComp {
 		t.Error("expected NoFileComp directive")
 	}
+
 	if len(keys) != 0 {
 		t.Errorf("expected empty completions when args present, got: %v", keys)
 	}
@@ -230,6 +250,7 @@ func TestCompleteSecretKeysAlreadyHasArgs(t *testing.T) {
 func TestOutputResultText(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Bool("json", false, "")
+
 	out := &bytes.Buffer{}
 	cmd.SetOut(out)
 
@@ -260,6 +281,7 @@ func TestOutputResultJSON(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatalf("JSON parse: %v", err)
 	}
+
 	if result["name"] != "test" {
 		t.Errorf("name = %v, want test", result["name"])
 	}
@@ -268,6 +290,7 @@ func TestOutputResultJSON(t *testing.T) {
 func TestHandleErrorUserError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Bool("json", false, "")
+
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
 
@@ -278,6 +301,7 @@ func TestHandleErrorUserError(t *testing.T) {
 	if !strings.Contains(output, "bad input") {
 		t.Errorf("expected message, got: %q", output)
 	}
+
 	if !strings.Contains(output, "try again") {
 		t.Errorf("expected hint, got: %q", output)
 	}
@@ -297,9 +321,11 @@ func TestHandleErrorUserErrorJSON(t *testing.T) {
 	if err := json.Unmarshal(errBuf.Bytes(), &result); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, errBuf.String())
 	}
+
 	if result["error"] != "bad input" {
 		t.Errorf("error = %v, want 'bad input'", result["error"])
 	}
+
 	if result["hint"] != "try again" {
 		t.Errorf("hint = %v, want 'try again'", result["hint"])
 	}
@@ -308,6 +334,7 @@ func TestHandleErrorUserErrorJSON(t *testing.T) {
 func TestHandleErrorRegularError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Bool("json", false, "")
+
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
 
@@ -332,6 +359,7 @@ func TestHandleErrorRegularErrorJSON(t *testing.T) {
 	if err := json.Unmarshal(errBuf.Bytes(), &result); err != nil {
 		t.Fatalf("JSON parse: %v", err)
 	}
+
 	if result["error"] != "broke" {
 		t.Errorf("error = %v, want 'broke'", result["error"])
 	}
@@ -387,6 +415,7 @@ func TestVisibleSubcommands(t *testing.T) {
 	if len(result) != 1 {
 		t.Fatalf("expected 1 visible command, got %d", len(result))
 	}
+
 	if result[0].Name() != "visible" {
 		t.Errorf("visible command = %q, want 'visible'", result[0].Name())
 	}
@@ -401,6 +430,7 @@ func TestFlattenCommands(t *testing.T) {
 	if len(entries) < 2 {
 		t.Errorf("expected at least 2 entries, got %d", len(entries))
 	}
+
 	if entries[0].Name != "root" {
 		t.Errorf("first entry = %q, want 'root'", entries[0].Name)
 	}
@@ -419,6 +449,7 @@ func TestPrintTree(t *testing.T) {
 	if !strings.Contains(output, "alpha") || !strings.Contains(output, "beta") {
 		t.Errorf("expected alpha and beta in tree, got: %q", output)
 	}
+
 	if !strings.Contains(output, "├") || !strings.Contains(output, "└") {
 		t.Errorf("expected tree connectors, got: %q", output)
 	}
@@ -466,6 +497,7 @@ func TestPasswordUpdateWithCurrentCLI(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("expected no error, got: %q", stderr)
 	}
+
 	if !strings.Contains(stdout, "successfully") {
 		t.Errorf("expected success message, got: %q", stdout)
 	}
@@ -597,6 +629,7 @@ func TestExportEnvFormatCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("export error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "MY_KEY=my_val") {
 		t.Errorf("expected env format, got: %q", stdout)
 	}
@@ -633,6 +666,7 @@ func TestAuditWithProfileFilterCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("audit error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "auditprof") {
 		t.Errorf("expected filtered audit, got: %q", stdout)
 	}
@@ -648,6 +682,7 @@ func TestAuditWithLimitCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("audit limit error: %s", stderr)
 	}
+
 	_ = stdout // just verify no error
 }
 
@@ -671,10 +706,12 @@ func TestVaultStatusJSONCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("status JSON error: %s", stderr)
 	}
+
 	var result map[string]any
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v", err)
 	}
+
 	if _, ok := result["initialized"]; !ok {
 		t.Error("expected 'initialized' field in JSON status")
 	}
@@ -687,6 +724,7 @@ func TestRootHelpCLI(t *testing.T) {
 
 	// Root with no args invokes help; help output may go to stdout or be captured differently
 	stdout, stderr := execCmd(t, "--help")
+
 	combined := stdout + stderr
 	if !strings.Contains(combined, "anvil") && !strings.Contains(combined, "vault") {
 		t.Errorf("expected help output, got stdout=%q stderr=%q", stdout[:min(len(stdout), 200)], stderr[:min(len(stderr), 200)])
@@ -698,6 +736,7 @@ func TestRootHelpCLI(t *testing.T) {
 func TestHandleErrorUserErrorNoHint(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Bool("json", false, "")
+
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
 
@@ -708,6 +747,7 @@ func TestHandleErrorUserErrorNoHint(t *testing.T) {
 	if !strings.Contains(output, "no hint error") {
 		t.Errorf("expected message, got: %q", output)
 	}
+
 	if strings.Contains(output, "Hint") {
 		t.Error("should not show Hint line when hint is empty")
 	}
@@ -723,6 +763,7 @@ func TestImportJSONCLI(t *testing.T) {
 
 	// Write a JSON import file.
 	tmpFile := filepath.Join(t.TempDir(), "secrets.json")
+
 	data := `[{"key":"API_KEY","value":"secret123"},{"key":"DB_PASS","value":"pass456"}]`
 	if err := os.WriteFile(tmpFile, []byte(data), 0644); err != nil {
 		t.Fatal(err)
@@ -740,6 +781,7 @@ func TestImportEnvCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "envimport", "-d", "test")
 
 	tmpFile := filepath.Join(t.TempDir(), "secrets.env")
+
 	data := "API_KEY=secret123\nDB_PASS=pass456\n# comment\nexport TOKEN=abc\n"
 	if err := os.WriteFile(tmpFile, []byte(data), 0644); err != nil {
 		t.Fatal(err)
@@ -790,6 +832,7 @@ func TestGatherWithEnvFileCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "gatherenv", "-d", "test")
 
 	dir := t.TempDir()
+
 	envContent := "API_KEY=secret123\nDB_PASSWORD=pass456\nNORMAL_VAR=hello\n"
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(envContent), 0644); err != nil {
 		t.Fatal(err)
@@ -805,6 +848,7 @@ func TestGatherWithJSONFileCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "gatherjson", "-d", "test")
 
 	dir := t.TempDir()
+
 	jsonContent := `{"api_key": "secret123", "database": {"password": "pass456"}}`
 	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(jsonContent), 0644); err != nil {
 		t.Fatal(err)
@@ -820,6 +864,7 @@ func TestGatherWithYAMLFileCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "gatheryaml", "-d", "test")
 
 	dir := t.TempDir()
+
 	yamlContent := "api_key: secret123\ndatabase:\n  password: pass456\n"
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(yamlContent), 0644); err != nil {
 		t.Fatal(err)
@@ -835,6 +880,7 @@ func TestImportJSONOutputCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "jsonout", "-d", "test")
 
 	tmpFile := filepath.Join(t.TempDir(), "secrets.json")
+
 	data := `[{"key":"TOKEN","value":"abc"}]`
 	if err := os.WriteFile(tmpFile, []byte(data), 0644); err != nil {
 		t.Fatal(err)
@@ -850,12 +896,14 @@ func TestGatherNoProfileWithYesCLI(t *testing.T) {
 	setupTestVault(t)
 
 	dir := t.TempDir()
+
 	envContent := "API_KEY=secret\n"
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(envContent), 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	stdout, stderr := execCmd(t, "vault", "gather", dir, "--yes")
+
 	combined := stdout + stderr
 	if !strings.Contains(combined, "profile") {
 		t.Errorf("expected profile-related error, got stdout=%q stderr=%q", stdout, stderr)
@@ -868,6 +916,7 @@ func TestGatherJSONOutputCLI(t *testing.T) {
 	execCmd(t, "vault", "profile", "create", "gatherjsonout", "-d", "test")
 
 	dir := t.TempDir()
+
 	envContent := "DB_PASSWORD=secret123\nAPI_TOKEN=abc\n"
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(envContent), 0644); err != nil {
 		t.Fatal(err)
@@ -909,6 +958,7 @@ func TestGatherWithExcludeCLI(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "subdir"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(dir, "subdir", ".env"), []byte("API_KEY=secret\n"), 0644); err != nil {
 		t.Fatal(err)
 	}

@@ -141,6 +141,7 @@ func (v *Vault) ApplyTemplate(name, profileName string, vars map[string]string) 
 
 	// Validate required variables and apply defaults.
 	templateVars := make(map[string]string)
+
 	for _, variable := range def.Variables {
 		val, ok := vars[variable.Name]
 		if !ok || val == "" {

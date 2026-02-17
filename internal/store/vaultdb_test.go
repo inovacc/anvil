@@ -14,11 +14,14 @@ import (
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
+
 	s, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("Open(%q): %v", dbPath, err)
 	}
+
 	t.Cleanup(func() { _ = s.Close() })
+
 	return s
 }
 
@@ -36,16 +39,20 @@ func TestProfileCRUD(t *testing.T) {
 		if err := s.CreateProfile("dev", "development", true, ""); err != nil {
 			t.Fatalf("CreateProfile: %v", err)
 		}
+
 		p, err := s.GetProfile("dev")
 		if err != nil {
 			t.Fatalf("GetProfile: %v", err)
 		}
+
 		if p.Name != "dev" {
 			t.Errorf("got name %q, want %q", p.Name, "dev")
 		}
+
 		if p.Description == nil || *p.Description != "development" {
 			t.Errorf("got description %v, want %q", p.Description, "development")
 		}
+
 		if p.IsDefault == nil || *p.IsDefault != 1 {
 			t.Errorf("expected is_default=1, got %v", p.IsDefault)
 		}
@@ -56,6 +63,7 @@ func TestProfileCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetDefaultProfile: %v", err)
 		}
+
 		if p.Name != "dev" {
 			t.Errorf("got %q, want %q", p.Name, "dev")
 		}
@@ -63,10 +71,12 @@ func TestProfileCRUD(t *testing.T) {
 
 	t.Run("list profiles", func(t *testing.T) {
 		_ = s.CreateProfile("staging", "staging env", false, "")
+
 		profiles, err := s.ListProfiles()
 		if err != nil {
 			t.Fatalf("ListProfiles: %v", err)
 		}
+
 		if len(profiles) < 2 {
 			t.Fatalf("got %d profiles, want >= 2", len(profiles))
 		}
@@ -86,6 +96,7 @@ func TestProfileCRUD(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ProfileExists(%q): %v", tt.name, err)
 			}
+
 			if exists != tt.want {
 				t.Errorf("ProfileExists(%q) = %v, want %v", tt.name, exists, tt.want)
 			}
@@ -96,13 +107,16 @@ func TestProfileCRUD(t *testing.T) {
 		if err := s.SetDefaultProfile("staging"); err != nil {
 			t.Fatalf("SetDefaultProfile: %v", err)
 		}
+
 		p, err := s.GetDefaultProfile()
 		if err != nil {
 			t.Fatalf("GetDefaultProfile: %v", err)
 		}
+
 		if p.Name != "staging" {
 			t.Errorf("got %q, want %q", p.Name, "staging")
 		}
+
 		old, _ := s.GetProfile("dev")
 		if old.IsDefault != nil && *old.IsDefault != 0 {
 			t.Errorf("old default not cleared: %v", old.IsDefault)
@@ -113,6 +127,7 @@ func TestProfileCRUD(t *testing.T) {
 		if err := s.DeleteProfile("staging"); err != nil {
 			t.Fatalf("DeleteProfile: %v", err)
 		}
+
 		exists, _ := s.ProfileExists("staging")
 		if exists {
 			t.Error("profile still exists after delete")
@@ -122,6 +137,7 @@ func TestProfileCRUD(t *testing.T) {
 
 func TestGetNonExistentProfile(t *testing.T) {
 	s := openTestStore(t)
+
 	_, err := s.GetProfile("ghost")
 	if !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("expected sql.ErrNoRows, got %v", err)
@@ -139,16 +155,20 @@ func TestSecretCRUD(t *testing.T) {
 		if err := s.UpsertSecret("prod", "API_KEY", encVal, nonce, "api key"); err != nil {
 			t.Fatalf("UpsertSecret: %v", err)
 		}
+
 		sec, err := s.GetSecret("prod", "API_KEY")
 		if err != nil {
 			t.Fatalf("GetSecret: %v", err)
 		}
+
 		if sec.Key != "API_KEY" {
 			t.Errorf("got key %q, want %q", sec.Key, "API_KEY")
 		}
+
 		if string(sec.EncryptedValue) != string(encVal) {
 			t.Error("encrypted value mismatch")
 		}
+
 		if string(sec.Nonce) != string(nonce) {
 			t.Error("nonce mismatch")
 		}
@@ -159,6 +179,7 @@ func TestSecretCRUD(t *testing.T) {
 		if err := s.UpsertSecret("prod", "API_KEY", newVal, nonce, "updated"); err != nil {
 			t.Fatalf("UpsertSecret: %v", err)
 		}
+
 		sec, _ := s.GetSecret("prod", "API_KEY")
 		if string(sec.EncryptedValue) != string(newVal) {
 			t.Error("upsert did not overwrite")
@@ -180,6 +201,7 @@ func TestSecretCRUD(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SecretExists(%q, %q): %v", tt.profile, tt.key, err)
 			}
+
 			if exists != tt.want {
 				t.Errorf("SecretExists(%q, %q) = %v, want %v", tt.profile, tt.key, exists, tt.want)
 			}
@@ -188,10 +210,12 @@ func TestSecretCRUD(t *testing.T) {
 
 	t.Run("count secrets", func(t *testing.T) {
 		_ = s.UpsertSecret("prod", "DB_PASS", encVal, nonce, "db password")
+
 		count, err := s.CountSecrets("prod")
 		if err != nil {
 			t.Fatalf("CountSecrets: %v", err)
 		}
+
 		if count != 2 {
 			t.Errorf("got count %d, want 2", count)
 		}
@@ -202,6 +226,7 @@ func TestSecretCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListSecrets: %v", err)
 		}
+
 		if len(secrets) != 2 {
 			t.Errorf("got %d secrets, want 2", len(secrets))
 		}
@@ -210,10 +235,12 @@ func TestSecretCRUD(t *testing.T) {
 	t.Run("list all secrets", func(t *testing.T) {
 		_ = s.CreateProfile("other", "other", false, "")
 		_ = s.UpsertSecret("other", "TOKEN", encVal, nonce, "token")
+
 		all, err := s.ListAllSecrets()
 		if err != nil {
 			t.Fatalf("ListAllSecrets: %v", err)
 		}
+
 		if len(all) != 3 {
 			t.Errorf("got %d secrets, want 3", len(all))
 		}
@@ -223,6 +250,7 @@ func TestSecretCRUD(t *testing.T) {
 		if err := s.DeleteSecret("prod", "API_KEY"); err != nil {
 			t.Fatalf("DeleteSecret: %v", err)
 		}
+
 		exists, _ := s.SecretExists("prod", "API_KEY")
 		if exists {
 			t.Error("secret still exists after delete")
@@ -232,6 +260,7 @@ func TestSecretCRUD(t *testing.T) {
 
 func TestGetNonExistentSecret(t *testing.T) {
 	s := openTestStore(t)
+
 	_, err := s.GetSecret("ghost", "nope")
 	if !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("expected sql.ErrNoRows, got %v", err)
@@ -265,6 +294,7 @@ func TestSealedKeyCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("HasSealedKey: %v", err)
 		}
+
 		if has {
 			t.Error("expected no sealed key")
 		}
@@ -279,29 +309,37 @@ func TestSealedKeyCRUD(t *testing.T) {
 		if err := s.UpsertSealedKey(sealedData, nonce, keySalt, machineID, 1, "software"); err != nil {
 			t.Fatalf("UpsertSealedKey: %v", err)
 		}
+
 		has, _ := s.HasSealedKey()
 		if !has {
 			t.Fatal("expected sealed key to exist")
 		}
+
 		sk, err := s.GetSealedKey()
 		if err != nil {
 			t.Fatalf("GetSealedKey: %v", err)
 		}
+
 		if string(sk.SealedData) != string(sealedData) {
 			t.Error("sealed data mismatch")
 		}
+
 		if string(sk.Nonce) != string(nonce) {
 			t.Error("nonce mismatch")
 		}
+
 		if string(sk.KeySalt) != string(keySalt) {
 			t.Error("key salt mismatch")
 		}
+
 		if string(sk.MachineIDHash) != string(machineID) {
 			t.Error("machine ID hash mismatch")
 		}
+
 		if sk.Version == nil || *sk.Version != 1 {
 			t.Errorf("version = %v, want 1", sk.Version)
 		}
+
 		if sk.SealMethod != "software" {
 			t.Errorf("seal_method = %q, want %q", sk.SealMethod, "software")
 		}
@@ -312,10 +350,12 @@ func TestSealedKeyCRUD(t *testing.T) {
 		if err := s.UpsertSealedKey(newData, nonce, keySalt, machineID, 2, "tpm"); err != nil {
 			t.Fatalf("UpsertSealedKey: %v", err)
 		}
+
 		sk, _ := s.GetSealedKey()
 		if string(sk.SealedData) != string(newData) {
 			t.Error("upsert did not overwrite sealed data")
 		}
+
 		if sk.SealMethod != "tpm" {
 			t.Errorf("seal_method = %q, want %q", sk.SealMethod, "tpm")
 		}
@@ -325,6 +365,7 @@ func TestSealedKeyCRUD(t *testing.T) {
 		if err := s.DeleteSealedKey(); err != nil {
 			t.Fatalf("DeleteSealedKey: %v", err)
 		}
+
 		has, _ := s.HasSealedKey()
 		if has {
 			t.Error("sealed key still exists after delete")
@@ -340,6 +381,7 @@ func TestPasswordCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("HasPassword: %v", err)
 		}
+
 		if has {
 			t.Error("expected no password")
 		}
@@ -351,14 +393,17 @@ func TestPasswordCRUD(t *testing.T) {
 		if err := s.UpsertPassword(hash); err != nil {
 			t.Fatalf("UpsertPassword: %v", err)
 		}
+
 		has, _ := s.HasPassword()
 		if !has {
 			t.Fatal("expected password to exist")
 		}
+
 		pw, err := s.GetPassword()
 		if err != nil {
 			t.Fatalf("GetPassword: %v", err)
 		}
+
 		if string(pw.PasswordHash) != string(hash) {
 			t.Error("password hash mismatch")
 		}
@@ -369,6 +414,7 @@ func TestPasswordCRUD(t *testing.T) {
 		if err := s.UpsertPassword(newHash); err != nil {
 			t.Fatalf("UpsertPassword: %v", err)
 		}
+
 		pw, _ := s.GetPassword()
 		if string(pw.PasswordHash) != string(newHash) {
 			t.Error("upsert did not overwrite password")
@@ -379,6 +425,7 @@ func TestPasswordCRUD(t *testing.T) {
 		if err := s.DeletePassword(); err != nil {
 			t.Fatalf("DeletePassword: %v", err)
 		}
+
 		has, _ := s.HasPassword()
 		if has {
 			t.Error("password still exists after delete")
@@ -396,6 +443,7 @@ func TestBeginTxEndTx(t *testing.T) {
 	}
 
 	desc := ""
+
 	err = q.UpsertSecret(context.Background(), sqlc.UpsertSecretParams{
 		ProfileName:    "txtest",
 		Key:            "TXK",
@@ -405,6 +453,7 @@ func TestBeginTxEndTx(t *testing.T) {
 	})
 	if err != nil {
 		_ = tx.Rollback()
+
 		s.EndTx()
 		t.Fatalf("UpsertSecret in tx: %v", err)
 	}
@@ -413,6 +462,7 @@ func TestBeginTxEndTx(t *testing.T) {
 		s.EndTx()
 		t.Fatalf("Commit: %v", err)
 	}
+
 	s.EndTx()
 
 	exists, _ := s.SecretExists("txtest", "TXK")
@@ -439,6 +489,7 @@ func TestBeginTxRollback(t *testing.T) {
 		Description:    &desc2,
 	})
 	_ = tx.Rollback()
+
 	s.EndTx()
 
 	exists, _ := s.SecretExists("rollback", "RBK")
@@ -455,6 +506,7 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CountAuditLog: %v", err)
 		}
+
 		if count != 0 {
 			t.Errorf("got count %d, want 0", count)
 		}
@@ -464,9 +516,11 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err := s.LogAudit("secret.set", "dev", "API_KEY", ""); err != nil {
 			t.Fatalf("LogAudit: %v", err)
 		}
+
 		if err := s.LogAudit("secret.get", "dev", "API_KEY", ""); err != nil {
 			t.Fatalf("LogAudit: %v", err)
 		}
+
 		if err := s.LogAudit("profile.create", "staging", "", "new profile"); err != nil {
 			t.Fatalf("LogAudit: %v", err)
 		}
@@ -475,9 +529,11 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListAuditLog: %v", err)
 		}
+
 		if len(entries) != 3 {
 			t.Fatalf("got %d entries, want 3", len(entries))
 		}
+
 		if entries[0].Action != "profile.create" {
 			t.Errorf("expected newest first, got %q", entries[0].Action)
 		}
@@ -488,6 +544,7 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListAuditLogByProfile: %v", err)
 		}
+
 		if len(entries) != 2 {
 			t.Errorf("got %d entries, want 2", len(entries))
 		}
@@ -498,6 +555,7 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListAuditLogByAction: %v", err)
 		}
+
 		if len(entries) != 1 {
 			t.Errorf("got %d entries, want 1", len(entries))
 		}
@@ -508,6 +566,7 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CountAuditLog: %v", err)
 		}
+
 		if count != 3 {
 			t.Errorf("got count %d, want 3", count)
 		}
@@ -519,6 +578,7 @@ func TestAuditLogCRUD(t *testing.T) {
 		if err := s.PurgeAuditLog(future); err != nil {
 			t.Fatalf("PurgeAuditLog: %v", err)
 		}
+
 		count, _ := s.CountAuditLog()
 		if count != 0 {
 			t.Errorf("got count %d after purge, want 0", count)
@@ -535,6 +595,7 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err := s.InsertSecretVersion("prod", "API_KEY", 1, []byte("v1-enc"), []byte("v1-nonce"), time.Now().Add(30*24*time.Hour)); err != nil {
 			t.Fatalf("InsertSecretVersion: %v", err)
 		}
+
 		if err := s.InsertSecretVersion("prod", "API_KEY", 2, []byte("v2-enc"), []byte("v2-nonce"), time.Now().Add(30*24*time.Hour)); err != nil {
 			t.Fatalf("InsertSecretVersion: %v", err)
 		}
@@ -543,9 +604,11 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListSecretVersions: %v", err)
 		}
+
 		if len(versions) != 2 {
 			t.Fatalf("got %d versions, want 2", len(versions))
 		}
+
 		if versions[0].Version != 2 {
 			t.Errorf("first version = %d, want 2 (newest first)", versions[0].Version)
 		}
@@ -556,6 +619,7 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetSecretVersion: %v", err)
 		}
+
 		if string(ver.EncryptedValue) != "v1-enc" {
 			t.Errorf("encrypted value = %q, want %q", ver.EncryptedValue, "v1-enc")
 		}
@@ -566,6 +630,7 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetLatestVersionNumber: %v", err)
 		}
+
 		if num != 2 {
 			t.Errorf("latest version = %d, want 2", num)
 		}
@@ -576,6 +641,7 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetLatestVersionNumber: %v", err)
 		}
+
 		if num != 0 {
 			t.Errorf("latest version = %d, want 0", num)
 		}
@@ -585,10 +651,12 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err := s.DeleteSecretVersions("prod", "API_KEY"); err != nil {
 			t.Fatalf("DeleteSecretVersions: %v", err)
 		}
+
 		versions, err := s.ListSecretVersions("prod", "API_KEY")
 		if err != nil {
 			t.Fatalf("ListSecretVersions: %v", err)
 		}
+
 		if len(versions) != 0 {
 			t.Errorf("got %d versions after delete, want 0", len(versions))
 		}
@@ -604,6 +672,7 @@ func TestSecretVersionCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListAllSecretVersions: %v", err)
 		}
+
 		if len(all) != 2 {
 			t.Errorf("got %d versions, want 2", len(all))
 		}
@@ -622,6 +691,7 @@ func TestProfileUUIDMethods(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetProfileByUUID: %v", err)
 		}
+
 		if p.Name != "uuid-test" {
 			t.Errorf("got name %q, want %q", p.Name, "uuid-test")
 		}
@@ -632,6 +702,7 @@ func TestProfileUUIDMethods(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ProfileExistsByUUID: %v", err)
 		}
+
 		if !exists {
 			t.Error("expected profile to exist")
 		}
@@ -640,6 +711,7 @@ func TestProfileUUIDMethods(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ProfileExistsByUUID: %v", err)
 		}
+
 		if exists {
 			t.Error("expected profile not to exist")
 		}
@@ -650,6 +722,7 @@ func TestProfileUUIDMethods(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetProfileUUID: %v", err)
 		}
+
 		if uuid != "test-uuid-1234" {
 			t.Errorf("got UUID %q, want %q", uuid, "test-uuid-1234")
 		}
@@ -682,6 +755,7 @@ func TestTemplateCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetTemplate: %v", err)
 		}
+
 		if tmpl.Name != "db-url" {
 			t.Errorf("got name %q, want %q", tmpl.Name, "db-url")
 		}
@@ -694,6 +768,7 @@ func TestTemplateCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListTemplates: %v", err)
 		}
+
 		if len(templates) < 2 {
 			t.Fatalf("got %d templates, want >= 2", len(templates))
 		}
@@ -704,6 +779,7 @@ func TestTemplateCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TemplateExists: %v", err)
 		}
+
 		if !exists {
 			t.Error("expected template to exist")
 		}
@@ -712,6 +788,7 @@ func TestTemplateCRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TemplateExists: %v", err)
 		}
+
 		if exists {
 			t.Error("expected template not to exist")
 		}
@@ -721,6 +798,7 @@ func TestTemplateCRUD(t *testing.T) {
 		if err := s.DeleteTemplate("db-url"); err != nil {
 			t.Fatalf("DeleteTemplate: %v", err)
 		}
+
 		exists, _ := s.TemplateExists("db-url")
 		if exists {
 			t.Error("template still exists after delete")
@@ -749,6 +827,7 @@ func TestPurgeExpiredVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PurgeExpiredVersions: %v", err)
 	}
+
 	if count != 1 {
 		t.Errorf("purged %d versions, want 1", count)
 	}
@@ -757,9 +836,11 @@ func TestPurgeExpiredVersions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListSecretVersions: %v", err)
 	}
+
 	if len(versions) != 1 {
 		t.Errorf("got %d versions after purge, want 1", len(versions))
 	}
+
 	if versions[0].Version != 2 {
 		t.Errorf("remaining version = %d, want 2", versions[0].Version)
 	}
@@ -775,6 +856,7 @@ func TestMigrationUUIDColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
+
 	oldSchema := `
 CREATE TABLE IF NOT EXISTS vault_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -840,6 +922,7 @@ CREATE TABLE IF NOT EXISTS vault_templates (id INTEGER PRIMARY KEY AUTOINCREMENT
 	if err != nil {
 		t.Fatalf("Open (migration): %v", err)
 	}
+
 	defer func() { _ = s.Close() }()
 
 	// Verify uuid column was added and backfilled.
@@ -847,17 +930,20 @@ CREATE TABLE IF NOT EXISTS vault_templates (id INTEGER PRIMARY KEY AUTOINCREMENT
 	if err != nil {
 		t.Fatalf("GetProfileUUID after migration: %v", err)
 	}
+
 	if uuid == "" {
 		t.Error("expected UUID to be backfilled, got empty string")
 	}
 
 	// Verify expires_at column exists (version row should have NULL expires_at).
 	var expiresAt sql.NullTime
+
 	err = s.db.QueryRowContext(context.Background(),
 		`SELECT expires_at FROM vault_secret_versions WHERE profile_name = 'legacy' AND key = 'KEY'`).Scan(&expiresAt)
 	if err != nil {
 		t.Fatalf("query expires_at: %v", err)
 	}
+
 	if expiresAt.Valid {
 		t.Error("expected NULL expires_at for pre-migration row")
 	}
@@ -866,10 +952,12 @@ CREATE TABLE IF NOT EXISTS vault_templates (id INTEGER PRIMARY KEY AUTOINCREMENT
 	if err := s.CreateProfile("new-profile", "test", false, "custom-uuid"); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
+
 	newUUID, err := s.GetProfileUUID("new-profile")
 	if err != nil {
 		t.Fatalf("GetProfileUUID: %v", err)
 	}
+
 	if newUUID != "custom-uuid" {
 		t.Errorf("got UUID %q, want %q", newUUID, "custom-uuid")
 	}
@@ -879,11 +967,13 @@ CREATE TABLE IF NOT EXISTS vault_templates (id INTEGER PRIMARY KEY AUTOINCREMENT
 	if err := s.InsertSecretVersion("legacy", "KEY", 2, []byte{0xCC}, []byte{0xDD}, future); err != nil {
 		t.Fatalf("InsertSecretVersion with expires_at: %v", err)
 	}
+
 	err = s.db.QueryRowContext(context.Background(),
 		`SELECT expires_at FROM vault_secret_versions WHERE profile_name = 'legacy' AND key = 'KEY' AND version = 2`).Scan(&expiresAt)
 	if err != nil {
 		t.Fatalf("query new expires_at: %v", err)
 	}
+
 	if !expiresAt.Valid {
 		t.Error("expected non-NULL expires_at for new version row")
 	}
@@ -891,13 +981,16 @@ CREATE TABLE IF NOT EXISTS vault_templates (id INTEGER PRIMARY KEY AUTOINCREMENT
 
 func TestClosePreventsFurtherOps(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
+
 	s, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	if err := s.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
+
 	if err := s.Ping(); err == nil {
 		t.Error("expected error after Close, got nil")
 	}

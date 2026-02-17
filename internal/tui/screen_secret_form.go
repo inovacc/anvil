@@ -71,7 +71,9 @@ func (f secretFormModel) Update(msg tea.Msg) (secretFormModel, tea.Cmd) {
 			} else {
 				f.focusIndex = (f.focusIndex - 1 + formFieldCount) % formFieldCount
 			}
+
 			cmds := make([]tea.Cmd, formFieldCount)
+
 			for i := range f.inputs {
 				if i == f.focusIndex {
 					cmds[i] = f.inputs[i].Focus()
@@ -83,6 +85,7 @@ func (f secretFormModel) Update(msg tea.Msg) (secretFormModel, tea.Cmd) {
 					f.inputs[i].TextStyle = blurredInputStyle
 				}
 			}
+
 			return f, tea.Batch(cmds...)
 		}
 	case secretFormSubmitMsg:
@@ -91,12 +94,15 @@ func (f secretFormModel) Update(msg tea.Msg) (secretFormModel, tea.Cmd) {
 		} else {
 			f.submitted = true
 		}
+
 		return f, nil
 	}
 
 	// Update the focused input
 	var cmd tea.Cmd
+
 	f.inputs[f.focusIndex], cmd = f.inputs[f.focusIndex].Update(msg)
+
 	return f, cmd
 }
 

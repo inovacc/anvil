@@ -39,12 +39,15 @@ func TestTemplateCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTemplate: %v", err)
 	}
+
 	if got.Name != "test-template" {
 		t.Errorf("Name = %q, want %q", got.Name, "test-template")
 	}
+
 	if len(got.Variables) != 2 {
 		t.Errorf("Variables count = %d, want 2", len(got.Variables))
 	}
+
 	if len(got.Secrets) != 2 {
 		t.Errorf("Secrets count = %d, want 2", len(got.Secrets))
 	}
@@ -54,21 +57,27 @@ func TestTemplateCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTemplates: %v", err)
 	}
+
 	found := false
+
 	for _, ti := range templates {
 		if ti.Name == "test-template" {
 			found = true
+
 			if ti.VarCount != 2 {
 				t.Errorf("VarCount = %d, want 2", ti.VarCount)
 			}
+
 			if ti.SecretCount != 2 {
 				t.Errorf("SecretCount = %d, want 2", ti.SecretCount)
 			}
+
 			if ti.Builtin {
 				t.Error("expected Builtin = false")
 			}
 		}
 	}
+
 	if !found {
 		t.Error("test-template not found in list")
 	}
@@ -123,6 +132,7 @@ func TestTemplateApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get DB_HOST: %v", err)
 	}
+
 	if val != "db.example.com" {
 		t.Errorf("DB_HOST = %q, want %q", val, "db.example.com")
 	}
@@ -131,6 +141,7 @@ func TestTemplateApply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get DB_URL: %v", err)
 	}
+
 	if val != "postgres://user:secret123@db.example.com:5432/db" {
 		t.Errorf("DB_URL = %q", val)
 	}
@@ -167,6 +178,7 @@ func TestTemplateApplyMissingRequiredVar(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected UserError, got %T: %v", err, err)
 	}
+
 	if ue.Hint == "" {
 		t.Error("expected hint on missing var error")
 	}
@@ -212,6 +224,7 @@ func TestTemplateApplyDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	if val != "us-east-1" {
 		t.Errorf("REGION = %q, want %q", val, "us-east-1")
 	}

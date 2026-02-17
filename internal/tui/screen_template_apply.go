@@ -33,6 +33,7 @@ func newTemplateApplyModel() templateApplyModel {
 	pi.Width = 40
 	pi.PromptStyle = focusedInputStyle
 	pi.TextStyle = focusedInputStyle
+
 	return templateApplyModel{profileInput: pi}
 }
 
@@ -42,6 +43,7 @@ func (t templateApplyModel) loadData(v *vault.Vault) tea.Cmd {
 		if err != nil {
 			return templateApplyLoadedMsg{err: err}
 		}
+
 		return templateApplyLoadedMsg{templates: templates}
 	}
 }
@@ -62,8 +64,11 @@ func (t templateApplyModel) Update(msg tea.Msg) (templateApplyModel, tea.Cmd) {
 			t.message = successStyle.Render(msg.message)
 		}
 	}
+
 	var cmd tea.Cmd
+
 	t.profileInput, cmd = t.profileInput.Update(msg)
+
 	return t, cmd
 }
 
@@ -81,17 +86,23 @@ func (t templateApplyModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (templateA
 		if len(t.templates) == 0 {
 			return t, nil
 		}
+
 		name := t.templates[t.templateIndex].Name
 		profile := t.profileInput.Value()
+
 		return t, func() tea.Msg {
 			if err := v.ApplyTemplate(name, profile, nil); err != nil {
 				return templateApplyActionMsg{err: err}
 			}
+
 			return templateApplyActionMsg{message: "Template \"" + name + "\" applied."}
 		}
 	}
+
 	var cmd tea.Cmd
+
 	t.profileInput, cmd = t.profileInput.Update(msg)
+
 	return t, cmd
 }
 
@@ -110,10 +121,12 @@ func (t templateApplyModel) View(width int) string {
 		b.WriteString(dimStyle.Render("  No templates available."))
 		b.WriteString("\n\n")
 		b.WriteString(helpStyle.Render("  esc: sidebar"))
+
 		return b.String()
 	}
 
 	b.WriteString("  " + labelStyle.Render("Template:") + "\n")
+
 	for i, tmpl := range t.templates {
 		marker := "  "
 		if i == t.templateIndex {
@@ -122,8 +135,10 @@ func (t templateApplyModel) View(width int) string {
 		} else {
 			b.WriteString(normalStyle.Render("  " + marker + tmpl.Name))
 		}
+
 		b.WriteString("\n")
 	}
+
 	b.WriteString("\n")
 
 	b.WriteString("  " + inputLabelStyle.Render("Profile") + "\n")

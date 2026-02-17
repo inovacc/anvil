@@ -45,6 +45,7 @@ func newSecretsModel(profileName string, width, height int) secretsModel {
 		table.WithHeight(max(1, height-8)),
 	)
 	t.SetStyles(tableStyles())
+
 	return secretsModel{
 		profileName: profileName,
 		table:       t,
@@ -55,7 +56,9 @@ func tableColumns(width int) []table.Column {
 	if width <= 0 {
 		width = 80
 	}
+
 	w := width - 4 // padding
+
 	return []table.Column{
 		{Title: "Key", Width: w * 30 / 100},
 		{Title: "Description", Width: w * 30 / 100},
@@ -70,6 +73,7 @@ func (s secretsModel) loadData(v *vault.Vault, profile string) tea.Cmd {
 		if err != nil {
 			return secretsLoadedMsg{err: err}
 		}
+
 		return secretsLoadedMsg{secrets: secrets}
 	}
 }
@@ -80,12 +84,14 @@ func (s secretsModel) Update(msg tea.Msg) (secretsModel, tea.Cmd) {
 		s.loaded = true
 		if msg.err == nil {
 			s.secrets = msg.secrets
+
 			rows := make([]table.Row, len(s.secrets))
 			for i, sec := range s.secrets {
 				updated := "-"
 				if !sec.UpdatedAt.IsZero() {
 					updated = sec.UpdatedAt.Format("2006-01-02 15:04")
 				}
+
 				rows[i] = table.Row{
 					sec.Key,
 					sec.Description,
@@ -93,6 +99,7 @@ func (s secretsModel) Update(msg tea.Msg) (secretsModel, tea.Cmd) {
 					updated,
 				}
 			}
+
 			s.table.SetRows(rows)
 		}
 	case secretRevealMsg:
@@ -108,8 +115,10 @@ func (s secretsModel) Update(msg tea.Msg) (secretsModel, tea.Cmd) {
 		} else {
 			s.message = successStyle.Render(msg.message)
 		}
+
 		s.confirm = ""
 	}
+
 	return s, nil
 }
 
@@ -128,6 +137,7 @@ func (s secretsModel) View(width int) string {
 		b.WriteString(dimStyle.Render("  No secrets. Press n to create one."))
 		b.WriteString("\n\n")
 		b.WriteString(helpStyle.Render("  n: new • esc: back"))
+
 		return b.String()
 	}
 
@@ -157,5 +167,6 @@ func (s secretsModel) selectedKey() string {
 	if len(row) == 0 {
 		return ""
 	}
+
 	return row[0]
 }

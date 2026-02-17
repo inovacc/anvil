@@ -2,8 +2,8 @@
 
 ## Maintainers
 
-| Name | Role | GitHub |
-|------|------|--------|
+| Name        | Role           | GitHub                                         |
+|-------------|----------------|------------------------------------------------|
 | dyammarcano | Creator & Lead | [@dyammarcano](https://github.com/dyammarcano) |
 
 ## How to Contribute

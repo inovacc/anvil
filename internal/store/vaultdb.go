@@ -86,6 +86,7 @@ func (s *Store) CreateProfile(name, description string, isDefault bool, profileU
 		_, err := s.db.ExecContext(ctx,
 			`INSERT INTO vault_profiles (name, uuid, description, is_default) VALUES (?, ?, ?, ?)`,
 			name, profileUUID, description, def)
+
 		return err
 	}
 
@@ -105,7 +106,9 @@ func (s *Store) GetProfileByUUID(uuid string) (sqlc.VaultProfile, error) {
 		`SELECT id, name, description, is_default, created_at, updated_at FROM vault_profiles WHERE uuid = ? LIMIT 1`, uuid)
 
 	var p sqlc.VaultProfile
+
 	err := row.Scan(&p.ID, &p.Name, &p.Description, &p.IsDefault, &p.CreatedAt, &p.UpdatedAt)
+
 	return p, err
 }
 
@@ -115,8 +118,10 @@ func (s *Store) ProfileExistsByUUID(uuid string) (bool, error) {
 	defer s.mu.RUnlock()
 
 	var count int64
+
 	err := s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM vault_profiles WHERE uuid = ?`, uuid).Scan(&count)
+
 	return count > 0, err
 }
 
@@ -126,6 +131,7 @@ func (s *Store) GetProfileUUID(name string) (string, error) {
 	defer s.mu.RUnlock()
 
 	var uuid sql.NullString
+
 	err := s.db.QueryRowContext(context.Background(),
 		`SELECT uuid FROM vault_profiles WHERE name = ?`, name).Scan(&uuid)
 	if err != nil {
@@ -408,6 +414,7 @@ func (s *Store) InsertSecretVersion(profileName, key string, version int64, encr
 	_, err := s.db.ExecContext(context.Background(),
 		`INSERT INTO vault_secret_versions (profile_name, key, version, encrypted_value, nonce, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		profileName, key, version, encryptedValue, nonce, expiresAt)
+
 	return err
 }
 
