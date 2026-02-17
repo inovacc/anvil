@@ -12,6 +12,7 @@ import (
 
 func initAndOpen(t *testing.T) (*vault.Vault, string) {
 	t.Helper()
+	t.Setenv("ANVIL_SKIP_TPM", "1")
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
 	opts := &vault.Options{DBPath: dbPath}
 	if err := vault.Init(opts); err != nil {

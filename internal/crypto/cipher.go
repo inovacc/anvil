@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"crypto/sha256"
 
@@ -132,7 +133,11 @@ func UnsealMasterKey(sealed, nonce []byte, machineID string, salt []byte) ([]byt
 }
 
 // IsTPMAvailable reports whether TPM 2.0 hardware is accessible.
+// Set ANVIL_SKIP_TPM=1 to force software fallback (useful for testing).
 func IsTPMAvailable() bool {
+	if os.Getenv("ANVIL_SKIP_TPM") != "" {
+		return false
+	}
 	return sealbox.IsAvailable()
 }
 

@@ -16,6 +16,7 @@ func setupTestVault(t *testing.T) string {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
 	t.Setenv("ANVIL_DB_PATH", dbPath)
+	t.Setenv("ANVIL_SKIP_TPM", "1")
 
 	// Initialize the vault.
 	if err := vault.Init(nil); err != nil {
