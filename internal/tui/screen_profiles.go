@@ -57,15 +57,15 @@ func profileTableColumns(width int) []table.Column {
 	}
 }
 
-func (p profilesModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (p profilesModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		profiles, err := v.ListProfiles()
 		if err != nil {
 			return profilesLoadedMsg{err: err}
 		}
 
 		return profilesLoadedMsg{profiles: profiles}
-	}
+	})
 }
 
 func (p profilesModel) Update(msg tea.Msg) (profilesModel, tea.Cmd) {

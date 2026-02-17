@@ -33,14 +33,15 @@ var rootCmd = &cobra.Command{
 }
 
 func launchTUI() error {
+	// Validate vault can be opened before starting TUI
 	v, err := vault.Open(nil)
 	if err != nil {
 		return err
 	}
 
-	defer func() { _ = v.Close() }()
+	_ = v.Close()
 
-	m := tui.NewModel(v)
+	m := tui.NewModel()
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

@@ -29,15 +29,15 @@ func newEnvStatusModel() envStatusModel {
 	return envStatusModel{}
 }
 
-func (e envStatusModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (e envStatusModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		state, err := v.EnvStatus()
 		if err != nil {
 			return envStatusLoadedMsg{err: err}
 		}
 
 		return envStatusLoadedMsg{state: state}
-	}
+	})
 }
 
 func (e envStatusModel) Update(msg tea.Msg) (envStatusModel, tea.Cmd) {
@@ -60,9 +60,9 @@ func (e envStatusModel) Update(msg tea.Msg) (envStatusModel, tea.Cmd) {
 	return e, nil
 }
 
-func (e envStatusModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envStatusModel, tea.Cmd) {
+func (e envStatusModel) handleKey(msg tea.KeyMsg) (envStatusModel, tea.Cmd) {
 	if msg.String() == "r" {
-		return e, func() tea.Msg {
+		return e, withVault(func(v *vault.Vault) tea.Msg {
 			if err := v.EnvRevoke(); err != nil {
 				return envStatusActionMsg{err: err}
 			}
@@ -73,7 +73,7 @@ func (e envStatusModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envStatusMode
 			}
 
 			return envStatusLoadedMsg{state: state}
-		}
+		})
 	}
 
 	return e, nil

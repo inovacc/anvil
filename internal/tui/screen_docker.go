@@ -50,7 +50,7 @@ func (d dockerScreenModel) Update(msg tea.Msg) (dockerScreenModel, tea.Cmd) {
 	return d, cmd
 }
 
-func (d dockerScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (dockerScreenModel, tea.Cmd) {
+func (d dockerScreenModel) handleKey(msg tea.KeyMsg) (dockerScreenModel, tea.Cmd) {
 	switch msg.String() {
 	case "e":
 		dir := d.dirInput.Value()
@@ -58,7 +58,7 @@ func (d dockerScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (dockerScre
 			dir = "./secrets"
 		}
 
-		return d, func() tea.Msg {
+		return d, withVault(func(v *vault.Vault) tea.Msg {
 			entries, err := v.Export("")
 			if err != nil {
 				return dockerActionMsg{err: err}
@@ -75,9 +75,14 @@ func (d dockerScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (dockerScre
 			}
 
 			return dockerActionMsg{message: fmt.Sprintf("Exported %d secrets to %s", len(entries), dir)}
-		}
+		})
 	case "c":
-		return d, func() tea.Msg {
+		dir := d.dirInput.Value()
+		if dir == "" {
+			dir = "./secrets"
+		}
+
+		return d, withVault(func(v *vault.Vault) tea.Msg {
 			secrets, err := v.List("")
 			if err != nil {
 				return dockerActionMsg{err: err}
@@ -86,24 +91,19 @@ func (d dockerScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (dockerScre
 			var out strings.Builder
 			out.WriteString("secrets:\n")
 
-			dir := d.dirInput.Value()
-			if dir == "" {
-				dir = "./secrets"
-			}
-
 			for _, s := range secrets {
 				_, _ = fmt.Fprintf(&out, "  %s:\n    file: %s\n", s.Key, filepath.Join(dir, s.Key))
 			}
 
 			return dockerActionMsg{message: "Compose snippet:\n" + out.String()}
-		}
+		})
 	case "x":
 		dir := d.dirInput.Value()
 		if dir == "" {
 			dir = "./secrets"
 		}
 
-		return d, func() tea.Msg {
+		return d, withVault(func(v *vault.Vault) tea.Msg {
 			secrets, err := v.List("")
 			if err != nil {
 				return dockerActionMsg{err: err}
@@ -118,7 +118,7 @@ func (d dockerScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (dockerScre
 			}
 
 			return dockerActionMsg{message: fmt.Sprintf("Removed %d secret files from %s", removed, dir)}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

@@ -62,7 +62,7 @@ func (b backupScreenModel) Update(msg tea.Msg) (backupScreenModel, tea.Cmd) {
 	return b, cmd
 }
 
-func (b backupScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (backupScreenModel, tea.Cmd) {
+func (b backupScreenModel) handleKey(msg tea.KeyMsg) (backupScreenModel, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
 		if b.focusIndex == 0 {
@@ -93,7 +93,7 @@ func (b backupScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (backupScre
 			return b, nil
 		}
 
-		return b, func() tea.Msg {
+		return b, withVault(func(v *vault.Vault) tea.Msg {
 			encrypted, err := v.Backup(pw)
 			if err != nil {
 				return backupActionMsg{err: err}
@@ -104,7 +104,7 @@ func (b backupScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (backupScre
 			}
 
 			return backupActionMsg{message: "Backup written to " + file}
-		}
+		})
 	case "r":
 		file := b.fileInput.Value()
 
@@ -114,7 +114,7 @@ func (b backupScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (backupScre
 			return b, nil
 		}
 
-		return b, func() tea.Msg {
+		return b, withVault(func(v *vault.Vault) tea.Msg {
 			data, err := os.ReadFile(file)
 			if err != nil {
 				return backupActionMsg{err: fmt.Errorf("read file: %w", err)}
@@ -125,7 +125,7 @@ func (b backupScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (backupScre
 			}
 
 			return backupActionMsg{message: "Vault restored from " + file}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

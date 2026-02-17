@@ -67,15 +67,15 @@ func tableColumns(width int) []table.Column {
 	}
 }
 
-func (s secretsModel) loadData(v *vault.Vault, profile string) tea.Cmd {
-	return func() tea.Msg {
+func (s secretsModel) loadData(profile string) tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		secrets, err := v.List(profile)
 		if err != nil {
 			return secretsLoadedMsg{err: err}
 		}
 
 		return secretsLoadedMsg{secrets: secrets}
-	}
+	})
 }
 
 func (s secretsModel) Update(msg tea.Msg) (secretsModel, tea.Cmd) {

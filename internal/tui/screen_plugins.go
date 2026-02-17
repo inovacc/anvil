@@ -52,7 +52,7 @@ func pluginTableColumns(width int) []table.Column {
 	}
 }
 
-func (p pluginsModel) loadData(v *vault.Vault) tea.Cmd {
+func (p pluginsModel) loadData() tea.Cmd {
 	return func() tea.Msg {
 		dbPath, err := vault.ResolveDBPath(nil)
 		if err != nil {

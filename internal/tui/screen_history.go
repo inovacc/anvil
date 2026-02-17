@@ -52,18 +52,18 @@ func historyTableColumns(width int) []table.Column {
 	}
 }
 
-func (h historyModel) loadData(v *vault.Vault) tea.Cmd {
+func (h historyModel) loadData() tea.Cmd {
 	key := h.key
 	profile := h.profileName
 
-	return func() tea.Msg {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		versions, err := v.SecretHistory(key, profile)
 		if err != nil {
 			return historyLoadedMsg{err: err}
 		}
 
 		return historyLoadedMsg{versions: versions}
-	}
+	})
 }
 
 func (h historyModel) Update(msg tea.Msg) (historyModel, tea.Cmd) {

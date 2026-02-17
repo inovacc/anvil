@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/inovacc/anvil/pkg/vault"
 )
 
 type gatherScreenModel struct {
@@ -47,7 +46,7 @@ func (g gatherScreenModel) Update(msg tea.Msg) (gatherScreenModel, tea.Cmd) {
 	return g, cmd
 }
 
-func (g gatherScreenModel) handleKey(msg tea.KeyMsg, _ *vault.Vault) (gatherScreenModel, tea.Cmd) {
+func (g gatherScreenModel) handleKey(msg tea.KeyMsg) (gatherScreenModel, tea.Cmd) {
 	if msg.String() == "enter" {
 		dir := g.dirInput.Value()
 		if dir == "" {

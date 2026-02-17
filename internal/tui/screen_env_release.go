@@ -62,7 +62,7 @@ func (e envReleaseModel) Update(msg tea.Msg) (envReleaseModel, tea.Cmd) {
 	return e, cmd
 }
 
-func (e envReleaseModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envReleaseModel, tea.Cmd) {
+func (e envReleaseModel) handleKey(msg tea.KeyMsg) (envReleaseModel, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
 		if e.focusIndex == 0 {
@@ -100,22 +100,22 @@ func (e envReleaseModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envReleaseMo
 
 		e.passwordInput.SetValue("")
 
-		return e, func() tea.Msg {
+		return e, withVault(func(v *vault.Vault) tea.Msg {
 			state, err := v.EnvRelease(pw, &vault.EnvReleaseOptions{TTL: ttl})
 			if err != nil {
 				return envReleaseActionMsg{err: err}
 			}
 
 			return envReleaseActionMsg{message: fmt.Sprintf("Released for %q. Expires in %s", state.ProfileName, state.Remaining.Truncate(time.Second))}
-		}
+		})
 	case "r":
-		return e, func() tea.Msg {
+		return e, withVault(func(v *vault.Vault) tea.Msg {
 			if err := v.EnvRevoke(); err != nil {
 				return envReleaseActionMsg{err: err}
 			}
 
 			return envReleaseActionMsg{message: "Release revoked."}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

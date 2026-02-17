@@ -26,10 +26,10 @@ func newSealScreenModel() sealScreenModel {
 	return sealScreenModel{}
 }
 
-func (s sealScreenModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (s sealScreenModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		return sealStatusMsg{sealed: v.IsSealed()}
-	}
+	})
 }
 
 func (s sealScreenModel) Update(msg tea.Msg) (sealScreenModel, tea.Cmd) {
@@ -48,16 +48,16 @@ func (s sealScreenModel) Update(msg tea.Msg) (sealScreenModel, tea.Cmd) {
 	return s, nil
 }
 
-func (s sealScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (sealScreenModel, tea.Cmd) {
+func (s sealScreenModel) handleKey(msg tea.KeyMsg) (sealScreenModel, tea.Cmd) {
 	switch msg.String() {
 	case "s":
-		return s, func() tea.Msg {
+		return s, withVault(func(v *vault.Vault) tea.Msg {
 			if err := v.Seal(); err != nil {
 				return sealActionMsg{err: err}
 			}
 
 			return sealActionMsg{message: "Vault sealed."}
-		}
+		})
 	case "u":
 		return s, func() tea.Msg {
 			if err := vault.UnsealVault(nil); err != nil {

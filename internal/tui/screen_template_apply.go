@@ -37,15 +37,15 @@ func newTemplateApplyModel() templateApplyModel {
 	return templateApplyModel{profileInput: pi}
 }
 
-func (t templateApplyModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (t templateApplyModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		templates, err := v.ListTemplates()
 		if err != nil {
 			return templateApplyLoadedMsg{err: err}
 		}
 
 		return templateApplyLoadedMsg{templates: templates}
-	}
+	})
 }
 
 func (t templateApplyModel) Update(msg tea.Msg) (templateApplyModel, tea.Cmd) {
@@ -72,7 +72,7 @@ func (t templateApplyModel) Update(msg tea.Msg) (templateApplyModel, tea.Cmd) {
 	return t, cmd
 }
 
-func (t templateApplyModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (templateApplyModel, tea.Cmd) {
+func (t templateApplyModel) handleKey(msg tea.KeyMsg) (templateApplyModel, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
 		if t.templateIndex < len(t.templates)-1 {
@@ -90,13 +90,13 @@ func (t templateApplyModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (templateA
 		name := t.templates[t.templateIndex].Name
 		profile := t.profileInput.Value()
 
-		return t, func() tea.Msg {
+		return t, withVault(func(v *vault.Vault) tea.Msg {
 			if err := v.ApplyTemplate(name, profile, nil); err != nil {
 				return templateApplyActionMsg{err: err}
 			}
 
 			return templateApplyActionMsg{message: "Template \"" + name + "\" applied."}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

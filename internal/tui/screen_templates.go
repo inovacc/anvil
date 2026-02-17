@@ -49,15 +49,15 @@ func templateTableColumns(width int) []table.Column {
 	}
 }
 
-func (t templatesModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (t templatesModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		templates, err := v.ListTemplates()
 		if err != nil {
 			return templatesLoadedMsg{err: err}
 		}
 
 		return templatesLoadedMsg{templates: templates}
-	}
+	})
 }
 
 func (t templatesModel) Update(msg tea.Msg) (templatesModel, tea.Cmd) {

@@ -78,7 +78,7 @@ func (s shareScreenModel) Update(msg tea.Msg) (shareScreenModel, tea.Cmd) {
 	return s, cmd
 }
 
-func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreenModel, tea.Cmd) {
+func (s shareScreenModel) handleKey(msg tea.KeyMsg) (shareScreenModel, tea.Cmd) {
 	inputs := []*textinput.Model{&s.profileInput, &s.passphraseInput, &s.fileInput}
 
 	switch msg.String() {
@@ -101,7 +101,7 @@ func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreen
 			return s, nil
 		}
 
-		return s, func() tea.Msg {
+		return s, withVault(func(v *vault.Vault) tea.Msg {
 			encrypted, err := v.ShareExport(profile, passphrase)
 			if err != nil {
 				return shareActionMsg{err: err}
@@ -112,7 +112,7 @@ func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreen
 			}
 
 			return shareActionMsg{message: "Export written to " + file}
-		}
+		})
 	case "i":
 		profile := s.profileInput.Value()
 		passphrase := s.passphraseInput.Value()
@@ -123,7 +123,7 @@ func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreen
 			return s, nil
 		}
 
-		return s, func() tea.Msg {
+		return s, withVault(func(v *vault.Vault) tea.Msg {
 			data, err := os.ReadFile(file)
 			if err != nil {
 				return shareActionMsg{err: fmt.Errorf("read file: %w", err)}
@@ -135,7 +135,7 @@ func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreen
 			}
 
 			return shareActionMsg{message: fmt.Sprintf("Imported %d secrets from %q", len(export.Secrets), export.ProfileName)}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

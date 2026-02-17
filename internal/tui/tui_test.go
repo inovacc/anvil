@@ -540,7 +540,7 @@ func TestSecretFormViewWithMessage(t *testing.T) {
 }
 
 func TestModelView(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 80
 	m.height = 40
 
@@ -564,7 +564,7 @@ func specialKeyMsg(t tea.KeyType) tea.KeyMsg {
 // --- WindowSizeMsg ---
 
 func TestModelUpdateWindowSize(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 80
 	m.height = 40
 	m.currentScreen = screenSecrets
@@ -583,7 +583,7 @@ func TestModelUpdateWindowSize(t *testing.T) {
 }
 
 func TestModelUpdateWindowSizeProfiles(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenProfiles
 	m.profiles = newProfilesModel(80, 40)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
@@ -595,7 +595,7 @@ func TestModelUpdateWindowSizeProfiles(t *testing.T) {
 }
 
 func TestModelUpdateWindowSizeAudit(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenAudit
 	m.audit = newAuditModel(80, 40)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
@@ -607,7 +607,7 @@ func TestModelUpdateWindowSizeAudit(t *testing.T) {
 }
 
 func TestModelUpdateWindowSizeHistory(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenHistory
 	m.history = newHistoryModel("key", "p", 80, 40)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
@@ -619,7 +619,7 @@ func TestModelUpdateWindowSizeHistory(t *testing.T) {
 }
 
 func TestModelUpdateWindowSizeStatus(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenStatus
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 
@@ -632,7 +632,7 @@ func TestModelUpdateWindowSizeStatus(t *testing.T) {
 // --- Ctrl+C global quit ---
 
 func TestModelUpdateCtrlC(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
@@ -643,7 +643,7 @@ func TestModelUpdateCtrlC(t *testing.T) {
 // --- Sidebar navigation ---
 
 func TestSidebarNavigation(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 100
 	m.height = 40
 
@@ -673,7 +673,7 @@ func TestSidebarNavigation(t *testing.T) {
 }
 
 func TestSidebarQuit(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.focus = focusSidebar
 
 	_, cmd := m.Update(keyMsg("q"))
@@ -683,7 +683,7 @@ func TestSidebarQuit(t *testing.T) {
 }
 
 func TestTabTogglesFocus(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 100
 	m.height = 40
 	m.focus = focusSidebar
@@ -704,7 +704,7 @@ func TestTabTogglesFocus(t *testing.T) {
 }
 
 func TestEscFromContentReturnsSidebar(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 100
 	m.height = 40
 	m.currentScreen = screenStatus
@@ -721,7 +721,7 @@ func TestEscFromContentReturnsSidebar(t *testing.T) {
 // --- updateProfiles key tests ---
 
 func testProfilesModel() model {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 80
 	m.height = 40
 	m.currentScreen = screenProfiles
@@ -857,7 +857,7 @@ func TestUpdateProfilesDefaultKey(t *testing.T) {
 // --- updateSecrets key tests ---
 
 func testSecretsModel() model {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenSecrets
 	m.focus = focusContent
 	m.width = 80
@@ -1016,7 +1016,7 @@ func TestUpdateSecretsDefaultKeyBlockedDuringConfirm(t *testing.T) {
 // --- updateAuditScreen key tests ---
 
 func TestUpdateAuditQuit(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenAudit
 	m.audit = newAuditModel(80, 40)
 
@@ -1029,7 +1029,7 @@ func TestUpdateAuditQuit(t *testing.T) {
 // --- updateHistoryScreen key tests ---
 
 func TestUpdateHistoryEsc(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 100
 	m.height = 40
 	m.currentScreen = screenHistory
@@ -1045,7 +1045,7 @@ func TestUpdateHistoryEsc(t *testing.T) {
 }
 
 func TestUpdateHistoryQuit(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenHistory
 	m.history = newHistoryModel("key", "p", 80, 40)
 
@@ -1058,7 +1058,7 @@ func TestUpdateHistoryQuit(t *testing.T) {
 // --- updateSecretForm key tests ---
 
 func TestUpdateSecretFormEscFromProfile(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 100
 	m.height = 40
 	m.currentScreen = screenSecretForm
@@ -1073,7 +1073,7 @@ func TestUpdateSecretFormEscFromProfile(t *testing.T) {
 }
 
 func TestUpdateSecretFormEscFromSecret(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.width = 100
 	m.height = 40
 	m.currentScreen = screenSecretForm
@@ -1088,7 +1088,7 @@ func TestUpdateSecretFormEscFromSecret(t *testing.T) {
 }
 
 func TestUpdateSecretFormEnterCreateProfileEmpty(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenSecretForm
 	m.secretForm = newProfileFormModel()
 	result, cmd := m.updateSecretForm(specialKeyMsg(tea.KeyEnter))
@@ -1104,7 +1104,7 @@ func TestUpdateSecretFormEnterCreateProfileEmpty(t *testing.T) {
 }
 
 func TestUpdateSecretFormEnterCreateSecretEmpty(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenSecretForm
 	m.secretForm = newSecretFormModel("myprofile")
 	result, cmd := m.updateSecretForm(specialKeyMsg(tea.KeyEnter))
@@ -1120,7 +1120,7 @@ func TestUpdateSecretFormEnterCreateSecretEmpty(t *testing.T) {
 }
 
 func TestUpdateSecretFormDelegateToForm(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenSecretForm
 	m.focus = focusContent
 	m.secretForm = newSecretFormModel("p")
@@ -1188,7 +1188,7 @@ func TestSecretFormSubmitSuccess(t *testing.T) {
 // --- Model.Update non-key message delegation ---
 
 func TestModelUpdateProfileActionMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenProfiles
 	m.profiles.confirm = "test"
 
@@ -1201,7 +1201,7 @@ func TestModelUpdateProfileActionMsg(t *testing.T) {
 }
 
 func TestModelUpdateSecretActionMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenSecrets
 	m.secrets = newSecretsModel("p", 80, 40)
 	m.secrets.confirm = "K1"
@@ -1215,7 +1215,7 @@ func TestModelUpdateSecretActionMsg(t *testing.T) {
 }
 
 func TestModelUpdateDelegatesStatusLoadedMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenStatus
 	status := &vault.Status{Initialized: true}
 
@@ -1228,7 +1228,7 @@ func TestModelUpdateDelegatesStatusLoadedMsg(t *testing.T) {
 }
 
 func TestModelUpdateDelegatesSecretsLoadedMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenSecrets
 	m.secrets = newSecretsModel("p", 80, 40)
 
@@ -1241,7 +1241,7 @@ func TestModelUpdateDelegatesSecretsLoadedMsg(t *testing.T) {
 }
 
 func TestModelUpdateDelegatesProfilesLoadedMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenProfiles
 
 	result, _ := m.Update(profilesLoadedMsg{profiles: []vault.ProfileInfo{{Name: "p1"}}})
@@ -1253,7 +1253,7 @@ func TestModelUpdateDelegatesProfilesLoadedMsg(t *testing.T) {
 }
 
 func TestModelUpdateDelegatesAuditLoadedMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenAudit
 	m.audit = newAuditModel(80, 40)
 
@@ -1266,7 +1266,7 @@ func TestModelUpdateDelegatesAuditLoadedMsg(t *testing.T) {
 }
 
 func TestModelUpdateDelegatesHistoryLoadedMsg(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screenHistory
 	m.history = newHistoryModel("key", "p", 80, 40)
 
@@ -1308,7 +1308,7 @@ func TestModelViewAllScreens(t *testing.T) {
 	}
 	for _, tt := range screens {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewModel(nil)
+			m := NewModel()
 			m.width = 80
 			m.height = 40
 
@@ -1361,7 +1361,7 @@ func TestModelViewAllScreens(t *testing.T) {
 }
 
 func TestModelViewUnknownScreen(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel()
 	m.currentScreen = screen(99)
 	v := m.View()
 	// View includes sidebar so won't be fully empty

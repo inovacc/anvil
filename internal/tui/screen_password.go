@@ -37,11 +37,11 @@ func newPasswordScreenModel() passwordScreenModel {
 	return passwordScreenModel{input: ti}
 }
 
-func (p passwordScreenModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (p passwordScreenModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		has, err := v.HasPassword()
 		return passwordStatusMsg{hasPassword: has, err: err}
-	}
+	})
 }
 
 func (p passwordScreenModel) Update(msg tea.Msg) (passwordScreenModel, tea.Cmd) {
@@ -58,7 +58,7 @@ func (p passwordScreenModel) Update(msg tea.Msg) (passwordScreenModel, tea.Cmd) 
 			p.message = successStyle.Render(msg.message)
 		}
 
-		return p, p.loadData(nil) // will be called with vault in handleKey
+		return p, p.loadData()
 	}
 
 	var cmd tea.Cmd
@@ -68,7 +68,7 @@ func (p passwordScreenModel) Update(msg tea.Msg) (passwordScreenModel, tea.Cmd) 
 	return p, cmd
 }
 
-func (p passwordScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (passwordScreenModel, tea.Cmd) {
+func (p passwordScreenModel) handleKey(msg tea.KeyMsg) (passwordScreenModel, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		pw := p.input.Value()
@@ -79,16 +79,16 @@ func (p passwordScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (password
 
 		p.input.SetValue("")
 
-		return p, func() tea.Msg {
+		return p, withVault(func(v *vault.Vault) tea.Msg {
 			if err := v.SetPassword(pw); err != nil {
 				return passwordActionMsg{err: err}
 			}
 
 			return passwordActionMsg{message: "Password set successfully."}
-		}
+		})
 	case "d":
 		if p.hasPassword {
-			return p, func() tea.Msg {
+			return p, withVault(func(v *vault.Vault) tea.Msg {
 				if err := v.DeletePassword(); err != nil {
 					return passwordActionMsg{err: err}
 				}
@@ -96,7 +96,7 @@ func (p passwordScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (password
 				_ = v.EnvRevoke()
 
 				return passwordActionMsg{message: "Password removed."}
-			}
+			})
 		}
 	}
 

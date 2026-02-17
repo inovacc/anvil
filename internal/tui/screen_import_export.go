@@ -56,7 +56,7 @@ func (ie importExportModel) Update(msg tea.Msg) (importExportModel, tea.Cmd) {
 	return ie, cmd
 }
 
-func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExportModel, tea.Cmd) {
+func (ie importExportModel) handleKey(msg tea.KeyMsg) (importExportModel, tea.Cmd) {
 	switch msg.String() {
 	case "m":
 		ie.mode = (ie.mode + 1) % 2
@@ -72,7 +72,7 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 		format := ie.formats[ie.formatIndex]
 		if ie.mode == 0 {
 			// Export
-			return ie, func() tea.Msg {
+			return ie, withVault(func(v *vault.Vault) tea.Msg {
 				entries, err := v.Export("")
 				if err != nil {
 					return importExportActionMsg{err: err}
@@ -100,10 +100,10 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 				}
 
 				return importExportActionMsg{message: fmt.Sprintf("Exported %d secrets to %s", len(entries), file)}
-			}
+			})
 		}
 		// Import
-		return ie, func() tea.Msg {
+		return ie, withVault(func(v *vault.Vault) tea.Msg {
 			data, err := os.ReadFile(file)
 			if err != nil {
 				return importExportActionMsg{err: fmt.Errorf("read: %w", err)}
@@ -136,7 +136,7 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 			}
 
 			return importExportActionMsg{message: fmt.Sprintf("Imported %d secrets.", len(entries))}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

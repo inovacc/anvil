@@ -40,7 +40,7 @@ func (e envExportModel) Update(msg tea.Msg) (envExportModel, tea.Cmd) {
 	return e, nil
 }
 
-func (e envExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envExportModel, tea.Cmd) {
+func (e envExportModel) handleKey(msg tea.KeyMsg) (envExportModel, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
 		if e.formatIndex < len(e.formats)-1 {
@@ -53,7 +53,7 @@ func (e envExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envExportMode
 	case "enter":
 		format := e.formats[e.formatIndex]
 
-		return e, func() tea.Msg {
+		return e, withVault(func(v *vault.Vault) tea.Msg {
 			entries, err := v.EnvExport("")
 			if err != nil {
 				return envExportResultMsg{err: err}
@@ -75,7 +75,7 @@ func (e envExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envExportMode
 			}
 
 			return envExportResultMsg{output: out.String()}
-		}
+		})
 	}
 
 	return e, nil

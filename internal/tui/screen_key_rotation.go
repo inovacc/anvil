@@ -49,7 +49,7 @@ func (k keyRotationModel) Update(msg tea.Msg) (keyRotationModel, tea.Cmd) {
 	return k, cmd
 }
 
-func (k keyRotationModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (keyRotationModel, tea.Cmd) {
+func (k keyRotationModel) handleKey(msg tea.KeyMsg) (keyRotationModel, tea.Cmd) {
 	if msg.String() == "enter" {
 		pw := k.input.Value()
 		if pw == "" {
@@ -59,7 +59,7 @@ func (k keyRotationModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (keyRotation
 
 		k.input.SetValue("")
 
-		return k, func() tea.Msg {
+		return k, withVault(func(v *vault.Vault) tea.Msg {
 			if err := v.RotateKey(pw); err != nil {
 				return keyRotationMsg{err: err}
 			}
@@ -70,7 +70,7 @@ func (k keyRotationModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (keyRotation
 			}
 
 			return keyRotationMsg{message: fmt.Sprintf("Key rotated to version %d.", status.KeyVersion)}
-		}
+		})
 	}
 
 	var cmd tea.Cmd

@@ -48,15 +48,15 @@ func auditTableColumns(width int) []table.Column {
 	}
 }
 
-func (a auditModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (a auditModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		entries, err := v.AuditLog(100)
 		if err != nil {
 			return auditLoadedMsg{err: err}
 		}
 
 		return auditLoadedMsg{entries: entries}
-	}
+	})
 }
 
 func (a auditModel) Update(msg tea.Msg) (auditModel, tea.Cmd) {

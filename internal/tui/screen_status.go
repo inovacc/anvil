@@ -25,8 +25,8 @@ func newStatusModel() statusModel {
 	return statusModel{}
 }
 
-func (s statusModel) loadData(v *vault.Vault) tea.Cmd {
-	return func() tea.Msg {
+func (s statusModel) loadData() tea.Cmd {
+	return withVault(func(v *vault.Vault) tea.Msg {
 		status, err := v.Status()
 		if err != nil {
 			return statusLoadedMsg{err: err}
@@ -38,7 +38,7 @@ func (s statusModel) loadData(v *vault.Vault) tea.Cmd {
 		}
 
 		return statusLoadedMsg{status: status, profiles: profiles}
-	}
+	})
 }
 
 func (s statusModel) Update(msg tea.Msg) (statusModel, tea.Cmd) {
