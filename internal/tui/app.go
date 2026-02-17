@@ -41,7 +41,7 @@ const (
 	focusContent
 )
 
-type model struct {
+type model struct { //nolint:recvcheck // pointer receiver needed for resizeCurrentScreen
 	vault         *vault.Vault
 	sidebar       sidebarModel
 	focus         focusArea
@@ -72,7 +72,6 @@ type model struct {
 	importExport  importExportModel
 
 	width, height int
-	err           error
 }
 
 // NewModel creates the root TUI model.
@@ -80,6 +79,7 @@ func NewModel(v *vault.Vault) model {
 	sb := newSidebarModel()
 	// Default to Status screen
 	sb.moveCursorToScreen(screenStatus)
+
 	return model{
 		vault:         v,
 		sidebar:       sb,
@@ -95,7 +95,8 @@ func (m model) Init() tea.Cmd {
 func (m model) loadScreenData(sc screen) tea.Cmd {
 	contentWidth := m.contentWidth()
 	contentHeight := m.contentHeight()
-	switch sc {
+
+	switch sc { //nolint:exhaustive // screenSecretForm has no load
 	case screenStatus:
 		m.status = newStatusModel()
 		return m.status.loadData(m.vault)
@@ -154,14 +155,15 @@ func (m model) loadScreenData(sc screen) tea.Cmd {
 		m.importExport = newImportExportModel()
 		return nil
 	}
+
 	return nil
 }
 
 func (m model) contentWidth() int {
-	w := m.width - sidebarWidth - 3 // sidebar + border + padding
-	if w < 40 {
-		w = 40
-	}
+	w := max(
+		// sidebar + border + padding
+		m.width-sidebarWidth-3, 40)
+
 	return w
 }
 
@@ -169,6 +171,7 @@ func (m model) contentHeight() int {
 	if m.height < 10 {
 		return 20
 	}
+
 	return m.height
 }
 
@@ -178,6 +181,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.resizeCurrentScreen()
+
 		return m, nil
 
 	case tea.KeyMsg:
@@ -195,12 +199,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focus = focusSidebar
 				m.sidebar.focused = true
 			}
+
 			return m, nil
 		}
 
 		if m.focus == focusSidebar {
 			return m.updateSidebar(msg)
 		}
+
 		return m.updateContent(msg)
 	}
 
@@ -224,19 +230,23 @@ func (m model) updateSidebar(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentScreen = sc
 			m.focus = focusContent
 			m.sidebar.focused = false
+
 			return m, m.loadScreenData(sc)
 		}
+
 		m.focus = focusContent
 		m.sidebar.focused = false
+
 		return m, nil
 	}
+
 	return m, nil
 }
 
 func (m model) updateContent(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Esc from content returns focus to sidebar (except in sub-views)
 	if msg.String() == "esc" {
-		switch m.currentScreen {
+		switch m.currentScreen { //nolint:exhaustive // default handles all other screens
 		case screenSecretForm:
 			// Return to caller screen
 			return m.updateSecretForm(msg)
@@ -247,6 +257,7 @@ func (m model) updateContent(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		default:
 			m.focus = focusSidebar
 			m.sidebar.focused = true
+
 			return m, nil
 		}
 	}
@@ -293,6 +304,7 @@ func (m model) updateContent(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case screenImportExport:
 		return m.updateImportExportScreen(msg)
 	}
+
 	return m, nil
 }
 
@@ -310,91 +322,133 @@ func (m model) delegateMsg(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentScreen {
 	case screenStatus:
 		var cmd tea.Cmd
+
 		m.status, cmd = m.status.Update(msg)
+
 		return m, cmd
 	case screenProfiles:
 		var cmd tea.Cmd
+
 		m.profiles, cmd = m.profiles.Update(msg)
+
 		return m, cmd
 	case screenSecrets:
 		var cmd tea.Cmd
+
 		m.secrets, cmd = m.secrets.Update(msg)
+
 		return m, cmd
 	case screenSecretForm:
 		var cmd tea.Cmd
+
 		m.secretForm, cmd = m.secretForm.Update(msg)
+
 		return m, cmd
 	case screenAudit:
 		var cmd tea.Cmd
+
 		m.audit, cmd = m.audit.Update(msg)
+
 		return m, cmd
 	case screenHistory:
 		var cmd tea.Cmd
+
 		m.history, cmd = m.history.Update(msg)
+
 		return m, cmd
 	case screenPassword:
 		var cmd tea.Cmd
+
 		m.password, cmd = m.password.Update(msg)
+
 		return m, cmd
 	case screenKeyRotation:
 		var cmd tea.Cmd
+
 		m.keyRotation, cmd = m.keyRotation.Update(msg)
+
 		return m, cmd
 	case screenSeal:
 		var cmd tea.Cmd
+
 		m.seal, cmd = m.seal.Update(msg)
+
 		return m, cmd
 	case screenEnvRelease:
 		var cmd tea.Cmd
+
 		m.envRelease, cmd = m.envRelease.Update(msg)
+
 		return m, cmd
 	case screenEnvStatus:
 		var cmd tea.Cmd
+
 		m.envStatus, cmd = m.envStatus.Update(msg)
+
 		return m, cmd
 	case screenEnvExport:
 		var cmd tea.Cmd
+
 		m.envExport, cmd = m.envExport.Update(msg)
+
 		return m, cmd
 	case screenTemplates:
 		var cmd tea.Cmd
+
 		m.templates, cmd = m.templates.Update(msg)
+
 		return m, cmd
 	case screenTemplateApply:
 		var cmd tea.Cmd
+
 		m.templateApply, cmd = m.templateApply.Update(msg)
+
 		return m, cmd
 	case screenBackup:
 		var cmd tea.Cmd
+
 		m.backup, cmd = m.backup.Update(msg)
+
 		return m, cmd
 	case screenShare:
 		var cmd tea.Cmd
+
 		m.share, cmd = m.share.Update(msg)
+
 		return m, cmd
 	case screenDocker:
 		var cmd tea.Cmd
+
 		m.docker, cmd = m.docker.Update(msg)
+
 		return m, cmd
 	case screenPlugins:
 		var cmd tea.Cmd
+
 		m.plugins, cmd = m.plugins.Update(msg)
+
 		return m, cmd
 	case screenGather:
 		var cmd tea.Cmd
+
 		m.gather, cmd = m.gather.Update(msg)
+
 		return m, cmd
 	case screenImportExport:
 		var cmd tea.Cmd
+
 		m.importExport, cmd = m.importExport.Update(msg)
+
 		return m, cmd
 	}
+
 	return m, nil
 }
 
 func (m model) View() string {
 	sidebarView := m.sidebar.View(m.height)
 	contentView := m.renderContent()
+
 	return lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
 }
 
@@ -442,13 +496,15 @@ func (m model) renderContent() string {
 	case screenImportExport:
 		return m.importExport.View(w)
 	}
+
 	return ""
 }
 
 func (m *model) resizeCurrentScreen() {
 	w := m.contentWidth()
+
 	h := m.contentHeight()
-	switch m.currentScreen {
+	switch m.currentScreen { //nolint:exhaustive // only table-based screens need resize
 	case screenSecrets:
 		m.secrets.table.SetWidth(w)
 		m.secrets.table.SetHeight(max(1, h-8))
@@ -479,12 +535,14 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentScreen = screenSecrets
 			m.secrets = newSecretsModel(name, m.contentWidth(), m.contentHeight())
 			m.sidebar.moveCursorToScreen(screenSecrets)
+
 			return m, m.secrets.loadData(m.vault, name)
 		}
 	case msg.String() == "c":
 		if m.profiles.confirm == "" {
 			m.currentScreen = screenSecretForm
 			m.secretForm = newProfileFormModel()
+
 			return m, m.secretForm.inputs[0].Focus()
 		}
 	case msg.String() == "n":
@@ -493,6 +551,7 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.currentScreen = screenSecretForm
 			m.secretForm = newProfileFormModel()
+
 			return m, m.secretForm.inputs[0].Focus()
 		}
 	case msg.String() == "d":
@@ -505,10 +564,12 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.profiles.confirm != "" {
 			name := m.profiles.confirm
 			v := m.vault
+
 			return m, func() tea.Msg {
 				if err := v.DeleteProfile(name); err != nil {
 					return profileActionMsg{err: err}
 				}
+
 				return profileActionMsg{action: "delete", message: fmt.Sprintf("Profile %q deleted.", name)}
 			}
 		}
@@ -516,10 +577,12 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.profiles.confirm == "" {
 			if name := m.profiles.selectedProfile(); name != "" {
 				v := m.vault
+
 				return m, func() tea.Msg {
 					if err := v.UseProfile(name); err != nil {
 						return profileActionMsg{err: err}
 					}
+
 					return profileActionMsg{action: "use", message: fmt.Sprintf("Now using profile %q.", name)}
 				}
 			}
@@ -527,11 +590,15 @@ func (m model) updateProfiles(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		if m.profiles.confirm == "" {
 			m.profiles.message = ""
+
 			var cmd tea.Cmd
+
 			m.profiles.table, cmd = m.profiles.table.Update(msg)
+
 			return m, cmd
 		}
 	}
+
 	return m, nil
 }
 
@@ -579,15 +646,19 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if m.secrets.revealKey == key {
 					m.secrets.revealKey = ""
 					m.secrets.revealValue = ""
+
 					return m, nil
 				}
+
 				profile := m.secrets.profileName
 				v := m.vault
+
 				return m, func() tea.Msg {
 					val, err := v.Get(key, profile)
 					if err != nil {
 						return secretRevealMsg{key: key, err: err}
 					}
+
 					return secretRevealMsg{key: key, value: val}
 				}
 			}
@@ -598,17 +669,18 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.currentScreen = screenHistory
 				m.history = newHistoryModel(key, m.secrets.profileName, m.contentWidth(), m.contentHeight())
 				m.sidebar.moveCursorToScreen(screenHistory)
+
 				return m, m.history.loadData(m.vault)
 			}
 		}
 	case msg.String() == "r":
-		if m.secrets.confirm == "" {
-			// Rollback from history within secrets context
-		}
+		// Rollback placeholder — requires history sub-view
+		_ = m.secrets.confirm
 	case msg.String() == "c":
 		if m.secrets.confirm == "" {
 			m.currentScreen = screenSecretForm
 			m.secretForm = newSecretFormModel(m.secrets.profileName)
+
 			return m, m.secretForm.inputs[0].Focus()
 		}
 	case msg.String() == "n":
@@ -617,6 +689,7 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.currentScreen = screenSecretForm
 			m.secretForm = newSecretFormModel(m.secrets.profileName)
+
 			return m, m.secretForm.inputs[0].Focus()
 		}
 	case msg.String() == "d":
@@ -630,10 +703,12 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			key := m.secrets.confirm
 			profile := m.secrets.profileName
 			v := m.vault
+
 			return m, func() tea.Msg {
 				if err := v.Delete(key, profile); err != nil {
 					return secretActionMsg{err: err}
 				}
+
 				return secretActionMsg{message: fmt.Sprintf("Secret %q deleted.", key)}
 			}
 		}
@@ -641,11 +716,15 @@ func (m model) updateSecrets(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.secrets.confirm == "" {
 			m.secrets.revealKey = ""
 			m.secrets.message = ""
+
 			var cmd tea.Cmd
+
 			m.secrets.table, cmd = m.secrets.table.Update(msg)
+
 			return m, cmd
 		}
 	}
+
 	return m, nil
 }
 
@@ -659,42 +738,52 @@ func (m model) updateSecretForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentScreen = screenSecrets
 			m.sidebar.moveCursorToScreen(screenSecrets)
 		}
+
 		return m, nil
 	case "enter":
 		if m.secretForm.profileName == "__create_profile__" {
 			name := m.secretForm.key()
+
 			desc := m.secretForm.desc()
 			if name == "" {
 				m.secretForm.message = errorStyle.Render("Name is required.")
 				return m, nil
 			}
+
 			v := m.vault
 			m.currentScreen = screenProfiles
 			m.sidebar.moveCursorToScreen(screenProfiles)
+
 			return m, func() tea.Msg {
 				if err := v.CreateProfile(name, desc, false); err != nil {
 					return profileActionMsg{err: err}
 				}
+
 				return profileActionMsg{action: "create", message: fmt.Sprintf("Profile %q created.", name)}
 			}
 		}
+
 		key := m.secretForm.key()
 		value := m.secretForm.value()
+
 		desc := m.secretForm.desc()
 		if key == "" || value == "" {
 			m.secretForm.message = errorStyle.Render("Key and value are required.")
 			return m, nil
 		}
+
 		profile := m.secretForm.profileName
 		v := m.vault
 		m.currentScreen = screenSecrets
 		m.sidebar.moveCursorToScreen(screenSecrets)
 		m.secrets = newSecretsModel(profile, m.contentWidth(), m.contentHeight())
+
 		return m, tea.Batch(
 			func() tea.Msg {
 				if err := v.Set(key, value, profile, desc); err != nil {
 					return secretActionMsg{err: err}
 				}
+
 				return secretActionMsg{message: fmt.Sprintf("Secret %q saved.", key)}
 			},
 			m.secrets.loadData(m.vault, profile),
@@ -702,7 +791,9 @@ func (m model) updateSecretForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
+
 	m.secretForm, cmd = m.secretForm.Update(msg)
+
 	return m, cmd
 }
 
@@ -712,7 +803,9 @@ func (m model) updateAuditScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	default:
 		var cmd tea.Cmd
+
 		m.audit.table, cmd = m.audit.table.Update(msg)
+
 		return m, cmd
 	}
 }
@@ -727,19 +820,23 @@ func (m model) updateHistoryScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			row := m.history.table.SelectedRow()
 			if len(row) > 0 {
 				var version int64
+
 				_, _ = fmt.Sscanf(row[0], "v%d", &version)
 				if version > 0 {
 					key := m.history.key
 					profile := m.history.profileName
 					v := m.vault
+
 					return m, func() tea.Msg {
 						if err := v.SecretRollback(key, profile, version); err != nil {
 							return historyLoadedMsg{err: err}
 						}
+
 						versions, err := v.SecretHistory(key, profile)
 						if err != nil {
 							return historyLoadedMsg{err: err}
 						}
+
 						return historyLoadedMsg{versions: versions}
 					}
 				}
@@ -747,9 +844,12 @@ func (m model) updateHistoryScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	default:
 		var cmd tea.Cmd
+
 		m.history.table, cmd = m.history.table.Update(msg)
+
 		return m, cmd
 	}
+
 	return m, nil
 }
 
@@ -759,42 +859,55 @@ func (m model) updateStatusScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == "q" {
 		return m, tea.Quit
 	}
+
 	return m, nil
 }
 
 func (m model) updatePasswordScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.password, cmd = m.password.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateKeyRotationScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.keyRotation, cmd = m.keyRotation.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateSealScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.seal, cmd = m.seal.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateEnvReleaseScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.envRelease, cmd = m.envRelease.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateEnvStatusScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.envStatus, cmd = m.envStatus.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateEnvExportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.envExport, cmd = m.envExport.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
@@ -805,46 +918,60 @@ func (m model) updateTemplatesScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		if name := m.templates.selectedName(); name != "" {
 			v := m.vault
+
 			return m, func() tea.Msg {
 				if err := v.DeleteTemplate(name); err != nil {
 					return templatesLoadedMsg{err: err}
 				}
+
 				templates, err := v.ListTemplates()
 				if err != nil {
 					return templatesLoadedMsg{err: err}
 				}
+
 				return templatesLoadedMsg{templates: templates}
 			}
 		}
 	default:
 		var cmd tea.Cmd
+
 		m.templates.table, cmd = m.templates.table.Update(msg)
+
 		return m, cmd
 	}
+
 	return m, nil
 }
 
 func (m model) updateTemplateApplyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.templateApply, cmd = m.templateApply.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateBackupScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.backup, cmd = m.backup.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateShareScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.share, cmd = m.share.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateDockerScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.docker, cmd = m.docker.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
@@ -854,19 +981,25 @@ func (m model) updatePluginsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	default:
 		var cmd tea.Cmd
+
 		m.plugins.table, cmd = m.plugins.table.Update(msg)
+
 		return m, cmd
 	}
 }
 
 func (m model) updateGatherScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.gather, cmd = m.gather.handleKey(msg, m.vault)
+
 	return m, cmd
 }
 
 func (m model) updateImportExportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	m.importExport, cmd = m.importExport.handleKey(msg, m.vault)
+
 	return m, cmd
 }

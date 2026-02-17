@@ -15,14 +15,14 @@ import (
 type HookEvent string
 
 const (
-	HookPreSet      HookEvent = "pre-set"
-	HookPostSet     HookEvent = "post-set"
-	HookPreGet      HookEvent = "pre-get"
-	HookPostGet     HookEvent = "post-get"
-	HookPreDelete   HookEvent = "pre-delete"
-	HookPostDelete  HookEvent = "post-delete"
-	HookPostRotate  HookEvent = "post-rotate"
-	HookPostInit    HookEvent = "post-init"
+	HookPreSet     HookEvent = "pre-set"
+	HookPostSet    HookEvent = "post-set"
+	HookPreGet     HookEvent = "pre-get"
+	HookPostGet    HookEvent = "post-get"
+	HookPreDelete  HookEvent = "pre-delete"
+	HookPostDelete HookEvent = "post-delete"
+	HookPostRotate HookEvent = "post-rotate"
+	HookPostInit   HookEvent = "post-init"
 )
 
 // HookPayload is the JSON data sent to hook executables via stdin.
@@ -41,7 +41,7 @@ type HookResult struct {
 
 // PluginConfig represents the plugin configuration for a vault.
 type PluginConfig struct {
-	Hooks    []HookConfig    `json:"hooks,omitempty" yaml:"hooks,omitempty"`
+	Hooks     []HookConfig     `json:"hooks,omitempty" yaml:"hooks,omitempty"`
 	Providers []ProviderConfig `json:"providers,omitempty" yaml:"providers,omitempty"`
 }
 
@@ -269,6 +269,7 @@ func executeHook(hook HookConfig, payload HookPayload) (*HookResult, error) {
 	cmd.Stdin = bytes.NewReader(data)
 
 	var stdout, stderr bytes.Buffer
+
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -283,8 +284,7 @@ func executeHook(hook HookConfig, payload HookPayload) (*HookResult, error) {
 
 	var result HookResult
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		// Non-JSON output: treat as informational, allow operation.
-		return &HookResult{Allow: true, Message: stdout.String()}, nil
+		return &HookResult{Allow: true, Message: stdout.String()}, nil //nolint:nilerr // non-JSON treated as allow
 	}
 
 	return &result, nil
@@ -300,6 +300,7 @@ func executeProvider(provider ProviderConfig, request ProviderRequest) (string, 
 	cmd.Stdin = bytes.NewReader(data)
 
 	var stdout, stderr bytes.Buffer
+
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -309,8 +310,7 @@ func executeProvider(provider ProviderConfig, request ProviderRequest) (string, 
 
 	var resp ProviderResponse
 	if err := json.Unmarshal(stdout.Bytes(), &resp); err != nil {
-		// Treat raw stdout as the secret value.
-		return strings.TrimSpace(stdout.String()), nil
+		return strings.TrimSpace(stdout.String()), nil //nolint:nilerr // raw stdout as value
 	}
 
 	if resp.Error != "" {

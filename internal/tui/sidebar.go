@@ -16,7 +16,7 @@ type sidebarItem struct {
 	screen screen
 }
 
-type sidebarModel struct {
+type sidebarModel struct { //nolint:recvcheck // pointer receivers needed for cursor mutation
 	categories []sidebarCategory
 	cursor     int // flat index across all selectable items
 	focused    bool
@@ -89,31 +89,37 @@ func (s sidebarModel) totalItems() int {
 	for _, cat := range s.categories {
 		n += len(cat.items)
 	}
+
 	return n
 }
 
 func (s sidebarModel) selectedScreen() screen {
 	idx := 0
+
 	for _, cat := range s.categories {
 		for _, item := range cat.items {
 			if idx == s.cursor {
 				return item.screen
 			}
+
 			idx++
 		}
 	}
+
 	return screenStatus
 }
 
 // moveCursorToScreen sets the cursor to match the given screen.
 func (s *sidebarModel) moveCursorToScreen(sc screen) {
 	idx := 0
+
 	for _, cat := range s.categories {
 		for _, item := range cat.items {
 			if item.screen == sc {
 				s.cursor = idx
 				return
 			}
+
 			idx++
 		}
 	}
@@ -133,17 +139,20 @@ func (s *sidebarModel) moveDown() {
 
 func (s sidebarModel) View(height int) string {
 	var b strings.Builder
+
 	idx := 0
 
 	for i, cat := range s.categories {
 		if i > 0 {
 			b.WriteString("\n")
 		}
+
 		b.WriteString(sidebarCategoryStyle.Render(cat.label))
 		b.WriteString("\n")
 
 		for _, item := range cat.items {
 			label := "  " + item.label
+
 			if idx == s.cursor {
 				if s.focused {
 					b.WriteString(sidebarSelectedFocusedStyle.Width(sidebarWidth - 1).Render(label))
@@ -153,7 +162,9 @@ func (s sidebarModel) View(height int) string {
 			} else {
 				b.WriteString(sidebarItemStyle.Width(sidebarWidth - 1).Render(label))
 			}
+
 			b.WriteString("\n")
+
 			idx++
 		}
 	}

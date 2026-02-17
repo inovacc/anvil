@@ -27,8 +27,7 @@ func newEnvExportModel() envExportModel {
 }
 
 func (e envExportModel) Update(msg tea.Msg) (envExportModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case envExportResultMsg:
+	if msg, ok := msg.(envExportResultMsg); ok {
 		if msg.err != nil {
 			e.message = errorStyle.Render(msg.err.Error())
 			e.output = ""
@@ -37,6 +36,7 @@ func (e envExportModel) Update(msg tea.Msg) (envExportModel, tea.Cmd) {
 			e.message = ""
 		}
 	}
+
 	return e, nil
 }
 
@@ -52,12 +52,15 @@ func (e envExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envExportMode
 		}
 	case "enter":
 		format := e.formats[e.formatIndex]
+
 		return e, func() tea.Msg {
 			entries, err := v.EnvExport("")
 			if err != nil {
 				return envExportResultMsg{err: err}
 			}
+
 			var out strings.Builder
+
 			for _, en := range entries {
 				switch format {
 				case "env":
@@ -70,9 +73,11 @@ func (e envExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envExportMode
 					_, _ = fmt.Fprintf(&out, "  %q: %q,\n", en.Key, en.Value)
 				}
 			}
+
 			return envExportResultMsg{output: out.String()}
 		}
 	}
+
 	return e, nil
 }
 
@@ -83,6 +88,7 @@ func (e envExportModel) View(width int) string {
 	b.WriteString("\n\n")
 
 	b.WriteString("  " + labelStyle.Render("Format:") + "\n")
+
 	for i, f := range e.formats {
 		marker := "  "
 		if i == e.formatIndex {
@@ -91,8 +97,10 @@ func (e envExportModel) View(width int) string {
 		} else {
 			b.WriteString(normalStyle.Render("  " + marker + f))
 		}
+
 		b.WriteString("\n")
 	}
+
 	b.WriteString("\n")
 
 	if e.output != "" {

@@ -10,7 +10,7 @@ import (
 	"github.com/inovacc/anvil/pkg/vault"
 )
 
-func writeTestScript(t *testing.T, dir, name, content string) string {
+func writeTestScript(t *testing.T, dir, name, content string) string { //nolint:unparam // name kept for clarity
 	t.Helper()
 
 	var scriptPath string
@@ -61,7 +61,7 @@ func TestPluginManagerLoadConfig(t *testing.T) {
 		},
 	}
 
-	data, _ := json.Marshal(cfg)
+	data, _ := json.Marshal(cfg) //nolint:errchkjson // test helper
 	if err := os.WriteFile(configPath, data, 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -102,11 +102,13 @@ func TestPluginManagerAddRemoveHook(t *testing.T) {
 	pm := vault.NewPluginManager("/nonexistent")
 
 	pm.AddHook(vault.HookPreSet, "echo", []string{"test"})
+
 	if !pm.HasHooks(vault.HookPreSet) {
 		t.Error("expected hook after add")
 	}
 
 	pm.RemoveHook(vault.HookPreSet, "echo")
+
 	if pm.HasHooks(vault.HookPreSet) {
 		t.Error("expected no hook after remove")
 	}
@@ -116,12 +118,14 @@ func TestPluginManagerAddRemoveProvider(t *testing.T) {
 	pm := vault.NewPluginManager("/nonexistent")
 
 	pm.AddProvider("aws", "aws-provider", "aws/")
+
 	providers := pm.ListProviders()
 	if len(providers) != 1 || providers[0] != "aws" {
 		t.Errorf("expected [aws], got %v", providers)
 	}
 
 	pm.RemoveProvider("aws")
+
 	providers = pm.ListProviders()
 	if len(providers) != 0 {
 		t.Errorf("expected empty, got %v", providers)
@@ -153,6 +157,7 @@ func TestPluginManagerSaveConfig(t *testing.T) {
 
 func TestPluginManagerConfig(t *testing.T) {
 	pm := vault.NewPluginManager("/nonexistent")
+
 	cfg := pm.Config()
 	if cfg == nil {
 		t.Fatal("Config() returned nil")
@@ -160,6 +165,7 @@ func TestPluginManagerConfig(t *testing.T) {
 
 	// Nil manager should return empty config.
 	var nilPM *vault.PluginManager
+
 	cfg = nilPM.Config()
 	if cfg == nil {
 		t.Fatal("nil manager Config() returned nil")
@@ -185,7 +191,7 @@ echo {"allow":true}`)
 		},
 	}
 
-	data, _ := json.Marshal(cfg)
+	data, _ := json.Marshal(cfg) //nolint:errchkjson // test helper
 	_ = os.WriteFile(configPath, data, 0o600)
 
 	pm := vault.NewPluginManager(configPath)
@@ -217,7 +223,7 @@ echo {"allow":false,"message":"blocked by policy"}`)
 		},
 	}
 
-	data, _ := json.Marshal(cfg)
+	data, _ := json.Marshal(cfg) //nolint:errchkjson // test helper
 	_ = os.WriteFile(configPath, data, 0o600)
 
 	pm := vault.NewPluginManager(configPath)

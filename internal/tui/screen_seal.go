@@ -15,7 +15,6 @@ type sealScreenModel struct {
 
 type sealStatusMsg struct {
 	sealed bool
-	err    error
 }
 
 type sealActionMsg struct {
@@ -45,6 +44,7 @@ func (s sealScreenModel) Update(msg tea.Msg) (sealScreenModel, tea.Cmd) {
 			s.message = successStyle.Render(msg.message)
 		}
 	}
+
 	return s, nil
 }
 
@@ -55,6 +55,7 @@ func (s sealScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (sealScreenMo
 			if err := v.Seal(); err != nil {
 				return sealActionMsg{err: err}
 			}
+
 			return sealActionMsg{message: "Vault sealed."}
 		}
 	case "u":
@@ -62,9 +63,11 @@ func (s sealScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (sealScreenMo
 			if err := vault.UnsealVault(nil); err != nil {
 				return sealActionMsg{err: err}
 			}
+
 			return sealActionMsg{message: "Vault unsealed."}
 		}
 	}
+
 	return s, nil
 }
 
@@ -84,6 +87,7 @@ func (s sealScreenModel) View(width int) string {
 	} else {
 		b.WriteString(successStyle.Render("  Vault is UNSEALED"))
 	}
+
 	b.WriteString("\n\n")
 
 	if s.message != "" {

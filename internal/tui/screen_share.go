@@ -54,16 +54,18 @@ func newShareScreenModel() shareScreenModel {
 }
 
 func (s shareScreenModel) Update(msg tea.Msg) (shareScreenModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case shareActionMsg:
+	if msg, ok := msg.(shareActionMsg); ok {
 		if msg.err != nil {
 			s.message = errorStyle.Render(msg.err.Error())
 		} else {
 			s.message = successStyle.Render(msg.message)
 		}
+
 		return s, nil
 	}
+
 	var cmd tea.Cmd
+
 	switch s.focusIndex {
 	case 0:
 		s.profileInput, cmd = s.profileInput.Update(msg)
@@ -72,6 +74,7 @@ func (s shareScreenModel) Update(msg tea.Msg) (shareScreenModel, tea.Cmd) {
 	case 2:
 		s.fileInput, cmd = s.fileInput.Update(msg)
 	}
+
 	return s, cmd
 }
 
@@ -86,46 +89,57 @@ func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreen
 		s.focusIndex = (s.focusIndex + 1) % 3
 		inputs[s.focusIndex].PromptStyle = focusedInputStyle
 		inputs[s.focusIndex].TextStyle = focusedInputStyle
+
 		return s, inputs[s.focusIndex].Focus()
 	case "e":
 		profile := s.profileInput.Value()
 		passphrase := s.passphraseInput.Value()
+
 		file := s.fileInput.Value()
 		if passphrase == "" || file == "" {
 			s.message = errorStyle.Render("Passphrase and file are required.")
 			return s, nil
 		}
+
 		return s, func() tea.Msg {
 			encrypted, err := v.ShareExport(profile, passphrase)
 			if err != nil {
 				return shareActionMsg{err: err}
 			}
+
 			if err := os.WriteFile(file, encrypted, 0600); err != nil {
 				return shareActionMsg{err: fmt.Errorf("write file: %w", err)}
 			}
+
 			return shareActionMsg{message: "Export written to " + file}
 		}
 	case "i":
 		profile := s.profileInput.Value()
 		passphrase := s.passphraseInput.Value()
+
 		file := s.fileInput.Value()
 		if passphrase == "" || file == "" {
 			s.message = errorStyle.Render("Passphrase and file are required.")
 			return s, nil
 		}
+
 		return s, func() tea.Msg {
 			data, err := os.ReadFile(file)
 			if err != nil {
 				return shareActionMsg{err: fmt.Errorf("read file: %w", err)}
 			}
+
 			export, err := v.ShareImport(data, passphrase, profile)
 			if err != nil {
 				return shareActionMsg{err: err}
 			}
+
 			return shareActionMsg{message: fmt.Sprintf("Imported %d secrets from %q", len(export.Secrets), export.ProfileName)}
 		}
 	}
+
 	var cmd tea.Cmd
+
 	switch s.focusIndex {
 	case 0:
 		s.profileInput, cmd = s.profileInput.Update(msg)
@@ -134,6 +148,7 @@ func (s shareScreenModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (shareScreen
 	case 2:
 		s.fileInput, cmd = s.fileInput.Update(msg)
 	}
+
 	return s, cmd
 }
 

@@ -28,6 +28,7 @@ func newAuditModel(width, height int) auditModel {
 		table.WithHeight(max(1, height-8)),
 	)
 	t.SetStyles(tableStyles())
+
 	return auditModel{table: t}
 }
 
@@ -35,7 +36,9 @@ func auditTableColumns(width int) []table.Column {
 	if width <= 0 {
 		width = 80
 	}
+
 	w := width - 4
+
 	return []table.Column{
 		{Title: "Timestamp", Width: w * 25 / 100},
 		{Title: "Action", Width: w * 15 / 100},
@@ -51,16 +54,17 @@ func (a auditModel) loadData(v *vault.Vault) tea.Cmd {
 		if err != nil {
 			return auditLoadedMsg{err: err}
 		}
+
 		return auditLoadedMsg{entries: entries}
 	}
 }
 
 func (a auditModel) Update(msg tea.Msg) (auditModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case auditLoadedMsg:
+	if msg, ok := msg.(auditLoadedMsg); ok {
 		a.loaded = true
 		if msg.err == nil {
 			a.entries = msg.entries
+
 			rows := make([]table.Row, len(a.entries))
 			for i, e := range a.entries {
 				rows[i] = table.Row{
@@ -71,9 +75,11 @@ func (a auditModel) Update(msg tea.Msg) (auditModel, tea.Cmd) {
 					e.Detail,
 				}
 			}
+
 			a.table.SetRows(rows)
 		}
 	}
+
 	return a, nil
 }
 
@@ -92,6 +98,7 @@ func (a auditModel) View(width int) string {
 		b.WriteString(dimStyle.Render("  No audit log entries."))
 		b.WriteString("\n\n")
 		b.WriteString(helpStyle.Render("  esc: back • q: quit"))
+
 		return b.String()
 	}
 

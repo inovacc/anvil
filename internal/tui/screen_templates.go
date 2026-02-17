@@ -30,6 +30,7 @@ func newTemplatesModel(width, height int) templatesModel {
 		table.WithHeight(max(1, height-8)),
 	)
 	t.SetStyles(tableStyles())
+
 	return templatesModel{table: t}
 }
 
@@ -37,7 +38,9 @@ func templateTableColumns(width int) []table.Column {
 	if width <= 0 {
 		width = 80
 	}
+
 	w := width - 4
+
 	return []table.Column{
 		{Title: "Name", Width: w * 30 / 100},
 		{Title: "Vars", Width: w * 15 / 100},
@@ -52,16 +55,17 @@ func (t templatesModel) loadData(v *vault.Vault) tea.Cmd {
 		if err != nil {
 			return templatesLoadedMsg{err: err}
 		}
+
 		return templatesLoadedMsg{templates: templates}
 	}
 }
 
 func (t templatesModel) Update(msg tea.Msg) (templatesModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case templatesLoadedMsg:
+	if msg, ok := msg.(templatesLoadedMsg); ok {
 		t.loaded = true
 		if msg.err == nil {
 			t.templates = msg.templates
+
 			rows := make([]table.Row, len(t.templates))
 			for i, tmpl := range t.templates {
 				rows[i] = table.Row{
@@ -71,11 +75,13 @@ func (t templatesModel) Update(msg tea.Msg) (templatesModel, tea.Cmd) {
 					tmpl.Description,
 				}
 			}
+
 			t.table.SetRows(rows)
 		} else {
 			t.message = errorStyle.Render(msg.err.Error())
 		}
 	}
+
 	return t, nil
 }
 
@@ -84,6 +90,7 @@ func (t templatesModel) selectedName() string {
 	if len(row) == 0 {
 		return ""
 	}
+
 	return row[0]
 }
 
@@ -102,6 +109,7 @@ func (t templatesModel) View(width int) string {
 		b.WriteString(dimStyle.Render("  No templates found."))
 		b.WriteString("\n\n")
 		b.WriteString(helpStyle.Render("  esc: sidebar"))
+
 		return b.String()
 	}
 

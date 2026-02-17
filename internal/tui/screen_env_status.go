@@ -35,6 +35,7 @@ func (e envStatusModel) loadData(v *vault.Vault) tea.Cmd {
 		if err != nil {
 			return envStatusLoadedMsg{err: err}
 		}
+
 		return envStatusLoadedMsg{state: state}
 	}
 }
@@ -55,23 +56,26 @@ func (e envStatusModel) Update(msg tea.Msg) (envStatusModel, tea.Cmd) {
 			e.message = successStyle.Render(msg.message)
 		}
 	}
+
 	return e, nil
 }
 
 func (e envStatusModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envStatusModel, tea.Cmd) {
-	switch msg.String() {
-	case "r":
+	if msg.String() == "r" {
 		return e, func() tea.Msg {
 			if err := v.EnvRevoke(); err != nil {
 				return envStatusActionMsg{err: err}
 			}
+
 			state, err := v.EnvStatus()
 			if err != nil {
 				return envStatusLoadedMsg{err: err}
 			}
+
 			return envStatusLoadedMsg{state: state}
 		}
 	}
+
 	return e, nil
 }
 

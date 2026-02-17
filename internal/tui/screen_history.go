@@ -31,6 +31,7 @@ func newHistoryModel(key, profileName string, width, height int) historyModel {
 		table.WithHeight(max(1, height-8)),
 	)
 	t.SetStyles(tableStyles())
+
 	return historyModel{
 		key:         key,
 		profileName: profileName,
@@ -42,7 +43,9 @@ func historyTableColumns(width int) []table.Column {
 	if width <= 0 {
 		width = 80
 	}
+
 	w := width - 4
+
 	return []table.Column{
 		{Title: "Version", Width: w * 30 / 100},
 		{Title: "Created", Width: w * 70 / 100},
@@ -52,21 +55,23 @@ func historyTableColumns(width int) []table.Column {
 func (h historyModel) loadData(v *vault.Vault) tea.Cmd {
 	key := h.key
 	profile := h.profileName
+
 	return func() tea.Msg {
 		versions, err := v.SecretHistory(key, profile)
 		if err != nil {
 			return historyLoadedMsg{err: err}
 		}
+
 		return historyLoadedMsg{versions: versions}
 	}
 }
 
 func (h historyModel) Update(msg tea.Msg) (historyModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case historyLoadedMsg:
+	if msg, ok := msg.(historyLoadedMsg); ok {
 		h.loaded = true
 		if msg.err == nil {
 			h.versions = msg.versions
+
 			rows := make([]table.Row, len(h.versions))
 			for i, ver := range h.versions {
 				rows[i] = table.Row{
@@ -74,9 +79,11 @@ func (h historyModel) Update(msg tea.Msg) (historyModel, tea.Cmd) {
 					ver.CreatedAt.Format("2006-01-02 15:04:05"),
 				}
 			}
+
 			h.table.SetRows(rows)
 		}
 	}
+
 	return h, nil
 }
 
@@ -95,6 +102,7 @@ func (h historyModel) View(width int) string {
 		b.WriteString(dimStyle.Render("  No version history."))
 		b.WriteString("\n\n")
 		b.WriteString(helpStyle.Render("  esc: back • q: quit"))
+
 		return b.String()
 	}
 

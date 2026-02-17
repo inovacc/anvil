@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ func handleError(cmd *cobra.Command, err error) {
 				Hint  string `json:"hint,omitempty"`
 			}{Error: ue.Message, Hint: ue.Hint}
 
-			out, _ := json.MarshalIndent(data, "", "  ")
+			out, _ := json.MarshalIndent(data, "", "  ") //nolint:errchkjson // struct with string fields only
 			_, _ = fmt.Fprintln(w, string(out))
 
 			return
@@ -39,7 +39,7 @@ func handleError(cmd *cobra.Command, err error) {
 			Error string `json:"error"`
 		}{Error: err.Error()}
 
-		out, _ := json.MarshalIndent(data, "", "  ")
+		out, _ := json.MarshalIndent(data, "", "  ") //nolint:errchkjson // struct with string fields only
 		_, _ = fmt.Fprintln(w, string(out))
 
 		return

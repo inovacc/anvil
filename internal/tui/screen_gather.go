@@ -25,36 +25,44 @@ func newGatherScreenModel() gatherScreenModel {
 	di.Width = 40
 	di.PromptStyle = focusedInputStyle
 	di.TextStyle = focusedInputStyle
+
 	return gatherScreenModel{dirInput: di}
 }
 
 func (g gatherScreenModel) Update(msg tea.Msg) (gatherScreenModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case gatherActionMsg:
+	if msg, ok := msg.(gatherActionMsg); ok {
 		if msg.err != nil {
 			g.message = errorStyle.Render(msg.err.Error())
 		} else {
 			g.message = successStyle.Render(msg.message)
 		}
+
 		return g, nil
 	}
+
 	var cmd tea.Cmd
+
 	g.dirInput, cmd = g.dirInput.Update(msg)
+
 	return g, cmd
 }
 
 func (g gatherScreenModel) handleKey(msg tea.KeyMsg, _ *vault.Vault) (gatherScreenModel, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
+	if msg.String() == "enter" {
 		dir := g.dirInput.Value()
 		if dir == "" {
 			dir = "."
 		}
+
 		g.message = dimStyle.Render("Gather requires CLI mode: anvil gather " + dir)
+
 		return g, nil
 	}
+
 	var cmd tea.Cmd
+
 	g.dirInput, cmd = g.dirInput.Update(msg)
+
 	return g, cmd
 }
 

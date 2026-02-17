@@ -31,23 +31,25 @@ func (s statusModel) loadData(v *vault.Vault) tea.Cmd {
 		if err != nil {
 			return statusLoadedMsg{err: err}
 		}
+
 		profiles, err := v.ListProfiles()
 		if err != nil {
 			return statusLoadedMsg{err: err}
 		}
+
 		return statusLoadedMsg{status: status, profiles: profiles}
 	}
 }
 
 func (s statusModel) Update(msg tea.Msg) (statusModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case statusLoadedMsg:
+	if msg, ok := msg.(statusLoadedMsg); ok {
 		s.loaded = true
 		if msg.err == nil {
 			s.status = msg.status
 			s.profiles = msg.profiles
 		}
 	}
+
 	return s, nil
 }
 
@@ -74,6 +76,7 @@ func (s statusModel) View(width int) string {
 		Width(min(60, width-4))
 
 	var info strings.Builder
+
 	row := func(label, value string) {
 		info.WriteString(fmt.Sprintf("  %s  %s\n", labelStyle.Width(14).Render(label), valueStyle.Render(value)))
 	}
@@ -84,6 +87,7 @@ func (s statusModel) View(width int) string {
 	row("Profiles", fmt.Sprintf("%d", st.ProfileCount))
 	row("Secrets", fmt.Sprintf("%d", st.SecretCount))
 	row("Password", boolToYesNo(st.PasswordSet))
+
 	if !st.CreatedAt.IsZero() {
 		row("Created", st.CreatedAt.Format("2006-01-02 15:04"))
 	}
@@ -92,6 +96,7 @@ func (s statusModel) View(width int) string {
 		if p.IsDefault {
 			info.WriteString("\n")
 			row("Default", fmt.Sprintf("%s (%d secrets)", p.Name, p.SecretCount))
+
 			break
 		}
 	}
@@ -107,5 +112,6 @@ func boolToYesNo(v bool) string {
 	if v {
 		return "yes"
 	}
+
 	return "no"
 }

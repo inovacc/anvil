@@ -114,9 +114,8 @@ func Check(masterKey []byte) (*ReleaseState, error) {
 
 	var payload map[string][]byte
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		// Corrupted or short file — treat as inactive.
 		_ = os.Remove(path)
-		return &ReleaseState{Active: false}, nil
+		return &ReleaseState{Active: false}, nil //nolint:nilerr // corrupted file treated as inactive
 	}
 
 	plaintext, err := crypto.Decrypt(masterKey, payload["ciphertext"], payload["nonce"])
@@ -132,6 +131,7 @@ func Check(masterKey []byte) (*ReleaseState, error) {
 	if time.Now().After(data.ExpiresAt) {
 		dp, _ := disabledPath()
 		_ = os.Rename(path, dp)
+
 		return &ReleaseState{Active: false, ProfileName: data.ProfileName}, nil
 	}
 

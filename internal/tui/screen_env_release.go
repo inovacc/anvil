@@ -42,21 +42,23 @@ func newEnvReleaseModel() envReleaseModel {
 }
 
 func (e envReleaseModel) Update(msg tea.Msg) (envReleaseModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case envReleaseActionMsg:
+	if msg, ok := msg.(envReleaseActionMsg); ok {
 		if msg.err != nil {
 			e.message = errorStyle.Render(msg.err.Error())
 		} else {
 			e.message = successStyle.Render(msg.message)
 		}
+
 		return e, nil
 	}
+
 	var cmd tea.Cmd
 	if e.focusIndex == 0 {
 		e.passwordInput, cmd = e.passwordInput.Update(msg)
 	} else {
 		e.ttlInput, cmd = e.ttlInput.Update(msg)
 	}
+
 	return e, cmd
 }
 
@@ -68,12 +70,15 @@ func (e envReleaseModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envReleaseMo
 			e.passwordInput.Blur()
 			e.passwordInput.PromptStyle = blurredInputStyle
 			e.passwordInput.TextStyle = blurredInputStyle
+
 			return e, e.ttlInput.Focus()
 		}
+
 		e.focusIndex = 0
 		e.ttlInput.Blur()
 		e.ttlInput.PromptStyle = blurredInputStyle
 		e.ttlInput.TextStyle = blurredInputStyle
+
 		return e, e.passwordInput.Focus()
 	case "enter":
 		pw := e.passwordInput.Value()
@@ -81,21 +86,26 @@ func (e envReleaseModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envReleaseMo
 			e.message = errorStyle.Render("Password is required.")
 			return e, nil
 		}
+
 		ttlStr := e.ttlInput.Value()
 		if ttlStr == "" {
 			ttlStr = "30m"
 		}
+
 		ttl, err := time.ParseDuration(ttlStr)
 		if err != nil {
 			e.message = errorStyle.Render("Invalid TTL: " + err.Error())
 			return e, nil
 		}
+
 		e.passwordInput.SetValue("")
+
 		return e, func() tea.Msg {
 			state, err := v.EnvRelease(pw, &vault.EnvReleaseOptions{TTL: ttl})
 			if err != nil {
 				return envReleaseActionMsg{err: err}
 			}
+
 			return envReleaseActionMsg{message: fmt.Sprintf("Released for %q. Expires in %s", state.ProfileName, state.Remaining.Truncate(time.Second))}
 		}
 	case "r":
@@ -103,15 +113,18 @@ func (e envReleaseModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (envReleaseMo
 			if err := v.EnvRevoke(); err != nil {
 				return envReleaseActionMsg{err: err}
 			}
+
 			return envReleaseActionMsg{message: "Release revoked."}
 		}
 	}
+
 	var cmd tea.Cmd
 	if e.focusIndex == 0 {
 		e.passwordInput, cmd = e.passwordInput.Update(msg)
 	} else {
 		e.ttlInput, cmd = e.ttlInput.Update(msg)
 	}
+
 	return e, cmd
 }
 

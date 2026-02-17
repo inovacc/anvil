@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bytes"
@@ -39,6 +39,7 @@ func execCmd(t *testing.T, args ...string) (stdout, stderr string) {
 	_ = cmd.PersistentFlags().Set("json", "false")
 	outBuf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
+
 	cmd.SetOut(outBuf)
 	cmd.SetErr(errBuf)
 	cmd.SetArgs(args)
@@ -74,6 +75,7 @@ func TestProfileCRUDCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("create profile error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "created") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -86,10 +88,12 @@ func TestProfileCRUDCLI(t *testing.T) {
 
 	// Create another and use it.
 	execCmd(t, "vault", "profile", "create", "staging")
+
 	stdout, stderr = execCmd(t, "vault", "profile", "use", "staging")
 	if stderr != "" {
 		t.Fatalf("use profile error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "staging") {
 		t.Errorf("unexpected use output: %q", stdout)
 	}
@@ -99,6 +103,7 @@ func TestProfileCRUDCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("delete profile error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "deleted") {
 		t.Errorf("unexpected delete output: %q", stdout)
 	}
@@ -113,6 +118,7 @@ func TestSecretCRUDCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("set error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "set") {
 		t.Errorf("unexpected set output: %q", stdout)
 	}
@@ -122,6 +128,7 @@ func TestSecretCRUDCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("get error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "secret123") {
 		t.Errorf("expected secret value, got: %q", stdout)
 	}
@@ -137,6 +144,7 @@ func TestSecretCRUDCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("delete error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "deleted") {
 		t.Errorf("unexpected delete output: %q", stdout)
 	}
@@ -149,6 +157,7 @@ func TestVaultStatusCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("status error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Initialized") || !strings.Contains(stdout, "yes") {
 		t.Errorf("unexpected status output: %q", stdout)
 	}
@@ -161,20 +170,24 @@ func TestJSONOutputCLI(t *testing.T) {
 
 	// Status with --json.
 	stdout, _ := execCmd(t, "vault", "status", "--json")
+
 	var status map[string]any
 	if err := json.Unmarshal([]byte(stdout), &status); err != nil {
 		t.Fatalf("status JSON parse error: %v\noutput: %q", err, stdout)
 	}
+
 	if status["initialized"] != true {
 		t.Errorf("expected initialized=true, got %v", status["initialized"])
 	}
 
 	// Profile list with --json.
 	stdout, _ = execCmd(t, "vault", "profile", "list", "--json")
+
 	var profiles []map[string]any
 	if err := json.Unmarshal([]byte(stdout), &profiles); err != nil {
 		t.Fatalf("profiles JSON parse error: %v\noutput: %q", err, stdout)
 	}
+
 	if len(profiles) != 1 {
 		t.Errorf("expected 1 profile, got %d", len(profiles))
 	}
@@ -183,10 +196,12 @@ func TestJSONOutputCLI(t *testing.T) {
 func TestAuditLogCLI(t *testing.T) {
 	setupTestVault(t)
 	execCmd(t, "vault", "profile", "create", "test", "--default")
+
 	setOut, setErr := execCmd(t, "vault", "set", "KEY1", "val1", "-p", "test")
 	if setErr != "" {
 		t.Logf("set stderr: %s", setErr)
 	}
+
 	if setOut == "" {
 		t.Log("set produced no stdout (expected)")
 	}
@@ -196,16 +211,19 @@ func TestAuditLogCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("audit error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "secret.set") {
 		t.Errorf("expected audit entry for secret.set, got: %q", stdout)
 	}
 
 	// JSON output.
 	stdout, _ = execCmd(t, "vault", "audit", "--json")
+
 	var entries []map[string]any
 	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {
 		t.Fatalf("audit JSON parse error: %v\noutput: %q", err, stdout)
 	}
+
 	if len(entries) == 0 {
 		t.Error("expected audit entries")
 	}
@@ -224,6 +242,7 @@ func TestSecretVersioningCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("history error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "v1") {
 		t.Errorf("expected v1 in history, got: %q", stdout)
 	}
@@ -233,6 +252,7 @@ func TestSecretVersioningCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("rollback error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "rolled back") {
 		t.Errorf("expected rollback message, got: %q", stdout)
 	}
@@ -255,16 +275,19 @@ func TestExportImportCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("export error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "A=1") || !strings.Contains(stdout, "B=2") {
 		t.Errorf("unexpected export output: %q", stdout)
 	}
 
 	// Export as JSON.
 	stdout, _ = execCmd(t, "vault", "export", "-p", "test", "-f", "json")
+
 	var entries []map[string]any
 	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {
 		t.Fatalf("export JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if len(entries) != 2 {
 		t.Errorf("expected 2 entries, got %d", len(entries))
 	}
@@ -274,11 +297,14 @@ func TestExportImportCLI(t *testing.T) {
 	if err := os.WriteFile(envFile, []byte("X=10\nY=20\n"), 0o600); err != nil {
 		t.Fatalf("write env file: %v", err)
 	}
+
 	execCmd(t, "vault", "profile", "create", "imported")
+
 	stdout, stderr = execCmd(t, "vault", "import", envFile, "-p", "imported", "-f", "env")
 	if stderr != "" {
 		t.Fatalf("import error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Imported 2") {
 		t.Errorf("expected import count, got: %q", stdout)
 	}
@@ -298,16 +324,19 @@ func TestTemplateListCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("template list error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "postgres") {
 		t.Errorf("expected postgres template, got: %q", stdout)
 	}
 
 	// JSON output.
 	stdout, _ = execCmd(t, "vault", "template", "list", "--json")
+
 	var templates []map[string]any
 	if err := json.Unmarshal([]byte(stdout), &templates); err != nil {
 		t.Fatalf("template list JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if len(templates) < 5 {
 		t.Errorf("expected at least 5 built-in templates, got %d", len(templates))
 	}
@@ -320,6 +349,7 @@ func TestTemplateShowCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("template show error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "postgres") {
 		t.Errorf("expected template details, got: %q", stdout)
 	}
@@ -334,6 +364,7 @@ func TestTemplateApplyCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("template apply error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "applied") {
 		t.Errorf("expected applied message, got: %q", stdout)
 	}
@@ -367,6 +398,7 @@ func TestPluginHookAddRemoveCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("hook-add error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Hook added") && !strings.Contains(stdout, "ok") {
 		t.Errorf("expected success output, got: %q", stdout)
 	}
@@ -382,6 +414,7 @@ func TestPluginHookAddRemoveCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("hook-remove error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Hook removed") && !strings.Contains(stdout, "ok") {
 		t.Errorf("expected success output, got: %q", stdout)
 	}
@@ -395,6 +428,7 @@ func TestPluginProviderAddRemoveCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("provider-add error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Provider added") && !strings.Contains(stdout, "ok") {
 		t.Errorf("expected success output, got: %q", stdout)
 	}
@@ -404,6 +438,7 @@ func TestPluginProviderAddRemoveCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("provider-remove error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Provider removed") && !strings.Contains(stdout, "ok") {
 		t.Errorf("expected success output, got: %q", stdout)
 	}
@@ -423,10 +458,12 @@ func TestErrorHandlingCLI(t *testing.T) {
 	if stderr == "" {
 		t.Error("expected JSON error for non-existent secret")
 	}
+
 	var errResp map[string]any
 	if err := json.Unmarshal([]byte(stderr), &errResp); err != nil {
 		t.Fatalf("error JSON parse: %v\noutput: %q", err, stderr)
 	}
+
 	if _, ok := errResp["error"]; !ok {
 		t.Errorf("expected 'error' field in JSON error: %v", errResp)
 	}
@@ -445,6 +482,7 @@ func TestDockerExportCleanCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("docker export error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Exported 2") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -454,6 +492,7 @@ func TestDockerExportCleanCLI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read secret file: %v", err)
 	}
+
 	if string(data) != "localhost" {
 		t.Errorf("expected 'localhost', got %q", string(data))
 	}
@@ -463,6 +502,7 @@ func TestDockerExportCleanCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("docker clean error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Removed 2") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -482,6 +522,7 @@ func TestDockerComposeCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("docker compose error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "secrets:") || !strings.Contains(stdout, "API_KEY") {
 		t.Errorf("unexpected compose output: %q", stdout)
 	}
@@ -499,16 +540,19 @@ func TestShareExportImportCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("share export error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Shared export written") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
 
 	// Create target profile and import.
 	execCmd(t, "vault", "profile", "create", "imported")
+
 	stdout, stderr = execCmd(t, "vault", "share", "import", shareFile, "--profile", "imported", "--passphrase", "testpass123")
 	if stderr != "" {
 		t.Fatalf("share import error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Imported") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -533,6 +577,7 @@ func TestRotateKeyCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("rotate-key error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "rotated successfully") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -559,6 +604,7 @@ func TestBackupRestoreCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("backup error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Backup written") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -566,6 +612,7 @@ func TestBackupRestoreCLI(t *testing.T) {
 	// Create fresh vault for restore.
 	dbPath2 := filepath.Join(t.TempDir(), "vault2.db")
 	t.Setenv("ANVIL_DB_PATH", dbPath2)
+
 	if err := vault.Init(nil); err != nil {
 		t.Fatalf("vault.Init for restore: %v", err)
 	}
@@ -575,6 +622,7 @@ func TestBackupRestoreCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("restore error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "restored") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -594,6 +642,7 @@ func TestEnvPasswordSetCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("password set error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Password set") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -603,6 +652,7 @@ func TestEnvPasswordSetCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("password update error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "Password set") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -628,6 +678,7 @@ func TestEnvReleaseStatusRevokeCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("release error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "released") {
 		t.Errorf("unexpected release output: %q", stdout)
 	}
@@ -643,6 +694,7 @@ func TestEnvReleaseStatusRevokeCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("env export error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "K1=V1") {
 		t.Errorf("expected K1=V1 in env export, got: %q", stdout)
 	}
@@ -658,6 +710,7 @@ func TestEnvReleaseStatusRevokeCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("revoke error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "revoked") {
 		t.Errorf("unexpected revoke output: %q", stdout)
 	}
@@ -676,6 +729,7 @@ func TestCmdTreeCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("cmdtree error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "anvil") || !strings.Contains(stdout, "set") {
 		t.Errorf("expected command tree, got: %q", stdout)
 	}
@@ -685,10 +739,12 @@ func TestCmdTreeJSONCLI(t *testing.T) {
 	setupTestVault(t)
 
 	stdout, _ := execCmd(t, "cmdtree", "--json")
+
 	var entries []cmdTreeEntry
 	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {
 		t.Fatalf("cmdtree JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if len(entries) < 10 {
 		t.Errorf("expected many commands, got %d", len(entries))
 	}
@@ -699,6 +755,7 @@ func TestTemplateCreateDeleteCLI(t *testing.T) {
 
 	// Create a template file.
 	tmplFile := filepath.Join(t.TempDir(), "tmpl.yaml")
+
 	tmplContent := `name: mytest
 description: test template
 secrets:
@@ -722,6 +779,7 @@ variables:
 	if stderr != "" {
 		t.Fatalf("template create error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "created") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -731,6 +789,7 @@ variables:
 	if stderr != "" {
 		t.Fatalf("template show error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "mytest") {
 		t.Errorf("unexpected show output: %q", stdout)
 	}
@@ -740,6 +799,7 @@ variables:
 	if stderr != "" {
 		t.Fatalf("template delete error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "deleted") {
 		t.Errorf("unexpected delete output: %q", stdout)
 	}
@@ -752,10 +812,12 @@ func TestDockerExportJSONCLI(t *testing.T) {
 
 	dir := filepath.Join(t.TempDir(), "dsecrets")
 	stdout, _ := execCmd(t, "vault", "docker", "export", dir, "-p", "test", "--json")
+
 	var result map[string]any
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if result["count"].(float64) != 1 {
 		t.Errorf("expected count 1, got %v", result["count"])
 	}
@@ -765,10 +827,12 @@ func TestEnvStatusJSONCLI(t *testing.T) {
 	setupTestVault(t)
 
 	stdout, _ := execCmd(t, "vault", "env", "status", "--json")
+
 	var result map[string]any
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if result["active"] != false {
 		t.Errorf("expected active=false, got %v", result["active"])
 	}
@@ -795,6 +859,7 @@ func TestGatherCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("gather error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "gathered") {
 		t.Errorf("unexpected output: %q", stdout)
 	}
@@ -828,9 +893,11 @@ func TestGatherJSONCLI(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v\noutput: %q", err, stdout)
 	}
+
 	if result["profile"] != "jtest" {
 		t.Errorf("expected profile jtest, got %v", result["profile"])
 	}
+
 	if result["count"].(float64) != 1 {
 		t.Errorf("expected count 1, got %v", result["count"])
 	}
@@ -840,6 +907,7 @@ func TestGatherNoFilesCLI(t *testing.T) {
 	setupTestVault(t)
 
 	emptyDir := t.TempDir()
+
 	stdout, _ := execCmd(t, "vault", "gather", emptyDir, "--yes", "--profile", "empty")
 	if !strings.Contains(stdout, "No secret files found") {
 		t.Errorf("expected no files message, got: %q", stdout)
@@ -853,22 +921,24 @@ func TestGatherExcludesCLI(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projDir, ".env"), []byte("ROOT_KEY=val\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	subDir := filepath.Join(projDir, "secrets")
 	if err := os.MkdirAll(subDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(subDir, ".env"), []byte("SUB_KEY=val\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// Gather excluding the "secrets" subdirectory.
-	stdout, stderr := execCmd(t, "vault", "gather", projDir, "--yes", "--profile", "excl", "--exclude", "secrets")
+	_, stderr := execCmd(t, "vault", "gather", projDir, "--yes", "--profile", "excl", "--exclude", "secrets")
 	if stderr != "" {
 		t.Fatalf("gather error: %s", stderr)
 	}
 
 	// Should only have 1 secret from root .env.
-	stdout, _ = execCmd(t, "vault", "get", "ROOT_KEY", "-p", "excl")
+	stdout, _ := execCmd(t, "vault", "get", "ROOT_KEY", "-p", "excl")
 	if !strings.Contains(stdout, "val") {
 		t.Errorf("expected ROOT_KEY, got: %q", stdout)
 	}
@@ -908,6 +978,7 @@ func TestSealUnsealCLI(t *testing.T) {
 	if stderr != "" {
 		t.Errorf("get after unseal error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "value1") {
 		t.Errorf("expected value1, got: %q", stdout)
 	}
@@ -917,12 +988,14 @@ func TestSealUnsealJSONCLI(t *testing.T) {
 	setupTestVault(t)
 
 	stdout, _ := execCmd(t, "vault", "seal", "--json")
+
 	var result struct {
 		Message string `json:"message"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v (output: %q)", err, stdout)
 	}
+
 	if !strings.Contains(strings.ToLower(result.Message), "sealed") {
 		t.Errorf("unexpected message: %q", result.Message)
 	}
@@ -931,6 +1004,7 @@ func TestSealUnsealJSONCLI(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("JSON parse: %v (output: %q)", err, stdout)
 	}
+
 	if !strings.Contains(strings.ToLower(result.Message), "unsealed") {
 		t.Errorf("unexpected message: %q", result.Message)
 	}
@@ -956,6 +1030,7 @@ func TestPluginIntegrationE2E(t *testing.T) {
 	var hookScript, hookCmd string
 	if runtime.GOOS == "windows" {
 		hookScript = filepath.Join(dir, "hook.bat")
+
 		hookCmd = hookScript
 		if err := os.WriteFile(hookScript, []byte(
 			"@echo off\r\necho {\"allow\":true}\r\necho hook-fired > \""+markerFile+"\"\r\n",
@@ -964,6 +1039,7 @@ func TestPluginIntegrationE2E(t *testing.T) {
 		}
 	} else {
 		hookScript = filepath.Join(dir, "hook.sh")
+
 		hookCmd = hookScript
 		if err := os.WriteFile(hookScript, []byte(
 			"#!/bin/sh\necho '{\"allow\":true}'\necho hook-fired > '"+markerFile+"'\n",
@@ -980,6 +1056,7 @@ func TestPluginIntegrationE2E(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("set error: %s", stderr)
 	}
+
 	if !strings.Contains(stdout, "set") {
 		t.Errorf("unexpected set output: %q", stdout)
 	}

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
@@ -70,6 +70,7 @@ var varRefRe = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A
 
 func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 	var entries []vault.SecretEntry
+
 	vars := make(map[string]string)
 	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
 
@@ -86,14 +87,20 @@ func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 		if !ok {
 			continue
 		}
+
 		key = strings.TrimSpace(key)
 
 		var value string
-		if len(rest) > 0 && rest[0] == '"' {
+
+		switch {
+		case len(rest) > 0 && rest[0] == '"':
 			// Double-quoted: consume until unescaped closing quote, may span lines.
 			raw := rest[1:]
+
 			var buf strings.Builder
+
 			closed := false
+
 			for {
 				for j := 0; j < len(raw); j++ {
 					if raw[j] == '\\' && j+1 < len(raw) {
@@ -110,15 +117,20 @@ func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 							buf.WriteByte('\\')
 							buf.WriteByte(raw[j+1])
 						}
+
 						j++
+
 						continue
 					}
+
 					if raw[j] == '"' {
 						closed = true
 						break
 					}
+
 					buf.WriteByte(raw[j])
 				}
+
 				if closed {
 					break
 				}
@@ -127,11 +139,14 @@ func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 				if i >= len(lines) {
 					break
 				}
+
 				buf.WriteByte('\n')
+
 				raw = lines[i]
 			}
+
 			value = expandVars(buf.String(), vars)
-		} else if len(rest) > 0 && rest[0] == '\'' {
+		case len(rest) > 0 && rest[0] == '\'':
 			// Single-quoted: literal, no escapes, no substitution.
 			end := strings.Index(rest[1:], "'")
 			if end >= 0 {
@@ -139,12 +154,13 @@ func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 			} else {
 				value = rest[1:]
 			}
-		} else {
+		default:
 			// Unquoted: strip inline comments, expand vars.
 			val := rest
 			if idx := strings.Index(val, " #"); idx >= 0 {
 				val = val[:idx]
 			}
+
 			value = expandVars(strings.TrimSpace(val), vars)
 		}
 
@@ -161,13 +177,16 @@ func parseEnvData(data []byte) ([]vault.SecretEntry, error) {
 func expandVars(s string, vars map[string]string) string {
 	return varRefRe.ReplaceAllStringFunc(s, func(match string) string {
 		submatch := varRefRe.FindStringSubmatch(match)
+
 		name := submatch[1]
 		if name == "" {
 			name = submatch[2]
 		}
+
 		if v, ok := vars[name]; ok {
 			return v
 		}
+
 		return match
 	})
 }

@@ -27,46 +27,56 @@ func newKeyRotationModel() keyRotationModel {
 	ti.Width = 40
 	ti.PromptStyle = focusedInputStyle
 	ti.TextStyle = focusedInputStyle
+
 	return keyRotationModel{input: ti}
 }
 
 func (k keyRotationModel) Update(msg tea.Msg) (keyRotationModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case keyRotationMsg:
+	if msg, ok := msg.(keyRotationMsg); ok {
 		if msg.err != nil {
 			k.message = errorStyle.Render(msg.err.Error())
 		} else {
 			k.message = successStyle.Render(msg.message)
 		}
+
 		return k, nil
 	}
+
 	var cmd tea.Cmd
+
 	k.input, cmd = k.input.Update(msg)
+
 	return k, cmd
 }
 
 func (k keyRotationModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (keyRotationModel, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
+	if msg.String() == "enter" {
 		pw := k.input.Value()
 		if pw == "" {
 			k.message = errorStyle.Render("Password is required.")
 			return k, nil
 		}
+
 		k.input.SetValue("")
+
 		return k, func() tea.Msg {
 			if err := v.RotateKey(pw); err != nil {
 				return keyRotationMsg{err: err}
 			}
+
 			status, err := v.Status()
 			if err != nil {
 				return keyRotationMsg{message: "Key rotated (could not fetch version)."}
 			}
+
 			return keyRotationMsg{message: fmt.Sprintf("Key rotated to version %d.", status.KeyVersion)}
 		}
 	}
+
 	var cmd tea.Cmd
+
 	k.input, cmd = k.input.Update(msg)
+
 	return k, cmd
 }
 

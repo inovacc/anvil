@@ -31,6 +31,7 @@ func newImportExportModel() importExportModel {
 	fi.Width = 40
 	fi.PromptStyle = focusedInputStyle
 	fi.TextStyle = focusedInputStyle
+
 	return importExportModel{
 		formats:   []string{"json", "env"},
 		fileInput: fi,
@@ -38,17 +39,20 @@ func newImportExportModel() importExportModel {
 }
 
 func (ie importExportModel) Update(msg tea.Msg) (importExportModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case importExportActionMsg:
+	if msg, ok := msg.(importExportActionMsg); ok {
 		if msg.err != nil {
 			ie.message = errorStyle.Render(msg.err.Error())
 		} else {
 			ie.message = successStyle.Render(msg.message)
 		}
+
 		return ie, nil
 	}
+
 	var cmd tea.Cmd
+
 	ie.fileInput, cmd = ie.fileInput.Update(msg)
+
 	return ie, cmd
 }
 
@@ -64,6 +68,7 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 			ie.message = errorStyle.Render("File path is required.")
 			return ie, nil
 		}
+
 		format := ie.formats[ie.formatIndex]
 		if ie.mode == 0 {
 			// Export
@@ -72,7 +77,9 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 				if err != nil {
 					return importExportActionMsg{err: err}
 				}
+
 				var data []byte
+
 				switch format {
 				case "json":
 					data, err = json.MarshalIndent(entries, "", "  ")
@@ -84,11 +91,14 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 					for _, e := range entries {
 						_, _ = fmt.Fprintf(&sb, "%s=%s\n", e.Key, e.Value)
 					}
+
 					data = []byte(sb.String())
 				}
+
 				if err := os.WriteFile(file, data, 0600); err != nil {
 					return importExportActionMsg{err: fmt.Errorf("write: %w", err)}
 				}
+
 				return importExportActionMsg{message: fmt.Sprintf("Exported %d secrets to %s", len(entries), file)}
 			}
 		}
@@ -98,7 +108,9 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 			if err != nil {
 				return importExportActionMsg{err: fmt.Errorf("read: %w", err)}
 			}
+
 			var entries []vault.SecretEntry
+
 			switch format {
 			case "json":
 				if err := json.Unmarshal(data, &entries); err != nil {
@@ -111,20 +123,26 @@ func (ie importExportModel) handleKey(msg tea.KeyMsg, v *vault.Vault) (importExp
 					if line == "" || strings.HasPrefix(line, "#") {
 						continue
 					}
+
 					k, val, ok := strings.Cut(line, "=")
 					if ok {
 						entries = append(entries, vault.SecretEntry{Key: k, Value: val})
 					}
 				}
 			}
+
 			if err := v.Import(entries, ""); err != nil {
 				return importExportActionMsg{err: err}
 			}
+
 			return importExportActionMsg{message: fmt.Sprintf("Imported %d secrets.", len(entries))}
 		}
 	}
+
 	var cmd tea.Cmd
+
 	ie.fileInput, cmd = ie.fileInput.Update(msg)
+
 	return ie, cmd
 }
 
@@ -138,6 +156,7 @@ func (ie importExportModel) View(width int) string {
 	if ie.mode == 1 {
 		modeLabel = "Import"
 	}
+
 	b.WriteString("  " + labelStyle.Render("Mode: ") + selectedStyle.Render(modeLabel) + dimStyle.Render("  (m to toggle)"))
 	b.WriteString("\n")
 	b.WriteString("  " + labelStyle.Render("Format: ") + selectedStyle.Render(ie.formats[ie.formatIndex]) + dimStyle.Render("  (f to toggle)"))

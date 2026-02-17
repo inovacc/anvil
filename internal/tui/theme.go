@@ -12,11 +12,6 @@ var (
 			Background(lipgloss.Color("62")).
 			Padding(0, 1)
 
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			Background(lipgloss.Color("236")).
-			Padding(0, 1)
-
 	selectedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("229")).
 			Bold(true)
@@ -102,5 +97,6 @@ func tableStyles() table.Styles {
 		Bold(true)
 	s.Cell = s.Cell.
 		Foreground(lipgloss.Color("252"))
+
 	return s
 }

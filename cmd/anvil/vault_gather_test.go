@@ -1,7 +1,8 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,6 +30,7 @@ func TestDiscoverEnvFiles(t *testing.T) {
 	for _, f := range files {
 		total += len(f.Secrets)
 	}
+
 	if total != 3 {
 		t.Fatalf("expected 3 total secrets, got %d", total)
 	}
@@ -45,7 +47,7 @@ func TestDiscoverJSONSecrets(t *testing.T) {
 		"api_key": "mykey",
 		"name":    "app",
 	}
-	data, _ := json.Marshal(cfg)
+	data, _ := json.Marshal(cfg) //nolint:errchkjson // test helper
 	_ = os.WriteFile(filepath.Join(dir, "config.json"), data, 0o644)
 
 	files, err := discoverSecrets(dir, 5, defaultExcludes)
@@ -65,12 +67,15 @@ func TestDiscoverJSONSecrets(t *testing.T) {
 	if !keys["database.password"] {
 		t.Error("expected database.password key")
 	}
+
 	if !keys["api_key"] {
 		t.Error("expected api_key key")
 	}
+
 	if keys["name"] {
 		t.Error("name should not be a secret")
 	}
+
 	if keys["database.host"] {
 		t.Error("database.host should not be a secret")
 	}
@@ -106,9 +111,11 @@ app:
 	if !keys["app.secret_key"] {
 		t.Error("expected app.secret_key")
 	}
+
 	if !keys["app.database.password"] {
 		t.Error("expected app.database.password")
 	}
+
 	if keys["app.name"] {
 		t.Error("app.name should not be a secret")
 	}
@@ -167,12 +174,15 @@ func TestKeyDedup(t *testing.T) {
 	}
 
 	seen := make(map[string]vault.SecretEntry)
+
 	var order []string
+
 	for _, f := range files {
 		for _, s := range f.Secrets {
 			if _, exists := seen[s.Key]; !exists {
 				order = append(order, s.Key)
 			}
+
 			seen[s.Key] = s
 		}
 	}
@@ -214,6 +224,7 @@ func TestFlattenMap(t *testing.T) {
 	if len(out) != len(expected) {
 		t.Fatalf("expected %d keys, got %d", len(expected), len(out))
 	}
+
 	for k, v := range expected {
 		if out[k] != v {
 			t.Errorf("key %s: expected %q, got %q", k, v, out[k])
@@ -237,6 +248,7 @@ func TestFilterSecretKeys(t *testing.T) {
 	for _, e := range entries {
 		keys = append(keys, e.Key)
 	}
+
 	sort.Strings(keys)
 
 	expected := []string{"api_key", "auth.token", "credential.file", "database.password"}
@@ -245,6 +257,7 @@ func TestFilterSecretKeys(t *testing.T) {
 	if len(keys) != len(expected) {
 		t.Fatalf("expected %d secret keys, got %d: %v", len(expected), len(keys), keys)
 	}
+
 	for i, k := range expected {
 		if keys[i] != k {
 			t.Errorf("expected key %q at index %d, got %q", k, i, keys[i])
@@ -260,9 +273,8 @@ func TestExtraExcludes(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(custom, ".env"), []byte("KEY=val\n"), 0o644)
 
 	excludes := make(map[string]bool)
-	for k, v := range defaultExcludes {
-		excludes[k] = v
-	}
+	maps.Copy(excludes, defaultExcludes)
+
 	excludes["mydir"] = true
 
 	files, err := discoverSecrets(dir, 5, excludes)

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bufio"
@@ -59,6 +59,7 @@ func runGather(cmd *cobra.Command, args []string) error {
 
 	excludes := make(map[string]bool)
 	maps.Copy(excludes, defaultExcludes)
+
 	for _, e := range extraExcludes {
 		excludes[e] = true
 	}
@@ -74,17 +75,21 @@ func runGather(cmd *cobra.Command, args []string) error {
 		}{"No secret files found."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No secret files found.")
 		})
+
 		return nil
 	}
 
 	// Dedup: last-file-wins by key.
 	seen := make(map[string]vault.SecretEntry)
+
 	var order []string
+
 	for _, f := range files {
 		for _, s := range f.Secrets {
 			if _, exists := seen[s.Key]; !exists {
 				order = append(order, s.Key)
 			}
+
 			seen[s.Key] = s
 		}
 	}
@@ -103,6 +108,7 @@ func runGather(cmd *cobra.Command, args []string) error {
 			if rel == "" {
 				rel = f.Path
 			}
+
 			_, _ = fmt.Fprintf(os.Stderr, "  %s (%d secrets)\n", rel, len(f.Secrets))
 		}
 
@@ -113,6 +119,7 @@ func runGather(cmd *cobra.Command, args []string) error {
 
 		_, _ = fmt.Fprintf(os.Stderr, "\nCreate profile with %d secrets? [y/N]: ", len(entries))
 		answer, _ := reader.ReadString('\n')
+
 		answer = strings.TrimSpace(strings.ToLower(answer))
 		if answer != "y" && answer != "yes" {
 			_, _ = fmt.Fprintln(os.Stderr, "Aborted.")
@@ -123,22 +130,23 @@ func runGather(cmd *cobra.Command, args []string) error {
 			defaultName := filepath.Base(dir)
 			_, _ = fmt.Fprintf(os.Stderr, "Profile name [%s]: ", defaultName)
 			name, _ := reader.ReadString('\n')
+
 			name = strings.TrimSpace(name)
 			if name == "" {
 				name = defaultName
 			}
+
 			profileName = name
 		}
-	} else {
-		if profileName == "" {
-			return fmt.Errorf("--profile is required with --yes")
-		}
+	} else if profileName == "" {
+		return fmt.Errorf("--profile is required with --yes")
 	}
 
 	v, err := vault.Open(nil)
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = v.Close() }()
 
 	if err := v.CreateProfile(profileName, "Gathered from "+dir, false); err != nil {
@@ -157,6 +165,7 @@ func runGather(cmd *cobra.Command, args []string) error {
 		if rel == "" {
 			rel = f.Path
 		}
+
 		jsonFiles = append(jsonFiles, rel)
 	}
 
@@ -179,21 +188,24 @@ func runGather(cmd *cobra.Command, args []string) error {
 
 func discoverSecrets(root string, maxDepth int, excludes map[string]bool) ([]gatheredFile, error) {
 	var results []gatheredFile
+
 	rootDepth := strings.Count(root, string(os.PathSeparator))
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil // skip unreadable
+			return nil //nolint:nilerr // skip unreadable entries
 		}
 
 		if d.IsDir() {
 			if excludes[d.Name()] {
 				return fs.SkipDir
 			}
+
 			depth := strings.Count(path, string(os.PathSeparator)) - rootDepth
 			if depth > maxDepth {
 				return fs.SkipDir
 			}
+
 			return nil
 		}
 
@@ -203,13 +215,16 @@ func discoverSecrets(root string, maxDepth int, excludes map[string]bool) ([]gat
 		if name == ".env" || strings.HasPrefix(name, ".env.") {
 			data, err := os.ReadFile(path)
 			if err != nil {
-				return nil
+				return nil //nolint:nilerr // skip unreadable files
 			}
+
 			entries, err := parseEnvData(data)
 			if err != nil || len(entries) == 0 {
-				return nil
+				return nil //nolint:nilerr // skip unparseable files
 			}
+
 			results = append(results, gatheredFile{Path: path, Secrets: entries})
+
 			return nil
 		}
 
@@ -247,6 +262,7 @@ func extractJSONSecrets(path string) []vault.SecretEntry {
 
 	flat := make(map[string]string)
 	flattenMap("", raw, flat)
+
 	return filterSecretKeys(flat)
 }
 
@@ -263,6 +279,7 @@ func extractYAMLSecrets(path string) []vault.SecretEntry {
 
 	flat := make(map[string]string)
 	flattenMap("", raw, flat)
+
 	return filterSecretKeys(flat)
 }
 
@@ -274,6 +291,7 @@ func flattenMap(prefix string, val any, out map[string]string) {
 			if prefix != "" {
 				key = prefix + "." + k
 			}
+
 			flattenMap(key, child, out)
 		}
 	case []any:
@@ -290,11 +308,13 @@ func flattenMap(prefix string, val any, out map[string]string) {
 
 func filterSecretKeys(flat map[string]string) []vault.SecretEntry {
 	var entries []vault.SecretEntry
+
 	for k, v := range flat {
 		if secretPattern.MatchString(k) {
 			entries = append(entries, vault.SecretEntry{Key: k, Value: v})
 		}
 	}
+
 	return entries
 }
 
