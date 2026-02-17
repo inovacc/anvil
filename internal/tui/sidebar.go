@@ -64,6 +64,12 @@ func newSidebarModel() sidebarModel {
 				},
 			},
 			{
+				label: "Apps",
+				items: []sidebarItem{
+					{"Apps", screenApps},
+				},
+			},
+			{
 				label: "Integration",
 				items: []sidebarItem{
 					{"Docker", screenDocker},

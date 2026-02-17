@@ -10,7 +10,9 @@ import (
 )
 
 const deleteSecretVersions = `-- name: DeleteSecretVersions :exec
-DELETE FROM vault_secret_versions WHERE profile_name = ? AND key = ?
+DELETE
+FROM vault_secret_versions
+WHERE profile_name = ? AND key = ?
 `
 
 type DeleteSecretVersionsParams struct {
@@ -24,7 +26,9 @@ func (q *Queries) DeleteSecretVersions(ctx context.Context, arg DeleteSecretVers
 }
 
 const getLatestVersionNumber = `-- name: GetLatestVersionNumber :one
-SELECT CAST(COALESCE(MAX(version), 0) AS INTEGER) AS version FROM vault_secret_versions WHERE profile_name = ? AND key = ?
+SELECT CAST(COALESCE(MAX(version), 0) AS INTEGER) AS version
+FROM vault_secret_versions
+WHERE profile_name = ? AND key = ?
 `
 
 type GetLatestVersionNumberParams struct {
@@ -40,7 +44,9 @@ func (q *Queries) GetLatestVersionNumber(ctx context.Context, arg GetLatestVersi
 }
 
 const getSecretVersion = `-- name: GetSecretVersion :one
-SELECT id, profile_name, "key", version, encrypted_value, nonce, created_at FROM vault_secret_versions WHERE profile_name = ? AND key = ? AND version = ? LIMIT 1
+SELECT id, profile_name, "key", version, encrypted_value, nonce, created_at
+FROM vault_secret_versions
+WHERE profile_name = ? AND key = ? AND version = ? LIMIT 1
 `
 
 type GetSecretVersionParams struct {
@@ -89,7 +95,9 @@ func (q *Queries) InsertSecretVersion(ctx context.Context, arg InsertSecretVersi
 }
 
 const listAllSecretVersions = `-- name: ListAllSecretVersions :many
-SELECT id, profile_name, "key", version, encrypted_value, nonce, created_at FROM vault_secret_versions ORDER BY profile_name, key, version
+SELECT id, profile_name, "key", version, encrypted_value, nonce, created_at
+FROM vault_secret_versions
+ORDER BY profile_name, key, version
 `
 
 func (q *Queries) ListAllSecretVersions(ctx context.Context) ([]VaultSecretVersion, error) {
@@ -124,7 +132,10 @@ func (q *Queries) ListAllSecretVersions(ctx context.Context) ([]VaultSecretVersi
 }
 
 const listSecretVersions = `-- name: ListSecretVersions :many
-SELECT id, profile_name, "key", version, encrypted_value, nonce, created_at FROM vault_secret_versions WHERE profile_name = ? AND key = ? ORDER BY version DESC
+SELECT id, profile_name, "key", version, encrypted_value, nonce, created_at
+FROM vault_secret_versions
+WHERE profile_name = ? AND key = ?
+ORDER BY version DESC
 `
 
 type ListSecretVersionsParams struct {
@@ -164,7 +175,10 @@ func (q *Queries) ListSecretVersions(ctx context.Context, arg ListSecretVersions
 }
 
 const updateSecretVersionData = `-- name: UpdateSecretVersionData :exec
-UPDATE vault_secret_versions SET encrypted_value = ?, nonce = ? WHERE id = ?
+UPDATE vault_secret_versions
+SET encrypted_value = ?,
+    nonce           = ?
+WHERE id = ?
 `
 
 type UpdateSecretVersionDataParams struct {

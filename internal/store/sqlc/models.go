@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+type VaultApp struct {
+	ID             int64      `json:"id"`
+	Uuid           string     `json:"uuid"`
+	Name           string     `json:"name"`
+	Description    *string    `json:"description"`
+	ServiceID      *string    `json:"service_id"`
+	DbPath         string     `json:"db_path"`
+	Status         string     `json:"status"`
+	SecretCount    *int64     `json:"secret_count"`
+	CreatedAt      time.Time  `json:"created_at"`
+	LastAccessedAt *time.Time `json:"last_accessed_at"`
+}
+
 type VaultAuditLog struct {
 	ID          int64     `json:"id"`
 	Action      string    `json:"action"`

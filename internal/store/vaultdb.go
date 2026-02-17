@@ -539,6 +539,92 @@ func (s *Store) TemplateExists(name string) (bool, error) {
 	return count > 0, err
 }
 
+// === App registry operations ===
+
+// RegisterApp registers a new app in the vault.
+func (s *Store) RegisterApp(appUUID, name, description, serviceID, dbPath string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.RegisterApp(context.Background(), sqlc.RegisterAppParams{
+		Uuid:        appUUID,
+		Name:        name,
+		Description: &description,
+		ServiceID:   &serviceID,
+		DbPath:      dbPath,
+	})
+}
+
+// GetAppByUUID retrieves an app by UUID.
+func (s *Store) GetAppByUUID(uuid string) (sqlc.VaultApp, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetAppByUUID(context.Background(), uuid)
+}
+
+// GetAppByName retrieves an app by name.
+func (s *Store) GetAppByName(name string) (sqlc.VaultApp, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetAppByName(context.Background(), name)
+}
+
+// ListApps returns all registered apps.
+func (s *Store) ListApps() ([]sqlc.VaultApp, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListApps(context.Background())
+}
+
+// ListActiveApps returns all active apps.
+func (s *Store) ListActiveApps() ([]sqlc.VaultApp, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListActiveApps(context.Background())
+}
+
+// UpdateAppStatus updates the status of an app.
+func (s *Store) UpdateAppStatus(uuid, status string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.UpdateAppStatus(context.Background(), sqlc.UpdateAppStatusParams{
+		Status: status,
+		Uuid:   uuid,
+	})
+}
+
+// UpdateAppLastAccessed updates the last_accessed_at timestamp.
+func (s *Store) UpdateAppLastAccessed(uuid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.UpdateAppLastAccessed(context.Background(), uuid)
+}
+
+// UpdateAppSecretCount updates the cached secret count.
+func (s *Store) UpdateAppSecretCount(uuid string, count int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.UpdateAppSecretCount(context.Background(), sqlc.UpdateAppSecretCountParams{
+		SecretCount: &count,
+		Uuid:        uuid,
+	})
+}
+
+// DeleteApp removes an app from the registry.
+func (s *Store) DeleteApp(uuid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeleteApp(context.Background(), uuid)
+}
+
 // === Rotation operations ===
 
 // ListAllSecrets returns all secrets across all profiles.

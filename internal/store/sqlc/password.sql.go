@@ -10,7 +10,9 @@ import (
 )
 
 const deletePassword = `-- name: DeletePassword :exec
-DELETE FROM vault_password WHERE id = 1
+DELETE
+FROM vault_password
+WHERE id = 1
 `
 
 func (q *Queries) DeletePassword(ctx context.Context) error {
@@ -19,7 +21,9 @@ func (q *Queries) DeletePassword(ctx context.Context) error {
 }
 
 const getPassword = `-- name: GetPassword :one
-SELECT id, password_hash, created_at, updated_at FROM vault_password WHERE id = 1
+SELECT id, password_hash, created_at, updated_at
+FROM vault_password
+WHERE id = 1
 `
 
 func (q *Queries) GetPassword(ctx context.Context) (VaultPassword, error) {
@@ -35,7 +39,9 @@ func (q *Queries) GetPassword(ctx context.Context) (VaultPassword, error) {
 }
 
 const hasPassword = `-- name: HasPassword :one
-SELECT COUNT(*) FROM vault_password WHERE id = 1
+SELECT COUNT(*)
+FROM vault_password
+WHERE id = 1
 `
 
 func (q *Queries) HasPassword(ctx context.Context) (int64, error) {
@@ -47,8 +53,8 @@ func (q *Queries) HasPassword(ctx context.Context) (int64, error) {
 
 const upsertPassword = `-- name: UpsertPassword :exec
 INSERT INTO vault_password (id, password_hash, created_at, updated_at)
-VALUES (1, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT(id) DO UPDATE SET
+VALUES (1, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT(id) DO
+UPDATE SET
     password_hash = excluded.password_hash,
     updated_at = CURRENT_TIMESTAMP
 `

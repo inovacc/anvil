@@ -10,7 +10,8 @@ import (
 )
 
 const clearAllDefaultProfiles = `-- name: ClearAllDefaultProfiles :exec
-UPDATE vault_profiles SET is_default = 0
+UPDATE vault_profiles
+SET is_default = 0
 `
 
 func (q *Queries) ClearAllDefaultProfiles(ctx context.Context) error {
@@ -35,7 +36,9 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) er
 }
 
 const deleteProfile = `-- name: DeleteProfile :exec
-DELETE FROM vault_profiles WHERE name = ?
+DELETE
+FROM vault_profiles
+WHERE name = ?
 `
 
 func (q *Queries) DeleteProfile(ctx context.Context, name string) error {
@@ -44,7 +47,9 @@ func (q *Queries) DeleteProfile(ctx context.Context, name string) error {
 }
 
 const getDefaultProfile = `-- name: GetDefaultProfile :one
-SELECT id, name, description, is_default, created_at, updated_at FROM vault_profiles WHERE is_default = 1 LIMIT 1
+SELECT id, name, description, is_default, created_at, updated_at
+FROM vault_profiles
+WHERE is_default = 1 LIMIT 1
 `
 
 func (q *Queries) GetDefaultProfile(ctx context.Context) (VaultProfile, error) {
@@ -62,7 +67,9 @@ func (q *Queries) GetDefaultProfile(ctx context.Context) (VaultProfile, error) {
 }
 
 const getProfileByName = `-- name: GetProfileByName :one
-SELECT id, name, description, is_default, created_at, updated_at FROM vault_profiles WHERE name = ? LIMIT 1
+SELECT id, name, description, is_default, created_at, updated_at
+FROM vault_profiles
+WHERE name = ? LIMIT 1
 `
 
 func (q *Queries) GetProfileByName(ctx context.Context, name string) (VaultProfile, error) {
@@ -80,7 +87,9 @@ func (q *Queries) GetProfileByName(ctx context.Context, name string) (VaultProfi
 }
 
 const listProfiles = `-- name: ListProfiles :many
-SELECT id, name, description, is_default, created_at, updated_at FROM vault_profiles ORDER BY name
+SELECT id, name, description, is_default, created_at, updated_at
+FROM vault_profiles
+ORDER BY name
 `
 
 func (q *Queries) ListProfiles(ctx context.Context) ([]VaultProfile, error) {
@@ -114,7 +123,9 @@ func (q *Queries) ListProfiles(ctx context.Context) ([]VaultProfile, error) {
 }
 
 const profileExists = `-- name: ProfileExists :one
-SELECT COUNT(*) FROM vault_profiles WHERE name = ?
+SELECT COUNT(*)
+FROM vault_profiles
+WHERE name = ?
 `
 
 func (q *Queries) ProfileExists(ctx context.Context, name string) (int64, error) {
@@ -125,7 +136,10 @@ func (q *Queries) ProfileExists(ctx context.Context, name string) (int64, error)
 }
 
 const setProfileDefault = `-- name: SetProfileDefault :exec
-UPDATE vault_profiles SET is_default = 1, updated_at = CURRENT_TIMESTAMP WHERE name = ?
+UPDATE vault_profiles
+SET is_default = 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE name = ?
 `
 
 func (q *Queries) SetProfileDefault(ctx context.Context, name string) error {
@@ -134,7 +148,10 @@ func (q *Queries) SetProfileDefault(ctx context.Context, name string) error {
 }
 
 const updateProfileDescription = `-- name: UpdateProfileDescription :exec
-UPDATE vault_profiles SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?
+UPDATE vault_profiles
+SET description = ?,
+    updated_at  = CURRENT_TIMESTAMP
+WHERE name = ?
 `
 
 type UpdateProfileDescriptionParams struct {

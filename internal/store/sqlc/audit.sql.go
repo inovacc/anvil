@@ -11,7 +11,8 @@ import (
 )
 
 const countAuditLog = `-- name: CountAuditLog :one
-SELECT COUNT(*) FROM vault_audit_log
+SELECT COUNT(*)
+FROM vault_audit_log
 `
 
 func (q *Queries) CountAuditLog(ctx context.Context) (int64, error) {
@@ -44,7 +45,9 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 }
 
 const listAuditLog = `-- name: ListAuditLog :many
-SELECT id, "action", profile_name, secret_key, detail, created_at FROM vault_audit_log ORDER BY created_at DESC LIMIT ?
+SELECT id, "action", profile_name, secret_key, detail, created_at
+FROM vault_audit_log
+ORDER BY created_at DESC LIMIT ?
 `
 
 func (q *Queries) ListAuditLog(ctx context.Context, limit int64) ([]VaultAuditLog, error) {
@@ -78,7 +81,10 @@ func (q *Queries) ListAuditLog(ctx context.Context, limit int64) ([]VaultAuditLo
 }
 
 const listAuditLogByAction = `-- name: ListAuditLogByAction :many
-SELECT id, "action", profile_name, secret_key, detail, created_at FROM vault_audit_log WHERE action = ? ORDER BY created_at DESC LIMIT ?
+SELECT id, "action", profile_name, secret_key, detail, created_at
+FROM vault_audit_log
+WHERE action = ?
+ORDER BY created_at DESC LIMIT ?
 `
 
 type ListAuditLogByActionParams struct {
@@ -117,7 +123,10 @@ func (q *Queries) ListAuditLogByAction(ctx context.Context, arg ListAuditLogByAc
 }
 
 const listAuditLogByProfile = `-- name: ListAuditLogByProfile :many
-SELECT id, "action", profile_name, secret_key, detail, created_at FROM vault_audit_log WHERE profile_name = ? ORDER BY created_at DESC LIMIT ?
+SELECT id, "action", profile_name, secret_key, detail, created_at
+FROM vault_audit_log
+WHERE profile_name = ?
+ORDER BY created_at DESC LIMIT ?
 `
 
 type ListAuditLogByProfileParams struct {
@@ -156,7 +165,9 @@ func (q *Queries) ListAuditLogByProfile(ctx context.Context, arg ListAuditLogByP
 }
 
 const purgeAuditLog = `-- name: PurgeAuditLog :exec
-DELETE FROM vault_audit_log WHERE created_at < ?
+DELETE
+FROM vault_audit_log
+WHERE created_at < ?
 `
 
 func (q *Queries) PurgeAuditLog(ctx context.Context, createdAt time.Time) error {

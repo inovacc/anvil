@@ -69,6 +69,19 @@ type ReleaseState struct {
 	Remaining   time.Duration `json:"remaining"`
 }
 
+// AppInfo contains metadata about a registered app.
+type AppInfo struct {
+	UUID           string    `json:"uuid"`
+	Name           string    `json:"name"`
+	Description    string    `json:"description"`
+	ServiceID      string    `json:"service_id"`
+	DBPath         string    `json:"db_path"`
+	Status         string    `json:"status"`
+	SecretCount    int64     `json:"secret_count"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastAccessedAt time.Time `json:"last_accessed_at"`
+}
+
 // EnvReleaseOptions configures env release sessions.
 type EnvReleaseOptions struct {
 	ProfileName string

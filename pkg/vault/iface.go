@@ -76,6 +76,17 @@ type VaultBackup interface {
 	ShareImport(encrypted []byte, passphrase, targetProfile string) (*SharedExport, error)
 }
 
+// VaultAppRegistry provides per-app isolated vault operations.
+type VaultAppRegistry interface {
+	RegisterApp(name, description, serviceID string) (*AppInfo, error)
+	ListApps() ([]AppInfo, error)
+	GetApp(nameOrUUID string) (*AppInfo, error)
+	RemoveApp(nameOrUUID string) error
+	DisableApp(nameOrUUID string) error
+	EnableApp(nameOrUUID string) error
+	OpenApp(nameOrUUID string) (*AppVault, error)
+}
+
 // VaultSeal provides seal/unseal operations.
 type VaultSeal interface {
 	Seal() error
@@ -107,4 +118,5 @@ var (
 	_ VaultTemplate    = (*Vault)(nil)
 	_ VaultBackup      = (*Vault)(nil)
 	_ VaultSeal        = (*Vault)(nil)
+	_ VaultAppRegistry = (*Vault)(nil)
 )

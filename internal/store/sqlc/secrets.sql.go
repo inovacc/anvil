@@ -10,7 +10,9 @@ import (
 )
 
 const countSecrets = `-- name: CountSecrets :one
-SELECT COUNT(*) FROM vault_secrets WHERE profile_name = ?
+SELECT COUNT(*)
+FROM vault_secrets
+WHERE profile_name = ?
 `
 
 func (q *Queries) CountSecrets(ctx context.Context, profileName string) (int64, error) {
@@ -21,7 +23,9 @@ func (q *Queries) CountSecrets(ctx context.Context, profileName string) (int64, 
 }
 
 const deleteAllSecrets = `-- name: DeleteAllSecrets :exec
-DELETE FROM vault_secrets WHERE profile_name = ?
+DELETE
+FROM vault_secrets
+WHERE profile_name = ?
 `
 
 func (q *Queries) DeleteAllSecrets(ctx context.Context, profileName string) error {
@@ -30,7 +34,9 @@ func (q *Queries) DeleteAllSecrets(ctx context.Context, profileName string) erro
 }
 
 const deleteSecret = `-- name: DeleteSecret :exec
-DELETE FROM vault_secrets WHERE profile_name = ? AND key = ?
+DELETE
+FROM vault_secrets
+WHERE profile_name = ? AND key = ?
 `
 
 type DeleteSecretParams struct {
@@ -44,7 +50,9 @@ func (q *Queries) DeleteSecret(ctx context.Context, arg DeleteSecretParams) erro
 }
 
 const getSecret = `-- name: GetSecret :one
-SELECT id, profile_name, "key", encrypted_value, nonce, description, created_at, updated_at FROM vault_secrets WHERE profile_name = ? AND key = ? LIMIT 1
+SELECT id, profile_name, "key", encrypted_value, nonce, description, created_at, updated_at
+FROM vault_secrets
+WHERE profile_name = ? AND key = ? LIMIT 1
 `
 
 type GetSecretParams struct {
@@ -69,7 +77,10 @@ func (q *Queries) GetSecret(ctx context.Context, arg GetSecretParams) (VaultSecr
 }
 
 const listSecrets = `-- name: ListSecrets :many
-SELECT id, profile_name, "key", encrypted_value, nonce, description, created_at, updated_at FROM vault_secrets WHERE profile_name = ? ORDER BY key
+SELECT id, profile_name, "key", encrypted_value, nonce, description, created_at, updated_at
+FROM vault_secrets
+WHERE profile_name = ?
+ORDER BY key
 `
 
 func (q *Queries) ListSecrets(ctx context.Context, profileName string) ([]VaultSecret, error) {
@@ -105,7 +116,9 @@ func (q *Queries) ListSecrets(ctx context.Context, profileName string) ([]VaultS
 }
 
 const secretExists = `-- name: SecretExists :one
-SELECT COUNT(*) FROM vault_secrets WHERE profile_name = ? AND key = ?
+SELECT COUNT(*)
+FROM vault_secrets
+WHERE profile_name = ? AND key = ?
 `
 
 type SecretExistsParams struct {
@@ -122,8 +135,8 @@ func (q *Queries) SecretExists(ctx context.Context, arg SecretExistsParams) (int
 
 const upsertSecret = `-- name: UpsertSecret :exec
 INSERT INTO vault_secrets (profile_name, key, encrypted_value, nonce, description)
-VALUES (?, ?, ?, ?, ?)
-ON CONFLICT(profile_name, key) DO UPDATE SET
+VALUES (?, ?, ?, ?, ?) ON CONFLICT(profile_name, key) DO
+UPDATE SET
     encrypted_value = excluded.encrypted_value,
     nonce = excluded.nonce,
     description = excluded.description,

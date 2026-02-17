@@ -10,7 +10,9 @@ import (
 )
 
 const listAllSecrets = `-- name: ListAllSecrets :many
-SELECT id, profile_name, "key", encrypted_value, nonce, description, created_at, updated_at FROM vault_secrets ORDER BY profile_name, key
+SELECT id, profile_name, "key", encrypted_value, nonce, description, created_at, updated_at
+FROM vault_secrets
+ORDER BY profile_name, key
 `
 
 func (q *Queries) ListAllSecrets(ctx context.Context) ([]VaultSecret, error) {

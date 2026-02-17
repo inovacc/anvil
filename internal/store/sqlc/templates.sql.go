@@ -32,7 +32,9 @@ func (q *Queries) CreateTemplate(ctx context.Context, arg CreateTemplateParams) 
 }
 
 const deleteTemplate = `-- name: DeleteTemplate :exec
-DELETE FROM vault_templates WHERE name = ?
+DELETE
+FROM vault_templates
+WHERE name = ?
 `
 
 func (q *Queries) DeleteTemplate(ctx context.Context, name string) error {
@@ -41,7 +43,9 @@ func (q *Queries) DeleteTemplate(ctx context.Context, name string) error {
 }
 
 const getTemplate = `-- name: GetTemplate :one
-SELECT id, name, description, template_data, builtin, created_at, updated_at FROM vault_templates WHERE name = ? LIMIT 1
+SELECT id, name, description, template_data, builtin, created_at, updated_at
+FROM vault_templates
+WHERE name = ? LIMIT 1
 `
 
 func (q *Queries) GetTemplate(ctx context.Context, name string) (VaultTemplate, error) {
@@ -60,7 +64,9 @@ func (q *Queries) GetTemplate(ctx context.Context, name string) (VaultTemplate, 
 }
 
 const listTemplates = `-- name: ListTemplates :many
-SELECT id, name, description, template_data, builtin, created_at, updated_at FROM vault_templates ORDER BY name
+SELECT id, name, description, template_data, builtin, created_at, updated_at
+FROM vault_templates
+ORDER BY name
 `
 
 func (q *Queries) ListTemplates(ctx context.Context) ([]VaultTemplate, error) {
@@ -95,7 +101,9 @@ func (q *Queries) ListTemplates(ctx context.Context) ([]VaultTemplate, error) {
 }
 
 const templateExists = `-- name: TemplateExists :one
-SELECT COUNT(*) FROM vault_templates WHERE name = ?
+SELECT COUNT(*)
+FROM vault_templates
+WHERE name = ?
 `
 
 func (q *Queries) TemplateExists(ctx context.Context, name string) (int64, error) {
@@ -106,7 +114,11 @@ func (q *Queries) TemplateExists(ctx context.Context, name string) (int64, error
 }
 
 const updateTemplate = `-- name: UpdateTemplate :exec
-UPDATE vault_templates SET description = ?, template_data = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ?
+UPDATE vault_templates
+SET description   = ?,
+    template_data = ?,
+    updated_at    = CURRENT_TIMESTAMP
+WHERE name = ?
 `
 
 type UpdateTemplateParams struct {

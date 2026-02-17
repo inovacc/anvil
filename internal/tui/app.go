@@ -32,6 +32,8 @@ const (
 	screenPlugins
 	screenGather
 	screenBackup
+	screenApps
+	screenAppSecrets
 )
 
 type focusArea int
@@ -69,6 +71,8 @@ type model struct { //nolint:recvcheck // pointer receiver needed for resizeCurr
 	plugins       pluginsModel
 	gather        gatherScreenModel
 	importExport  importExportModel
+	apps          appsModel
+	appSecrets    appSecretsModel
 
 	width, height int
 }
@@ -138,6 +142,10 @@ func (m *model) initScreen(sc screen) {
 		m.gather = newGatherScreenModel()
 	case screenImportExport:
 		m.importExport = newImportExportModel()
+	case screenApps:
+		m.apps = newAppsModel(w, h)
+	case screenAppSecrets:
+		m.appSecrets = newAppSecretsModel(m.appSecrets.appName, w, h)
 	}
 }
 
@@ -166,6 +174,10 @@ func (m model) loadScreenData(sc screen) tea.Cmd {
 		return m.templateApply.loadData()
 	case screenPlugins:
 		return m.plugins.loadData()
+	case screenApps:
+		return m.apps.loadData()
+	case screenAppSecrets:
+		return m.appSecrets.loadData()
 	}
 
 	return nil
@@ -272,6 +284,10 @@ func (m model) updateContent(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Return to secrets
 			m.currentScreen = screenSecrets
 			return m, nil
+		case screenAppSecrets:
+			m.currentScreen = screenApps
+			m.sidebar.moveCursorToScreen(screenApps)
+			return m, m.apps.loadData()
 		default:
 			m.focus = focusSidebar
 			m.sidebar.focused = true
@@ -321,6 +337,10 @@ func (m model) updateContent(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateGatherScreen(msg)
 	case screenImportExport:
 		return m.updateImportExportScreen(msg)
+	case screenApps:
+		return m.updateAppsScreen(msg)
+	case screenAppSecrets:
+		return m.updateAppSecretsScreen(msg)
 	}
 
 	return m, nil
@@ -335,6 +355,12 @@ func (m model) delegateMsg(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case secretActionMsg:
 		m.secrets, _ = m.secrets.Update(msg)
 		return m, m.secrets.loadData(m.secrets.profileName)
+	case appActionMsg:
+		m.apps, _ = m.apps.Update(msg)
+		return m, m.apps.loadData()
+	case appSecretActionMsg:
+		m.appSecrets, _ = m.appSecrets.Update(msg)
+		return m, m.appSecrets.loadData()
 	}
 
 	switch m.currentScreen {
@@ -458,6 +484,18 @@ func (m model) delegateMsg(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.importExport, cmd = m.importExport.Update(msg)
 
 		return m, cmd
+	case screenApps:
+		var cmd tea.Cmd
+
+		m.apps, cmd = m.apps.Update(msg)
+
+		return m, cmd
+	case screenAppSecrets:
+		var cmd tea.Cmd
+
+		m.appSecrets, cmd = m.appSecrets.Update(msg)
+
+		return m, cmd
 	}
 
 	return m, nil
@@ -513,6 +551,10 @@ func (m model) renderContent() string {
 		return m.gather.View(w)
 	case screenImportExport:
 		return m.importExport.View(w)
+	case screenApps:
+		return m.apps.View(w)
+	case screenAppSecrets:
+		return m.appSecrets.View(w)
 	}
 
 	return ""
@@ -539,6 +581,14 @@ func (m *model) resizeCurrentScreen() {
 		m.history.table.SetWidth(w)
 		m.history.table.SetHeight(max(1, h-8))
 		m.history.table.SetColumns(historyTableColumns(w))
+	case screenApps:
+		m.apps.table.SetWidth(w)
+		m.apps.table.SetHeight(max(1, h-8))
+		m.apps.table.SetColumns(appTableColumns(w))
+	case screenAppSecrets:
+		m.appSecrets.table.SetWidth(w)
+		m.appSecrets.table.SetHeight(max(1, h-8))
+		m.appSecrets.table.SetColumns(appSecretTableColumns(w))
 	}
 }
 
@@ -1010,4 +1060,130 @@ func (m model) updateImportExportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.importExport, cmd = m.importExport.handleKey(msg)
 
 	return m, cmd
+}
+
+func (m model) updateAppsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case msg.String() == "q":
+		return m, tea.Quit
+	case msg.String() == "enter":
+		if name := m.apps.selectedApp(); name != "" && m.apps.confirm == "" {
+			m.currentScreen = screenAppSecrets
+			m.appSecrets = newAppSecretsModel(name, m.contentWidth(), m.contentHeight())
+
+			return m, m.appSecrets.loadData()
+		}
+	case msg.String() == "d":
+		if m.apps.confirm == "" {
+			if name := m.apps.selectedApp(); name != "" {
+				m.apps.confirm = name
+			}
+		}
+	case msg.String() == "y":
+		if m.apps.confirm != "" {
+			name := m.apps.confirm
+
+			return m, withVault(func(v *vault.Vault) tea.Msg {
+				if err := v.RemoveApp(name); err != nil {
+					return appActionMsg{err: err}
+				}
+
+				return appActionMsg{action: "remove", message: fmt.Sprintf("App %q removed.", name)}
+			})
+		}
+	case msg.String() == "n":
+		if m.apps.confirm != "" {
+			m.apps.confirm = ""
+		}
+	default:
+		if m.apps.confirm == "" {
+			m.apps.message = ""
+
+			var cmd tea.Cmd
+
+			m.apps.table, cmd = m.apps.table.Update(msg)
+
+			return m, cmd
+		}
+	}
+
+	return m, nil
+}
+
+func (m model) updateAppSecretsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case msg.String() == "q":
+		return m, tea.Quit
+	case msg.String() == "enter":
+		if m.appSecrets.confirm == "" {
+			key := m.appSecrets.selectedKey()
+			if key != "" {
+				if m.appSecrets.revealKey == key {
+					m.appSecrets.revealKey = ""
+					m.appSecrets.revealValue = ""
+
+					return m, nil
+				}
+
+				appName := m.appSecrets.appName
+
+				return m, withVault(func(v *vault.Vault) tea.Msg {
+					av, err := v.OpenApp(appName)
+					if err != nil {
+						return appSecretRevealMsg{key: key, err: err}
+					}
+					defer func() { _ = av.Close() }()
+
+					val, err := av.Get(key)
+					if err != nil {
+						return appSecretRevealMsg{key: key, err: err}
+					}
+
+					return appSecretRevealMsg{key: key, value: val}
+				})
+			}
+		}
+	case msg.String() == "d":
+		if m.appSecrets.confirm == "" {
+			if key := m.appSecrets.selectedKey(); key != "" {
+				m.appSecrets.confirm = key
+			}
+		}
+	case msg.String() == "y":
+		if m.appSecrets.confirm != "" {
+			key := m.appSecrets.confirm
+			appName := m.appSecrets.appName
+
+			return m, withVault(func(v *vault.Vault) tea.Msg {
+				av, err := v.OpenApp(appName)
+				if err != nil {
+					return appSecretActionMsg{err: err}
+				}
+				defer func() { _ = av.Close() }()
+
+				if err := av.Delete(key); err != nil {
+					return appSecretActionMsg{err: err}
+				}
+
+				return appSecretActionMsg{message: fmt.Sprintf("Secret %q deleted.", key)}
+			})
+		}
+	case msg.String() == "n":
+		if m.appSecrets.confirm != "" {
+			m.appSecrets.confirm = ""
+		}
+	default:
+		if m.appSecrets.confirm == "" {
+			m.appSecrets.revealKey = ""
+			m.appSecrets.message = ""
+
+			var cmd tea.Cmd
+
+			m.appSecrets.table, cmd = m.appSecrets.table.Update(msg)
+
+			return m, cmd
+		}
+	}
+
+	return m, nil
 }

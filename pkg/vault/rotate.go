@@ -6,6 +6,7 @@ import (
 
 	"github.com/inovacc/anvil/internal/crypto"
 	"github.com/inovacc/anvil/internal/sentinel"
+	"github.com/inovacc/anvil/internal/store"
 	"github.com/inovacc/anvil/internal/store/sqlc"
 )
 
@@ -31,6 +32,12 @@ func (v *Vault) RotateKey(password string) error {
 	if err != nil {
 		crypto.ZeroBytes(newKey)
 		return err
+	}
+
+	// Re-encrypt all app database secrets with the new key.
+	if err := v.rotateAppSecrets(newKey); err != nil {
+		crypto.ZeroBytes(newKey)
+		return fmt.Errorf("rotate app secrets: %w", err)
 	}
 
 	crypto.ZeroBytes(v.masterKey)
@@ -198,4 +205,48 @@ func (v *Vault) rotateKeyTx(newKey []byte) (int64, string, error) {
 	}
 
 	return newVersion, sealMethod, nil
+}
+
+// rotateAppSecrets re-encrypts all secrets in all registered app databases.
+func (v *Vault) rotateAppSecrets(newKey []byte) error {
+	apps, err := v.store.ListActiveApps()
+	if err != nil {
+		return fmt.Errorf("list active apps: %w", err)
+	}
+
+	for _, app := range apps {
+		appStore, err := store.OpenApp(app.DbPath)
+		if err != nil {
+			return fmt.Errorf("open app %q: %w", app.Name, err)
+		}
+
+		secrets, err := appStore.ListAll()
+		if err != nil {
+			_ = appStore.Close()
+			return fmt.Errorf("list secrets in app %q: %w", app.Name, err)
+		}
+
+		for _, sec := range secrets {
+			plaintext, err := crypto.Decrypt(v.masterKey, sec.EncryptedValue, sec.Nonce)
+			if err != nil {
+				_ = appStore.Close()
+				return fmt.Errorf("decrypt secret %q in app %q: %w", sec.Key, app.Name, err)
+			}
+
+			newCiphertext, newNonce, err := crypto.Encrypt(newKey, plaintext)
+			if err != nil {
+				_ = appStore.Close()
+				return fmt.Errorf("re-encrypt secret %q in app %q: %w", sec.Key, app.Name, err)
+			}
+
+			if err := appStore.UpdateSecret(sec.ID, newCiphertext, newNonce); err != nil {
+				_ = appStore.Close()
+				return fmt.Errorf("update secret %q in app %q: %w", sec.Key, app.Name, err)
+			}
+		}
+
+		_ = appStore.Close()
+	}
+
+	return nil
 }
