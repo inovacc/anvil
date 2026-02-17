@@ -559,7 +559,7 @@ func TestPluginManagerGetFromProviderScript(t *testing.T) {
 	}
 
 	pm := vault.NewPluginManager(configPath)
-	pm.AddProvider("test", cmd, "ext/")
+	_ = pm.AddProvider("test", cmd, "ext/")
 
 	if err := pm.SaveConfig(); err != nil {
 		t.Fatalf("SaveConfig: %v", err)

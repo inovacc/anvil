@@ -33,7 +33,9 @@ Example:
 
 		configPath := filepath.Join(filepath.Dir(dbPath), "plugins.json")
 		pm := vault.NewPluginManager(configPath)
-		pm.AddHook(event, command, hookArgs)
+		if err := pm.AddHook(event, command, hookArgs); err != nil {
+			return err
+		}
 
 		if err := pm.SaveConfig(); err != nil {
 			return err

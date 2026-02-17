@@ -101,13 +101,17 @@ func TestPluginManagerInvalidConfig(t *testing.T) {
 func TestPluginManagerAddRemoveHook(t *testing.T) {
 	pm := vault.NewPluginManager("/nonexistent")
 
-	pm.AddHook(vault.HookPreSet, "echo", []string{"test"})
+	if err := pm.AddHook(vault.HookPreSet, "echo", []string{"test"}); err != nil {
+		t.Fatalf("AddHook: %v", err)
+	}
 
 	if !pm.HasHooks(vault.HookPreSet) {
 		t.Error("expected hook after add")
 	}
 
-	pm.RemoveHook(vault.HookPreSet, "echo")
+	if err := pm.RemoveHook(vault.HookPreSet, "echo"); err != nil {
+		t.Fatalf("RemoveHook: %v", err)
+	}
 
 	if pm.HasHooks(vault.HookPreSet) {
 		t.Error("expected no hook after remove")
@@ -117,14 +121,18 @@ func TestPluginManagerAddRemoveHook(t *testing.T) {
 func TestPluginManagerAddRemoveProvider(t *testing.T) {
 	pm := vault.NewPluginManager("/nonexistent")
 
-	pm.AddProvider("aws", "aws-provider", "aws/")
+	if err := pm.AddProvider("aws", "aws-provider", "aws/"); err != nil {
+		t.Fatalf("AddProvider: %v", err)
+	}
 
 	providers := pm.ListProviders()
 	if len(providers) != 1 || providers[0] != "aws" {
 		t.Errorf("expected [aws], got %v", providers)
 	}
 
-	pm.RemoveProvider("aws")
+	if err := pm.RemoveProvider("aws"); err != nil {
+		t.Fatalf("RemoveProvider: %v", err)
+	}
 
 	providers = pm.ListProviders()
 	if len(providers) != 0 {
@@ -137,8 +145,8 @@ func TestPluginManagerSaveConfig(t *testing.T) {
 	configPath := filepath.Join(dir, "subdir", "plugins.json")
 
 	pm := vault.NewPluginManager(configPath)
-	pm.AddHook(vault.HookPostSet, "notify", nil)
-	pm.AddProvider("vault", "hcvault", "hcv/")
+	_ = pm.AddHook(vault.HookPostSet, "notify", nil)
+	_ = pm.AddProvider("vault", "hcvault", "hcv/")
 
 	if err := pm.SaveConfig(); err != nil {
 		t.Fatalf("SaveConfig: %v", err)

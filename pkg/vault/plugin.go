@@ -192,6 +192,10 @@ func (pm *PluginManager) HasHooks(event HookEvent) bool {
 
 // SaveConfig writes the current plugin configuration to disk.
 func (pm *PluginManager) SaveConfig() error {
+	if pm == nil || pm.config == nil {
+		return nil
+	}
+
 	data, err := json.MarshalIndent(pm.config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
@@ -205,25 +209,41 @@ func (pm *PluginManager) SaveConfig() error {
 }
 
 // AddHook registers a new hook in the config.
-func (pm *PluginManager) AddHook(event HookEvent, command string, args []string) {
+func (pm *PluginManager) AddHook(event HookEvent, command string, args []string) error {
+	if pm == nil || pm.config == nil {
+		return fmt.Errorf("plugin manager not initialized")
+	}
+
 	pm.config.Hooks = append(pm.config.Hooks, HookConfig{
 		Event:   event,
 		Command: command,
 		Args:    args,
 	})
+
+	return nil
 }
 
 // AddProvider registers a new provider in the config.
-func (pm *PluginManager) AddProvider(name, command, prefix string) {
+func (pm *PluginManager) AddProvider(name, command, prefix string) error {
+	if pm == nil || pm.config == nil {
+		return fmt.Errorf("plugin manager not initialized")
+	}
+
 	pm.config.Providers = append(pm.config.Providers, ProviderConfig{
 		Name:    name,
 		Command: command,
 		Prefix:  prefix,
 	})
+
+	return nil
 }
 
 // RemoveHook removes all hooks for the given event and command.
-func (pm *PluginManager) RemoveHook(event HookEvent, command string) {
+func (pm *PluginManager) RemoveHook(event HookEvent, command string) error {
+	if pm == nil || pm.config == nil {
+		return fmt.Errorf("plugin manager not initialized")
+	}
+
 	filtered := make([]HookConfig, 0, len(pm.config.Hooks))
 	for _, h := range pm.config.Hooks {
 		if h.Event == event && h.Command == command {
@@ -234,10 +254,16 @@ func (pm *PluginManager) RemoveHook(event HookEvent, command string) {
 	}
 
 	pm.config.Hooks = filtered
+
+	return nil
 }
 
 // RemoveProvider removes a provider by name.
-func (pm *PluginManager) RemoveProvider(name string) {
+func (pm *PluginManager) RemoveProvider(name string) error {
+	if pm == nil || pm.config == nil {
+		return fmt.Errorf("plugin manager not initialized")
+	}
+
 	filtered := make([]ProviderConfig, 0, len(pm.config.Providers))
 	for _, p := range pm.config.Providers {
 		if p.Name == name {
@@ -248,11 +274,13 @@ func (pm *PluginManager) RemoveProvider(name string) {
 	}
 
 	pm.config.Providers = filtered
+
+	return nil
 }
 
 // Config returns the current plugin configuration (read-only).
 func (pm *PluginManager) Config() *PluginConfig {
-	if pm == nil {
+	if pm == nil || pm.config == nil {
 		return &PluginConfig{}
 	}
 

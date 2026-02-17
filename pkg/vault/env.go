@@ -14,6 +14,10 @@ const (
 
 // toReleaseState converts an internal sentinel.ReleaseState to the public type.
 func toReleaseState(s *sentinel.ReleaseState) *ReleaseState {
+	if s == nil {
+		return &ReleaseState{}
+	}
+
 	return &ReleaseState{
 		Active:      s.Active,
 		ProfileName: s.ProfileName,

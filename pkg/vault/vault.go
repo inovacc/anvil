@@ -297,6 +297,10 @@ func (v *Vault) IsSealed() bool {
 
 // Close zeros the master key and closes the vault.
 func (v *Vault) Close() error {
+	if v == nil {
+		return nil
+	}
+
 	crypto.ZeroBytes(v.masterKey)
 
 	return v.store.Close()
