@@ -15,107 +15,73 @@ var vaultEnvPasswordCmd = &cobra.Command{
 var vaultEnvPasswordSetCmd = &cobra.Command{
 	Use:   "set",
 	Short: "Set or update the vault env password",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		v, err := vault.Open(nil)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = v.Close() }()
+	RunE:  runPasswordSet,
+}
 
-		has, err := v.HasPassword()
-		if err != nil {
-			return err
-		}
+var vaultEnvPasswordResetCmd = &cobra.Command{
+	Use:   "reset",
+	Short: "Remove the vault env password",
+	RunE:  runPasswordReset,
+}
 
-		// Non-interactive mode via --password flag
-		flagPw, _ := cmd.Flags().GetString("password")
-		if flagPw != "" {
-			if has {
-				currentPw, _ := cmd.Flags().GetString("current")
-				if currentPw == "" {
-					return fmt.Errorf("--current is required when updating an existing password")
-				}
-				if err := v.VerifyPassword(currentPw); err != nil {
-					return err
-				}
-			}
-			if len(flagPw) < 8 {
-				return fmt.Errorf("password must be at least 8 characters")
-			}
-			if err := v.SetPassword(flagPw); err != nil {
-				return err
-			}
-			outputResult(cmd, struct {
-				Message string `json:"message"`
-			}{"Password set successfully."}, func() {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
-			})
-			return nil
-		}
+// Top-level password command (lifted from env password).
+var passwordCmd = &cobra.Command{
+	Use:   "password",
+	Short: "Manage vault password",
+}
 
-		// Interactive mode
+var passwordSetCmd = &cobra.Command{
+	Use:   "set",
+	Short: "Set or update the vault password",
+	RunE:  runPasswordSet,
+}
+
+var passwordResetCmd = &cobra.Command{
+	Use:   "reset",
+	Short: "Remove the vault password",
+	RunE:  runPasswordReset,
+}
+
+func runPasswordSet(cmd *cobra.Command, args []string) error {
+	v, err := vault.Open(nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = v.Close() }()
+
+	has, err := v.HasPassword()
+	if err != nil {
+		return err
+	}
+
+	// Non-interactive mode via --password flag
+	flagPw, _ := cmd.Flags().GetString("password")
+	if flagPw != "" {
 		if has {
-			current, err := readPassword("Current password: ")
-			if err != nil {
-				return err
+			currentPw, _ := cmd.Flags().GetString("current")
+			if currentPw == "" {
+				return fmt.Errorf("--current is required when updating an existing password")
 			}
-			if err := v.VerifyPassword(current); err != nil {
+			if err := v.VerifyPassword(currentPw); err != nil {
 				return err
 			}
 		}
-
-		password, err := readPassword("New password: ")
-		if err != nil {
-			return err
-		}
-		if len(password) < 8 {
+		if len(flagPw) < 8 {
 			return fmt.Errorf("password must be at least 8 characters")
 		}
-
-		confirm, err := readPassword("Confirm password: ")
-		if err != nil {
+		if err := v.SetPassword(flagPw); err != nil {
 			return err
 		}
-		if password != confirm {
-			return fmt.Errorf("passwords do not match")
-		}
-
-		if err := v.SetPassword(password); err != nil {
-			return err
-		}
-
 		outputResult(cmd, struct {
 			Message string `json:"message"`
 		}{"Password set successfully."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
 		})
 		return nil
-	},
-}
+	}
 
-var vaultEnvPasswordResetCmd = &cobra.Command{
-	Use:   "reset",
-	Short: "Remove the vault env password",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		v, err := vault.Open(nil)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = v.Close() }()
-
-		has, err := v.HasPassword()
-		if err != nil {
-			return err
-		}
-		if !has {
-			outputResult(cmd, struct {
-				Message string `json:"message"`
-			}{"No password is set."}, func() {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No password is set.")
-			})
-			return nil
-		}
-
+	// Interactive mode
+	if has {
 		current, err := readPassword("Current password: ")
 		if err != nil {
 			return err
@@ -123,27 +89,91 @@ var vaultEnvPasswordResetCmd = &cobra.Command{
 		if err := v.VerifyPassword(current); err != nil {
 			return err
 		}
+	}
 
-		if err := v.DeletePassword(); err != nil {
-			return err
-		}
+	password, err := readPassword("New password: ")
+	if err != nil {
+		return err
+	}
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
 
-		// Also revoke any active release
-		_ = v.EnvRevoke()
+	confirm, err := readPassword("Confirm password: ")
+	if err != nil {
+		return err
+	}
+	if password != confirm {
+		return fmt.Errorf("passwords do not match")
+	}
 
+	if err := v.SetPassword(password); err != nil {
+		return err
+	}
+
+	outputResult(cmd, struct {
+		Message string `json:"message"`
+	}{"Password set successfully."}, func() {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password set successfully.")
+	})
+	return nil
+}
+
+func runPasswordReset(cmd *cobra.Command, args []string) error {
+	v, err := vault.Open(nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = v.Close() }()
+
+	has, err := v.HasPassword()
+	if err != nil {
+		return err
+	}
+	if !has {
 		outputResult(cmd, struct {
 			Message string `json:"message"`
-		}{"Password removed."}, func() {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password removed.")
+		}{"No password is set."}, func() {
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No password is set.")
 		})
 		return nil
-	},
+	}
+
+	current, err := readPassword("Current password: ")
+	if err != nil {
+		return err
+	}
+	if err := v.VerifyPassword(current); err != nil {
+		return err
+	}
+
+	if err := v.DeletePassword(); err != nil {
+		return err
+	}
+
+	// Also revoke any active release
+	_ = v.EnvRevoke()
+
+	outputResult(cmd, struct {
+		Message string `json:"message"`
+	}{"Password removed."}, func() {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Password removed.")
+	})
+	return nil
 }
 
 func init() {
+	// Env password (backward compat: anvil env password set)
 	vaultEnvPasswordSetCmd.Flags().String("password", "", "Password (non-interactive mode)")
 	vaultEnvPasswordSetCmd.Flags().String("current", "", "Current password when updating (non-interactive mode)")
 	vaultEnvPasswordCmd.AddCommand(vaultEnvPasswordSetCmd)
 	vaultEnvPasswordCmd.AddCommand(vaultEnvPasswordResetCmd)
 	vaultEnvCmd.AddCommand(vaultEnvPasswordCmd)
+
+	// Top-level password (anvil password set)
+	passwordSetCmd.Flags().String("password", "", "Password (non-interactive mode)")
+	passwordSetCmd.Flags().String("current", "", "Current password when updating (non-interactive mode)")
+	passwordCmd.AddCommand(passwordSetCmd)
+	passwordCmd.AddCommand(passwordResetCmd)
+	registerCommand(passwordCmd)
 }

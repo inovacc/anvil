@@ -9,5 +9,5 @@ var vaultPluginCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultPluginCmd)
+	registerCommand(vaultPluginCmd)
 }

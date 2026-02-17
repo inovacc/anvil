@@ -11,5 +11,5 @@ var vaultEnvCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultEnvCmd)
+	registerCommand(vaultEnvCmd)
 }

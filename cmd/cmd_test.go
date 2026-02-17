@@ -29,6 +29,11 @@ func setupTestVault(t *testing.T) string {
 func execCmd(t *testing.T, args ...string) (stdout, stderr string) {
 	t.Helper()
 
+	// Strip leading "vault" prefix — commands are now registered on root.
+	if len(args) > 0 && args[0] == "vault" {
+		args = args[1:]
+	}
+
 	cmd := GetRootCmd()
 	// Reset persistent flags to avoid leakage between tests.
 	_ = cmd.PersistentFlags().Set("json", "false")
@@ -178,7 +183,13 @@ func TestJSONOutputCLI(t *testing.T) {
 func TestAuditLogCLI(t *testing.T) {
 	setupTestVault(t)
 	execCmd(t, "vault", "profile", "create", "test", "--default")
-	execCmd(t, "vault", "set", "KEY1", "val1", "-p", "test")
+	setOut, setErr := execCmd(t, "vault", "set", "KEY1", "val1", "-p", "test")
+	if setErr != "" {
+		t.Logf("set stderr: %s", setErr)
+	}
+	if setOut == "" {
+		t.Log("set produced no stdout (expected)")
+	}
 
 	// Audit log should contain the set action.
 	stdout, stderr := execCmd(t, "vault", "audit")
@@ -665,7 +676,7 @@ func TestCmdTreeCLI(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("cmdtree error: %s", stderr)
 	}
-	if !strings.Contains(stdout, "vault") || !strings.Contains(stdout, "anvil") {
+	if !strings.Contains(stdout, "anvil") || !strings.Contains(stdout, "set") {
 		t.Errorf("expected command tree, got: %q", stdout)
 	}
 }

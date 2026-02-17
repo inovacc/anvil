@@ -175,5 +175,5 @@ func expandVars(s string, vars map[string]string) string {
 func init() {
 	vaultImportCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
 	vaultImportCmd.Flags().StringP("format", "f", "json", "Input format (json, env)")
-	vaultCmd.AddCommand(vaultImportCmd)
+	registerCommand(vaultImportCmd)
 }

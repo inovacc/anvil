@@ -36,5 +36,5 @@ var vaultDeleteCmd = &cobra.Command{
 
 func init() {
 	vaultDeleteCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
-	vaultCmd.AddCommand(vaultDeleteCmd)
+	registerCommand(vaultDeleteCmd)
 }

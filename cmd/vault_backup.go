@@ -99,6 +99,6 @@ var vaultRestoreCmd = &cobra.Command{
 func init() {
 	vaultBackupCmd.Flags().String("password", "", "Password (non-interactive mode)")
 	vaultRestoreCmd.Flags().String("password", "", "Password (non-interactive mode)")
-	vaultCmd.AddCommand(vaultBackupCmd)
-	vaultCmd.AddCommand(vaultRestoreCmd)
+	registerCommand(vaultBackupCmd)
+	registerCommand(vaultRestoreCmd)
 }

@@ -9,50 +9,50 @@ import (
 	"github.com/inovacc/anvil/pkg/vault"
 )
 
-type dashboardModel struct {
+type statusModel struct {
 	status   *vault.Status
 	profiles []vault.ProfileInfo
 	loaded   bool
 }
 
-type dashboardLoadedMsg struct {
+type statusLoadedMsg struct {
 	status   *vault.Status
 	profiles []vault.ProfileInfo
 	err      error
 }
 
-func (d dashboardModel) Init() tea.Cmd {
-	return nil
+func newStatusModel() statusModel {
+	return statusModel{}
 }
 
-func (d dashboardModel) loadData(v *vault.Vault) tea.Cmd {
+func (s statusModel) loadData(v *vault.Vault) tea.Cmd {
 	return func() tea.Msg {
 		status, err := v.Status()
 		if err != nil {
-			return dashboardLoadedMsg{err: err}
+			return statusLoadedMsg{err: err}
 		}
 		profiles, err := v.ListProfiles()
 		if err != nil {
-			return dashboardLoadedMsg{err: err}
+			return statusLoadedMsg{err: err}
 		}
-		return dashboardLoadedMsg{status: status, profiles: profiles}
+		return statusLoadedMsg{status: status, profiles: profiles}
 	}
 }
 
-func (d dashboardModel) Update(msg tea.Msg) (dashboardModel, tea.Cmd) {
+func (s statusModel) Update(msg tea.Msg) (statusModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case dashboardLoadedMsg:
-		d.loaded = true
+	case statusLoadedMsg:
+		s.loaded = true
 		if msg.err == nil {
-			d.status = msg.status
-			d.profiles = msg.profiles
+			s.status = msg.status
+			s.profiles = msg.profiles
 		}
 	}
-	return d, nil
+	return s, nil
 }
 
-func (d dashboardModel) View(width int) string {
-	if !d.loaded {
+func (s statusModel) View(width int) string {
+	if !s.loaded {
 		return "\n  Loading..."
 	}
 
@@ -61,8 +61,8 @@ func (d dashboardModel) View(width int) string {
 	b.WriteString(titleStyle.Render("  Anvil Vault  "))
 	b.WriteString("\n\n")
 
-	s := d.status
-	if s == nil {
+	st := s.status
+	if st == nil {
 		b.WriteString(errorStyle.Render("  Vault not initialized."))
 		return b.String()
 	}
@@ -78,18 +78,17 @@ func (d dashboardModel) View(width int) string {
 		info.WriteString(fmt.Sprintf("  %s  %s\n", labelStyle.Width(14).Render(label), valueStyle.Render(value)))
 	}
 
-	row("Database", s.DBPath)
-	row("Seal Method", s.SealMethod)
-	row("Key Version", fmt.Sprintf("%d", s.KeyVersion))
-	row("Profiles", fmt.Sprintf("%d", s.ProfileCount))
-	row("Secrets", fmt.Sprintf("%d", s.SecretCount))
-	row("Password", boolToYesNo(s.PasswordSet))
-	if !s.CreatedAt.IsZero() {
-		row("Created", s.CreatedAt.Format("2006-01-02 15:04"))
+	row("Database", st.DBPath)
+	row("Seal Method", st.SealMethod)
+	row("Key Version", fmt.Sprintf("%d", st.KeyVersion))
+	row("Profiles", fmt.Sprintf("%d", st.ProfileCount))
+	row("Secrets", fmt.Sprintf("%d", st.SecretCount))
+	row("Password", boolToYesNo(st.PasswordSet))
+	if !st.CreatedAt.IsZero() {
+		row("Created", st.CreatedAt.Format("2006-01-02 15:04"))
 	}
 
-	// Show default profile
-	for _, p := range d.profiles {
+	for _, p := range s.profiles {
 		if p.IsDefault {
 			info.WriteString("\n")
 			row("Default", fmt.Sprintf("%s (%d secrets)", p.Name, p.SecretCount))
@@ -99,7 +98,7 @@ func (d dashboardModel) View(width int) string {
 
 	b.WriteString(box.Render(info.String()))
 	b.WriteString("\n\n")
-	b.WriteString(helpStyle.Render("  p: profiles • a: audit • q: quit"))
+	b.WriteString(helpStyle.Render("  tab: navigate • q: quit"))
 
 	return b.String()
 }

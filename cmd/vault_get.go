@@ -37,5 +37,5 @@ var vaultGetCmd = &cobra.Command{
 
 func init() {
 	vaultGetCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
-	vaultCmd.AddCommand(vaultGetCmd)
+	registerCommand(vaultGetCmd)
 }

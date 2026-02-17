@@ -50,6 +50,6 @@ var vaultUnsealCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultSealCmd)
-	vaultCmd.AddCommand(vaultUnsealCmd)
+	registerCommand(vaultSealCmd)
+	registerCommand(vaultUnsealCmd)
 }

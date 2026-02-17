@@ -138,7 +138,7 @@ var vaultProfileUseCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultProfileCmd)
+	registerCommand(vaultProfileCmd)
 
 	vaultProfileCreateCmd.Flags().StringP("description", "d", "", "Profile description")
 	vaultProfileCreateCmd.Flags().Bool("default", false, "Set as default profile")

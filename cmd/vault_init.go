@@ -41,5 +41,5 @@ var vaultInitCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultInitCmd)
+	registerCommand(vaultInitCmd)
 }

@@ -117,5 +117,5 @@ func init() {
 	vaultShareImportCmd.Flags().String("passphrase", "", "Decryption passphrase (non-interactive mode)")
 	vaultShareCmd.AddCommand(vaultShareExportCmd)
 	vaultShareCmd.AddCommand(vaultShareImportCmd)
-	vaultCmd.AddCommand(vaultShareCmd)
+	registerCommand(vaultShareCmd)
 }

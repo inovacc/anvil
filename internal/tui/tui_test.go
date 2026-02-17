@@ -39,7 +39,6 @@ func TestTableColumns(t *testing.T) {
 		if len(cols) != tt.wantCols {
 			t.Errorf("tableColumns(%d): got %d cols, want %d", tt.width, len(cols), tt.wantCols)
 		}
-		// Verify column titles
 		if cols[0].Title != "Key" || cols[1].Title != "Description" || cols[2].Title != "Created" || cols[3].Title != "Updated" {
 			t.Errorf("tableColumns(%d): wrong column titles", tt.width)
 		}
@@ -52,7 +51,6 @@ func TestTableColumnsWidthProportions(t *testing.T) {
 	for _, c := range cols {
 		total += c.Width
 	}
-	// Should use roughly 96 (100-4 padding)
 	if total < 90 || total > 100 {
 		t.Errorf("total column width = %d, expected ~96", total)
 	}
@@ -90,7 +88,6 @@ func TestHistoryTableColumns(t *testing.T) {
 
 func TestTableStyles(t *testing.T) {
 	s := tableStyles()
-	// Just verify it doesn't panic and returns something
 	_ = s.Header
 	_ = s.Selected
 	_ = s.Cell
@@ -134,7 +131,6 @@ func TestNewProfileFormModel(t *testing.T) {
 
 func TestSecretFormAccessors(t *testing.T) {
 	m := newSecretFormModel("p")
-	// Initially empty
 	if m.key() != "" {
 		t.Errorf("key() = %q, want empty", m.key())
 	}
@@ -161,7 +157,6 @@ func TestProfilesSelectedProfile(t *testing.T) {
 			{Name: "beta"},
 		}
 		p, _ = p.Update(profilesLoadedMsg{profiles: p.profiles})
-		// First row should be selected by default
 		if got := p.selectedProfile(); got != "alpha" {
 			t.Errorf("got %q, want %q", got, "alpha")
 		}
@@ -177,31 +172,31 @@ func TestSecretsSelectedKey(t *testing.T) {
 	})
 }
 
-func TestDashboardModelUpdate(t *testing.T) {
+func TestStatusModelUpdate(t *testing.T) {
 	t.Run("loaded success", func(t *testing.T) {
-		d := dashboardModel{}
+		s := statusModel{}
 		status := &vault.Status{Initialized: true, ProfileCount: 2}
 		profiles := []vault.ProfileInfo{{Name: "p1"}}
 
-		d, _ = d.Update(dashboardLoadedMsg{status: status, profiles: profiles})
-		if !d.loaded {
+		s, _ = s.Update(statusLoadedMsg{status: status, profiles: profiles})
+		if !s.loaded {
 			t.Error("expected loaded = true")
 		}
-		if d.status != status {
+		if s.status != status {
 			t.Error("status not set")
 		}
-		if len(d.profiles) != 1 {
+		if len(s.profiles) != 1 {
 			t.Error("profiles not set")
 		}
 	})
 
 	t.Run("loaded error", func(t *testing.T) {
-		d := dashboardModel{}
-		d, _ = d.Update(dashboardLoadedMsg{err: fmt.Errorf("fail")})
-		if !d.loaded {
+		s := statusModel{}
+		s, _ = s.Update(statusLoadedMsg{err: fmt.Errorf("fail")})
+		if !s.loaded {
 			t.Error("expected loaded = true even on error")
 		}
-		if d.status != nil {
+		if s.status != nil {
 			t.Error("status should be nil on error")
 		}
 	})
@@ -269,7 +264,6 @@ func TestSecretsModelUpdate(t *testing.T) {
 			{Key: "K1", CreatedAt: now},
 		}
 		s, _ = s.Update(secretsLoadedMsg{secrets: secrets})
-		// The zero UpdatedAt should produce "-"
 		rows := s.table.Rows()
 		if len(rows) != 1 {
 			t.Fatalf("rows = %d, want 1", len(rows))
@@ -313,33 +307,31 @@ func TestSecretsModelUpdate(t *testing.T) {
 
 func TestSecretFormModelUpdateTab(t *testing.T) {
 	f := newSecretFormModel("p")
-
-	// Tab forward
-	f, _ = f.Update(secretFormSubmitMsg{}) // unrelated msg, no change
+	f, _ = f.Update(secretFormSubmitMsg{})
 	if f.focusIndex != 0 {
 		t.Errorf("focusIndex = %d, want 0", f.focusIndex)
 	}
 }
 
-func TestDashboardView(t *testing.T) {
+func TestStatusView(t *testing.T) {
 	t.Run("not loaded", func(t *testing.T) {
-		d := dashboardModel{}
-		v := d.View(80)
+		s := statusModel{}
+		v := s.View(80)
 		if !strings.Contains(v, "Loading") {
 			t.Errorf("expected Loading, got: %q", v)
 		}
 	})
 
 	t.Run("nil status", func(t *testing.T) {
-		d := dashboardModel{loaded: true}
-		v := d.View(80)
+		s := statusModel{loaded: true}
+		v := s.View(80)
 		if !strings.Contains(v, "not initialized") {
 			t.Errorf("expected 'not initialized', got: %q", v)
 		}
 	})
 
 	t.Run("with status", func(t *testing.T) {
-		d := dashboardModel{
+		s := statusModel{
 			loaded: true,
 			status: &vault.Status{
 				Initialized:  true,
@@ -355,7 +347,7 @@ func TestDashboardView(t *testing.T) {
 				{Name: "default", IsDefault: true, SecretCount: 3},
 			},
 		}
-		v := d.View(80)
+		v := s.View(80)
 		if !strings.Contains(v, "Anvil Vault") {
 			t.Error("expected title")
 		}
@@ -494,20 +486,12 @@ func TestSecretFormViewWithMessage(t *testing.T) {
 	}
 }
 
-func TestDashboardInit(t *testing.T) {
-	d := dashboardModel{}
-	cmd := d.Init()
-	if cmd != nil {
-		t.Error("expected nil cmd from Init()")
-	}
-}
-
 func TestModelView(t *testing.T) {
 	m := NewModel(nil)
 	m.width = 80
 	m.height = 40
 
-	// Default screen is dashboard, should render without panic
+	// Default screen is status, should render without panic
 	v := m.View()
 	if v == "" {
 		t.Error("expected non-empty view")
@@ -576,9 +560,9 @@ func TestModelUpdateWindowSizeHistory(t *testing.T) {
 	}
 }
 
-func TestModelUpdateWindowSizeNonSecrets(t *testing.T) {
+func TestModelUpdateWindowSizeStatus(t *testing.T) {
 	m := NewModel(nil)
-	m.currentScreen = screenDashboard
+	m.currentScreen = screenStatus
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	rm := result.(model)
 	if rm.width != 100 {
@@ -596,42 +580,75 @@ func TestModelUpdateCtrlC(t *testing.T) {
 	}
 }
 
-// --- updateDashboard key tests ---
+// --- Sidebar navigation ---
 
-func TestUpdateDashboardQuit(t *testing.T) {
+func TestSidebarNavigation(t *testing.T) {
 	m := NewModel(nil)
-	m.currentScreen = screenDashboard
-	_, cmd := m.updateDashboard(keyMsg("q"))
+	m.width = 100
+	m.height = 40
+
+	// Default focus is sidebar
+	if m.focus != focusSidebar {
+		t.Errorf("initial focus = %d, want sidebar", m.focus)
+	}
+
+	// Reset cursor to 0 for predictable testing
+	m.sidebar.cursor = 0
+
+	// Move down
+	result, _ := m.Update(keyMsg("j"))
+	rm := result.(model)
+	if rm.sidebar.cursor != 1 {
+		t.Errorf("cursor = %d, want 1 after j", rm.sidebar.cursor)
+	}
+
+	// Move up
+	result, _ = rm.Update(keyMsg("k"))
+	rm = result.(model)
+	if rm.sidebar.cursor != 0 {
+		t.Errorf("cursor = %d, want 0 after k", rm.sidebar.cursor)
+	}
+}
+
+func TestSidebarQuit(t *testing.T) {
+	m := NewModel(nil)
+	m.focus = focusSidebar
+	_, cmd := m.Update(keyMsg("q"))
 	if cmd == nil {
-		t.Error("expected quit cmd from q")
+		t.Error("expected quit cmd from q in sidebar")
 	}
 }
 
-func TestUpdateDashboardNavigateToProfiles(t *testing.T) {
+func TestTabTogglesFocus(t *testing.T) {
 	m := NewModel(nil)
-	m.currentScreen = screenDashboard
-	result, _ := m.updateDashboard(keyMsg("p"))
+	m.width = 100
+	m.height = 40
+	m.focus = focusSidebar
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	rm := result.(model)
-	if rm.currentScreen != screenProfiles {
-		t.Errorf("screen = %d, want %d", rm.currentScreen, screenProfiles)
+	if rm.focus != focusContent {
+		t.Error("tab should switch to content focus")
+	}
+
+	result, _ = rm.Update(tea.KeyMsg{Type: tea.KeyTab})
+	rm = result.(model)
+	if rm.focus != focusSidebar {
+		t.Error("tab should switch back to sidebar focus")
 	}
 }
 
-func TestUpdateDashboardNavigateToAudit(t *testing.T) {
+func TestEscFromContentReturnsSidebar(t *testing.T) {
 	m := NewModel(nil)
-	m.currentScreen = screenDashboard
-	result, _ := m.updateDashboard(keyMsg("a"))
+	m.width = 100
+	m.height = 40
+	m.currentScreen = screenStatus
+	m.focus = focusContent
+
+	result, _ := m.Update(specialKeyMsg(tea.KeyEsc))
 	rm := result.(model)
-	if rm.currentScreen != screenAudit {
-		t.Errorf("screen = %d, want %d", rm.currentScreen, screenAudit)
-	}
-}
-
-func TestUpdateDashboardUnhandledKey(t *testing.T) {
-	m := NewModel(nil)
-	_, cmd := m.updateDashboard(keyMsg("x"))
-	if cmd != nil {
-		t.Error("expected nil cmd for unhandled key")
+	if rm.focus != focusSidebar {
+		t.Error("esc from content should return to sidebar")
 	}
 }
 
@@ -642,6 +659,7 @@ func testProfilesModel() model {
 	m.width = 80
 	m.height = 40
 	m.currentScreen = screenProfiles
+	m.focus = focusContent
 	m.profiles = newProfilesModel(80, 40)
 	profiles := []vault.ProfileInfo{
 		{Name: "alpha"},
@@ -650,18 +668,6 @@ func testProfilesModel() model {
 	}
 	m.profiles, _ = m.profiles.Update(profilesLoadedMsg{profiles: profiles})
 	return m
-}
-
-func TestUpdateProfilesEsc(t *testing.T) {
-	m := testProfilesModel()
-	result, _ := m.updateProfiles(specialKeyMsg(tea.KeyEsc))
-	rm := result.(model)
-	if rm.currentScreen != screenDashboard {
-		t.Errorf("screen = %d, want dashboard", rm.currentScreen)
-	}
-	if rm.profiles.message != "" {
-		t.Error("message should be cleared")
-	}
 }
 
 func TestUpdateProfilesQuit(t *testing.T) {
@@ -679,7 +685,6 @@ func TestUpdateProfilesEnter(t *testing.T) {
 	if rm.currentScreen != screenSecrets {
 		t.Errorf("screen = %d, want secrets", rm.currentScreen)
 	}
-	// First profile should be selected by default
 	if rm.secrets.profileName != "alpha" {
 		t.Errorf("profileName = %q, want alpha", rm.secrets.profileName)
 	}
@@ -736,7 +741,6 @@ func TestUpdateProfilesDelete(t *testing.T) {
 	m := testProfilesModel()
 	result, _ := m.updateProfiles(keyMsg("d"))
 	rm := result.(model)
-	// First profile "alpha" should be selected
 	if rm.profiles.confirm != "alpha" {
 		t.Errorf("confirm = %q, want alpha", rm.profiles.confirm)
 	}
@@ -774,6 +778,7 @@ func TestUpdateProfilesDefaultKey(t *testing.T) {
 func testSecretsModel() model {
 	m := NewModel(nil)
 	m.currentScreen = screenSecrets
+	m.focus = focusContent
 	m.width = 80
 	m.height = 40
 	m.secrets = newSecretsModel("myprofile", 80, 40)
@@ -785,15 +790,6 @@ func testSecretsModel() model {
 	}
 	m.secrets, _ = m.secrets.Update(secretsLoadedMsg{secrets: m.secrets.secrets})
 	return m
-}
-
-func TestUpdateSecretsEsc(t *testing.T) {
-	m := testSecretsModel()
-	result, _ := m.updateSecrets(specialKeyMsg(tea.KeyEsc))
-	rm := result.(model)
-	if rm.currentScreen != screenProfiles {
-		t.Errorf("screen = %d, want profiles", rm.currentScreen)
-	}
 }
 
 func TestUpdateSecretsQuit(t *testing.T) {
@@ -816,7 +812,6 @@ func TestUpdateSecretsEnterToggleReveal(t *testing.T) {
 	m := testSecretsModel()
 	m.secrets.revealKey = "K1"
 	m.secrets.revealValue = "secret"
-	// Simulate enter on K1 again — should toggle off
 	result, _ := m.updateSecrets(specialKeyMsg(tea.KeyEnter))
 	rm := result.(model)
 	if rm.secrets.revealKey != "" {
@@ -904,7 +899,6 @@ func TestUpdateSecretsDefaultKey(t *testing.T) {
 	m := testSecretsModel()
 	result, _ := m.updateSecrets(keyMsg("x"))
 	rm := result.(model)
-	// default key clears reveal
 	if rm.secrets.revealKey != "" {
 		t.Error("default key should clear reveal")
 	}
@@ -916,42 +910,34 @@ func TestUpdateSecretsDefaultKeyBlockedDuringConfirm(t *testing.T) {
 	m.secrets.revealKey = "K2"
 	result, _ := m.updateSecrets(keyMsg("x"))
 	rm := result.(model)
-	// default branch skipped during confirm
 	if rm.secrets.revealKey != "K2" {
 		t.Error("reveal should not be cleared during confirm")
 	}
 }
 
-// --- updateAudit key tests ---
-
-func TestUpdateAuditEsc(t *testing.T) {
-	m := NewModel(nil)
-	m.currentScreen = screenAudit
-	m.audit = newAuditModel(80, 40)
-	result, _ := m.updateAudit(specialKeyMsg(tea.KeyEsc))
-	rm := result.(model)
-	if rm.currentScreen != screenDashboard {
-		t.Errorf("screen = %d, want dashboard", rm.currentScreen)
-	}
-}
+// --- updateAuditScreen key tests ---
 
 func TestUpdateAuditQuit(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screenAudit
 	m.audit = newAuditModel(80, 40)
-	_, cmd := m.updateAudit(keyMsg("q"))
+	_, cmd := m.updateAuditScreen(keyMsg("q"))
 	if cmd == nil {
 		t.Error("expected quit cmd")
 	}
 }
 
-// --- updateHistory key tests ---
+// --- updateHistoryScreen key tests ---
 
 func TestUpdateHistoryEsc(t *testing.T) {
 	m := NewModel(nil)
+	m.width = 100
+	m.height = 40
 	m.currentScreen = screenHistory
+	m.focus = focusContent
 	m.history = newHistoryModel("key", "p", 80, 40)
-	result, _ := m.updateHistory(specialKeyMsg(tea.KeyEsc))
+	// Esc from history returns to secrets
+	result, _ := m.Update(specialKeyMsg(tea.KeyEsc))
 	rm := result.(model)
 	if rm.currentScreen != screenSecrets {
 		t.Errorf("screen = %d, want secrets", rm.currentScreen)
@@ -962,7 +948,7 @@ func TestUpdateHistoryQuit(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screenHistory
 	m.history = newHistoryModel("key", "p", 80, 40)
-	_, cmd := m.updateHistory(keyMsg("q"))
+	_, cmd := m.updateHistoryScreen(keyMsg("q"))
 	if cmd == nil {
 		t.Error("expected quit cmd")
 	}
@@ -972,7 +958,10 @@ func TestUpdateHistoryQuit(t *testing.T) {
 
 func TestUpdateSecretFormEscFromProfile(t *testing.T) {
 	m := NewModel(nil)
+	m.width = 100
+	m.height = 40
 	m.currentScreen = screenSecretForm
+	m.focus = focusContent
 	m.secretForm = newProfileFormModel()
 	result, _ := m.updateSecretForm(specialKeyMsg(tea.KeyEsc))
 	rm := result.(model)
@@ -983,7 +972,10 @@ func TestUpdateSecretFormEscFromProfile(t *testing.T) {
 
 func TestUpdateSecretFormEscFromSecret(t *testing.T) {
 	m := NewModel(nil)
+	m.width = 100
+	m.height = 40
 	m.currentScreen = screenSecretForm
+	m.focus = focusContent
 	m.secretForm = newSecretFormModel("myprofile")
 	result, _ := m.updateSecretForm(specialKeyMsg(tea.KeyEsc))
 	rm := result.(model)
@@ -996,7 +988,6 @@ func TestUpdateSecretFormEnterCreateProfileEmpty(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screenSecretForm
 	m.secretForm = newProfileFormModel()
-	// key() is empty → validation error
 	result, cmd := m.updateSecretForm(specialKeyMsg(tea.KeyEnter))
 	rm := result.(model)
 	if !strings.Contains(rm.secretForm.message, "required") {
@@ -1011,7 +1002,6 @@ func TestUpdateSecretFormEnterCreateSecretEmpty(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screenSecretForm
 	m.secretForm = newSecretFormModel("myprofile")
-	// key() and value() both empty → validation error
 	result, cmd := m.updateSecretForm(specialKeyMsg(tea.KeyEnter))
 	rm := result.(model)
 	if !strings.Contains(rm.secretForm.message, "required") {
@@ -1025,9 +1015,10 @@ func TestUpdateSecretFormEnterCreateSecretEmpty(t *testing.T) {
 func TestUpdateSecretFormDelegateToForm(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screenSecretForm
+	m.focus = focusContent
 	m.secretForm = newSecretFormModel("p")
-	// Tab should delegate to form's Update
-	result, _ := m.updateSecretForm(specialKeyMsg(tea.KeyTab))
+	// Tab within secret form delegates to form's tab handler (not sidebar toggle)
+	result, _ := m.Update(specialKeyMsg(tea.KeyTab))
 	rm := result.(model)
 	if rm.secretForm.focusIndex != 1 {
 		t.Errorf("focusIndex = %d, want 1 after tab", rm.secretForm.focusIndex)
@@ -1106,15 +1097,15 @@ func TestModelUpdateSecretActionMsg(t *testing.T) {
 	}
 }
 
-func TestModelUpdateDelegatesDashboardLoadedMsg(t *testing.T) {
+func TestModelUpdateDelegatesStatusLoadedMsg(t *testing.T) {
 	m := NewModel(nil)
-	m.currentScreen = screenDashboard
+	m.currentScreen = screenStatus
 	status := &vault.Status{Initialized: true}
 
-	result, _ := m.Update(dashboardLoadedMsg{status: status})
+	result, _ := m.Update(statusLoadedMsg{status: status})
 	rm := result.(model)
-	if !rm.dashboard.loaded {
-		t.Error("dashboard should be loaded")
+	if !rm.status.loaded {
+		t.Error("status should be loaded")
 	}
 }
 
@@ -1172,12 +1163,26 @@ func TestModelViewAllScreens(t *testing.T) {
 		name   string
 		screen screen
 	}{
-		{"dashboard", screenDashboard},
+		{"status", screenStatus},
 		{"profiles", screenProfiles},
 		{"secrets", screenSecrets},
 		{"secretForm", screenSecretForm},
 		{"audit", screenAudit},
 		{"history", screenHistory},
+		{"password", screenPassword},
+		{"keyRotation", screenKeyRotation},
+		{"seal", screenSeal},
+		{"envRelease", screenEnvRelease},
+		{"envStatus", screenEnvStatus},
+		{"envExport", screenEnvExport},
+		{"templates", screenTemplates},
+		{"templateApply", screenTemplateApply},
+		{"backup", screenBackup},
+		{"share", screenShare},
+		{"docker", screenDocker},
+		{"plugins", screenPlugins},
+		{"gather", screenGather},
+		{"importExport", screenImportExport},
 	}
 	for _, tt := range screens {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1185,17 +1190,43 @@ func TestModelViewAllScreens(t *testing.T) {
 			m.width = 80
 			m.height = 40
 			m.currentScreen = tt.screen
-			if tt.screen == screenSecrets {
+			switch tt.screen {
+			case screenSecrets:
 				m.secrets = newSecretsModel("p", 80, 40)
-			}
-			if tt.screen == screenSecretForm {
+			case screenSecretForm:
 				m.secretForm = newSecretFormModel("p")
-			}
-			if tt.screen == screenAudit {
+			case screenAudit:
 				m.audit = newAuditModel(80, 40)
-			}
-			if tt.screen == screenHistory {
+			case screenHistory:
 				m.history = newHistoryModel("key", "p", 80, 40)
+			case screenPassword:
+				m.password = newPasswordScreenModel()
+			case screenKeyRotation:
+				m.keyRotation = newKeyRotationModel()
+			case screenSeal:
+				m.seal = newSealScreenModel()
+			case screenEnvRelease:
+				m.envRelease = newEnvReleaseModel()
+			case screenEnvStatus:
+				m.envStatus = newEnvStatusModel()
+			case screenEnvExport:
+				m.envExport = newEnvExportModel()
+			case screenTemplates:
+				m.templates = newTemplatesModel(80, 40)
+			case screenTemplateApply:
+				m.templateApply = newTemplateApplyModel()
+			case screenBackup:
+				m.backup = newBackupScreenModel()
+			case screenShare:
+				m.share = newShareScreenModel()
+			case screenDocker:
+				m.docker = newDockerScreenModel()
+			case screenPlugins:
+				m.plugins = newPluginsModel(80, 40)
+			case screenGather:
+				m.gather = newGatherScreenModel()
+			case screenImportExport:
+				m.importExport = newImportExportModel()
 			}
 			v := m.View()
 			if v == "" {
@@ -1209,8 +1240,9 @@ func TestModelViewUnknownScreen(t *testing.T) {
 	m := NewModel(nil)
 	m.currentScreen = screen(99)
 	v := m.View()
-	if v != "" {
-		t.Errorf("expected empty view for unknown screen, got %q", v)
+	// View includes sidebar so won't be fully empty
+	if v == "" {
+		t.Error("expected non-empty view (sidebar)")
 	}
 }
 
@@ -1294,7 +1326,7 @@ func TestHistoryView(t *testing.T) {
 	})
 }
 
-// --- secretsLoadedMsg with error ---
+// --- Error loading tests ---
 
 func TestSecretsModelUpdateLoadError(t *testing.T) {
 	s := newSecretsModel("p", 80, 40)
@@ -1306,8 +1338,6 @@ func TestSecretsModelUpdateLoadError(t *testing.T) {
 		t.Error("secrets should be empty on error")
 	}
 }
-
-// --- secretActionMsg error ---
 
 func TestSecretsModelUpdateActionError(t *testing.T) {
 	s := newSecretsModel("p", 80, 40)
@@ -1321,8 +1351,6 @@ func TestSecretsModelUpdateActionError(t *testing.T) {
 	}
 }
 
-// --- profilesLoadedMsg with error ---
-
 func TestProfilesModelUpdateLoadError(t *testing.T) {
 	p := newProfilesModel(80, 40)
 	p, _ = p.Update(profilesLoadedMsg{err: fmt.Errorf("load failed")})
@@ -1333,8 +1361,6 @@ func TestProfilesModelUpdateLoadError(t *testing.T) {
 		t.Error("profiles should be empty on error")
 	}
 }
-
-// --- Audit model update error ---
 
 func TestAuditModelUpdateLoadError(t *testing.T) {
 	a := newAuditModel(80, 40)
@@ -1347,8 +1373,6 @@ func TestAuditModelUpdateLoadError(t *testing.T) {
 	}
 }
 
-// --- History model update error ---
-
 func TestHistoryModelUpdateLoadError(t *testing.T) {
 	h := newHistoryModel("key", "p", 80, 40)
 	h, _ = h.Update(historyLoadedMsg{err: fmt.Errorf("history failed")})
@@ -1357,5 +1381,171 @@ func TestHistoryModelUpdateLoadError(t *testing.T) {
 	}
 	if len(h.versions) != 0 {
 		t.Error("versions should be empty on error")
+	}
+}
+
+// --- Sidebar model tests ---
+
+func TestNewSidebarModel(t *testing.T) {
+	s := newSidebarModel()
+	if len(s.categories) == 0 {
+		t.Error("expected categories")
+	}
+	if s.totalItems() == 0 {
+		t.Error("expected items")
+	}
+}
+
+func TestSidebarMoveUpDown(t *testing.T) {
+	s := newSidebarModel()
+	s.moveDown()
+	if s.cursor != 1 {
+		t.Errorf("cursor = %d, want 1", s.cursor)
+	}
+	s.moveUp()
+	if s.cursor != 0 {
+		t.Errorf("cursor = %d, want 0", s.cursor)
+	}
+	s.moveUp() // shouldn't go negative
+	if s.cursor != 0 {
+		t.Errorf("cursor = %d, want 0 (clamped)", s.cursor)
+	}
+}
+
+func TestSidebarSelectedScreen(t *testing.T) {
+	s := newSidebarModel()
+	// First item is Profiles
+	if s.selectedScreen() != screenProfiles {
+		t.Errorf("selectedScreen = %d, want screenProfiles", s.selectedScreen())
+	}
+}
+
+func TestSidebarMoveCursorToScreen(t *testing.T) {
+	s := newSidebarModel()
+	s.moveCursorToScreen(screenAudit)
+	if s.selectedScreen() != screenAudit {
+		t.Errorf("selectedScreen = %d, want screenAudit", s.selectedScreen())
+	}
+}
+
+func TestSidebarView(t *testing.T) {
+	s := newSidebarModel()
+	v := s.View(30)
+	if !strings.Contains(v, "Secrets") {
+		t.Error("expected category label in sidebar view")
+	}
+}
+
+// --- New screen view tests ---
+
+func TestPasswordScreenView(t *testing.T) {
+	p := newPasswordScreenModel()
+	v := p.View(80)
+	if !strings.Contains(v, "Password") {
+		t.Error("expected title")
+	}
+}
+
+func TestKeyRotationView(t *testing.T) {
+	k := newKeyRotationModel()
+	v := k.View(80)
+	if !strings.Contains(v, "Key Rotation") {
+		t.Error("expected title")
+	}
+}
+
+func TestSealScreenView(t *testing.T) {
+	s := newSealScreenModel()
+	v := s.View(80)
+	if !strings.Contains(v, "Seal") {
+		t.Error("expected title")
+	}
+}
+
+func TestEnvReleaseView(t *testing.T) {
+	e := newEnvReleaseModel()
+	v := e.View(80)
+	if !strings.Contains(v, "Env Release") {
+		t.Error("expected title")
+	}
+}
+
+func TestEnvStatusView(t *testing.T) {
+	e := newEnvStatusModel()
+	v := e.View(80)
+	if !strings.Contains(v, "Loading") {
+		t.Error("expected loading")
+	}
+}
+
+func TestEnvExportView(t *testing.T) {
+	e := newEnvExportModel()
+	v := e.View(80)
+	if !strings.Contains(v, "Env Export") {
+		t.Error("expected title")
+	}
+}
+
+func TestTemplatesView(t *testing.T) {
+	tm := newTemplatesModel(80, 40)
+	v := tm.View(80)
+	if !strings.Contains(v, "Loading") {
+		t.Error("expected loading")
+	}
+}
+
+func TestTemplateApplyView(t *testing.T) {
+	ta := newTemplateApplyModel()
+	v := ta.View(80)
+	if !strings.Contains(v, "Loading") {
+		t.Error("expected loading")
+	}
+}
+
+func TestBackupScreenView(t *testing.T) {
+	b := newBackupScreenModel()
+	v := b.View(80)
+	if !strings.Contains(v, "Backup") {
+		t.Error("expected title")
+	}
+}
+
+func TestShareScreenView(t *testing.T) {
+	s := newShareScreenModel()
+	v := s.View(80)
+	if !strings.Contains(v, "Share") {
+		t.Error("expected title")
+	}
+}
+
+func TestDockerScreenView(t *testing.T) {
+	d := newDockerScreenModel()
+	v := d.View(80)
+	if !strings.Contains(v, "Docker") {
+		t.Error("expected title")
+	}
+}
+
+func TestPluginsView(t *testing.T) {
+	p := newPluginsModel(80, 40)
+	v := p.View(80)
+	if !strings.Contains(v, "Loading") {
+		t.Error("expected loading")
+	}
+}
+
+func TestGatherScreenView(t *testing.T) {
+	g := newGatherScreenModel()
+	v := g.View(80)
+	if !strings.Contains(v, "Gather") {
+		t.Error("expected title")
+	}
+}
+
+func TestImportExportView(t *testing.T) {
+	ie := newImportExportModel()
+	v := ie.View(80)
+	if !strings.Contains(v, "Import") {
+		t.Error("expected title")
 	}
 }

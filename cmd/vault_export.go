@@ -51,5 +51,5 @@ var vaultExportCmd = &cobra.Command{
 func init() {
 	vaultExportCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
 	vaultExportCmd.Flags().StringP("format", "f", "json", "Output format (json, env)")
-	vaultCmd.AddCommand(vaultExportCmd)
+	registerCommand(vaultExportCmd)
 }

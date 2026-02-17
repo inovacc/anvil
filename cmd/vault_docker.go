@@ -138,7 +138,7 @@ var vaultDockerComposeCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultDockerCmd)
+	registerCommand(vaultDockerCmd)
 
 	vaultDockerExportCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
 	vaultDockerCmd.AddCommand(vaultDockerExportCmd)

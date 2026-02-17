@@ -9,5 +9,5 @@ var vaultTemplateCmd = &cobra.Command{
 }
 
 func init() {
-	vaultCmd.AddCommand(vaultTemplateCmd)
+	registerCommand(vaultTemplateCmd)
 }

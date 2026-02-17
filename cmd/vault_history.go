@@ -83,6 +83,6 @@ var vaultRollbackCmd = &cobra.Command{
 func init() {
 	vaultHistoryCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
 	vaultRollbackCmd.Flags().StringP("profile", "p", "", "Target profile (default: active profile)")
-	vaultCmd.AddCommand(vaultHistoryCmd)
-	vaultCmd.AddCommand(vaultRollbackCmd)
+	registerCommand(vaultHistoryCmd)
+	registerCommand(vaultRollbackCmd)
 }

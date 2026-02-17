@@ -303,5 +303,5 @@ func init() {
 	vaultGatherCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts")
 	vaultGatherCmd.Flags().IntP("depth", "d", 5, "Max directory depth")
 	vaultGatherCmd.Flags().StringSliceP("exclude", "e", nil, "Extra directories to exclude")
-	vaultCmd.AddCommand(vaultGatherCmd)
+	registerCommand(vaultGatherCmd)
 }

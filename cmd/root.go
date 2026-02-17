@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/inovacc/anvil/internal/tui"
 	"github.com/inovacc/anvil/pkg/vault"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -20,8 +23,30 @@ var rootCmd = &cobra.Command{
 			return envInlineHandler(envInline, cmd)
 		}
 
+		// If running in a terminal, launch TUI; otherwise show help
+		if term.IsTerminal(int(os.Stdin.Fd())) {
+			return launchTUI()
+		}
+
 		return cmd.Help()
 	},
+}
+
+func launchTUI() error {
+	v, err := vault.Open(nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = v.Close() }()
+
+	m := tui.NewModel(v)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
+	}
+
+	return nil
 }
 
 func envInlineHandler(key string, cmd *cobra.Command) error {

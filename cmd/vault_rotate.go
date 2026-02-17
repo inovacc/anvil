@@ -54,5 +54,5 @@ var vaultRotateKeyCmd = &cobra.Command{
 
 func init() {
 	vaultRotateKeyCmd.Flags().String("password", "", "Password (non-interactive mode)")
-	vaultCmd.AddCommand(vaultRotateKeyCmd)
+	registerCommand(vaultRotateKeyCmd)
 }

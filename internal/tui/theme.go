@@ -54,6 +54,39 @@ var (
 
 	blurredInputStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("241"))
+
+	warningStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("214")).
+			Bold(true)
+
+	inputLabelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("111")).
+			Bold(true).
+			Width(14)
+
+	// Sidebar styles
+	sidebarStyle = lipgloss.NewStyle().
+			Width(sidebarWidth).
+			BorderRight(true).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("62")).
+			Padding(1, 0, 0, 1)
+
+	sidebarCategoryStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("111")).
+				Bold(true)
+
+	sidebarItemStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("252"))
+
+	sidebarSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("229")).
+				Bold(true)
+
+	sidebarSelectedFocusedStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("229")).
+					Bold(true).
+					Background(lipgloss.Color("62"))
 )
 
 func tableStyles() table.Styles {

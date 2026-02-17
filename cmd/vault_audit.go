@@ -59,5 +59,5 @@ var vaultAuditCmd = &cobra.Command{
 func init() {
 	vaultAuditCmd.Flags().StringP("profile", "p", "", "Filter by profile name")
 	vaultAuditCmd.Flags().Int64P("limit", "l", 50, "Maximum entries to show")
-	vaultCmd.AddCommand(vaultAuditCmd)
+	registerCommand(vaultAuditCmd)
 }
