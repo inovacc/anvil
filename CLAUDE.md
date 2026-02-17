@@ -56,7 +56,7 @@ task release:check      # Validate goreleaser config
 ```
 anvil/
 ├── cmd/            # CLI commands (Cobra)
-│   ├── output.go   # JSON/text output helper (outputResult)
+│   ├── output.go   # JSON/text output helper (outputResult, tableWriter)
 │   ├── errors.go   # User-friendly error formatting (handleError)
 │   ├── cmdtree.go  # Command tree visualization
 │   ├── aicontext.go # AI context documentation generator
@@ -65,7 +65,7 @@ anvil/
 │   ├── application/ # Application directory resolution (cross-platform)
 │   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID
 │   ├── sentinel/   # Time-limited release session management (sealbox packed encrypt)
-│   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles — table view for secrets)
+│   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles — table views for all screens)
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
@@ -154,11 +154,14 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - Table-driven tests, 80% coverage minimum
 - Mute unused returns: `_, _ = fmt.Fprintln(w, output)`
 - Use `log/slog` for structured logging
-- All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output
+- All commands use `outputResult(cmd, jsonData, textFn)` for JSON/text dual output; `--json` → JSON, default → tabwriter table
+- CLI list commands use `tableWriter(w)` from `cmd/output.go` for consistent `text/tabwriter` table output (header row in CAPS, tab-separated columns)
 - Global `--json` persistent flag on rootCmd inherited by all subcommands
 - Errors use `vault.UserError` (Message + Hint) for user-friendly output; `handleError` in `cmd/errors.go` formats them (text or JSON based on `--json`)
 - `SilenceErrors` and `SilenceUsage` are set on rootCmd; Cobra does not dump usage on errors
-- Secrets screen uses `bubbles/table` with 4 columns (Key, Description, Created, Updated); `newSecretsModel()` constructs it; `tableStyles()` in theme.go styles it
+- All TUI list screens use `bubbles/table`: secrets (4 cols), profiles (5 cols), audit (5 cols), history (2 cols); each has a `newXModel()` constructor, `xTableColumns()` for sizing, and resize handling in `Update()`
+- TUI navigation: dashboard → `p` profiles → `enter` secrets → `h` history; dashboard → `a` audit; `esc` goes back
+- `tableStyles()` in theme.go provides shared table styling for all TUI screens
 - `visibleSubcommands()` in cmdtree.go filters hidden commands and "help"
 - TPM tests use `t.Skip("TPM not available")` when `!sealbox.IsAvailable()`
 - `pkg/vault` is the public module boundary — never expose `internal/` types in its signatures
