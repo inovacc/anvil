@@ -106,6 +106,12 @@ type VaultScoped interface {
 	Close() error
 }
 
+// VaultRecovery provides BIP-39 mnemonic recovery operations.
+type VaultRecovery interface {
+	ShowRecoveryPhrase() (string, error)
+	HasRecovery() (bool, error)
+}
+
 // Compile-time interface satisfaction checks.
 var (
 	_ VaultReader      = (*Vault)(nil)
@@ -119,4 +125,5 @@ var (
 	_ VaultBackup      = (*Vault)(nil)
 	_ VaultSeal        = (*Vault)(nil)
 	_ VaultAppRegistry = (*Vault)(nil)
+	_ VaultRecovery    = (*Vault)(nil)
 )

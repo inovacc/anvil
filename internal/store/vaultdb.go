@@ -625,6 +625,50 @@ func (s *Store) DeleteApp(uuid string) error {
 	return s.queries.DeleteApp(context.Background(), uuid)
 }
 
+// === Recovery operations ===
+
+// GetRecovery retrieves the recovery record.
+func (s *Store) GetRecovery() (sqlc.VaultRecovery, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetRecovery(context.Background())
+}
+
+// HasRecovery checks if a recovery record exists.
+func (s *Store) HasRecovery() (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count, err := s.queries.HasRecovery(context.Background())
+
+	return count > 0, err
+}
+
+// UpsertRecovery saves the recovery mnemonic hash.
+func (s *Store) UpsertRecovery(mnemonicHash []byte, enabled bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	e := int64(0)
+	if enabled {
+		e = 1
+	}
+
+	return s.queries.UpsertRecovery(context.Background(), sqlc.UpsertRecoveryParams{
+		MnemonicHash: mnemonicHash,
+		Enabled:      e,
+	})
+}
+
+// DeleteRecovery deletes the recovery record.
+func (s *Store) DeleteRecovery() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeleteRecovery(context.Background())
+}
+
 // === Rotation operations ===
 
 // ListAllSecrets returns all secrets across all profiles.

@@ -46,6 +46,13 @@ type VaultProfile struct {
 	UpdatedAt   *time.Time `json:"updated_at"`
 }
 
+type VaultRecovery struct {
+	ID           int64     `json:"id"`
+	MnemonicHash []byte    `json:"mnemonic_hash"`
+	Enabled      int64     `json:"enabled"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type VaultSealedKey struct {
 	ID            int64      `json:"id"`
 	SealedData    []byte     `json:"sealed_data"`

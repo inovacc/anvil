@@ -97,6 +97,24 @@ var (
 		Message: "release session has expired",
 		Hint:    "Run 'profile vault env release' to create a new session",
 	}
+
+	// ErrNoRecovery is returned when the vault has no recovery phrase configured.
+	ErrNoRecovery = &UserError{
+		Message: "no recovery phrase configured",
+		Hint:    "Recovery phrase is set during vault initialization",
+	}
+
+	// ErrInvalidMnemonic is returned when a provided mnemonic is invalid.
+	ErrInvalidMnemonic = &UserError{
+		Message: "invalid recovery phrase",
+		Hint:    "Provide a valid 24-word BIP-39 mnemonic",
+	}
+
+	// ErrRecoveryMismatch is returned when the mnemonic does not match the vault.
+	ErrRecoveryMismatch = &UserError{
+		Message: "recovery phrase does not match this vault",
+		Hint:    "Verify you are using the correct 24-word phrase for this vault",
+	}
 )
 
 // IsUserError checks if an error is or wraps a UserError.
