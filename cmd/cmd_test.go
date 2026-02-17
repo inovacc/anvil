@@ -34,18 +34,17 @@ func execCmd(t *testing.T, args ...string) (stdout, stderr string) {
 		args = args[1:]
 	}
 
-	cmd := GetRootCmd()
 	// Reset persistent flags to avoid leakage between tests.
-	_ = cmd.PersistentFlags().Set("json", "false")
+	_ = rootCmd.PersistentFlags().Set("json", "false")
 	outBuf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
 
-	cmd.SetOut(outBuf)
-	cmd.SetErr(errBuf)
-	cmd.SetArgs(args)
+	rootCmd.SetOut(outBuf)
+	rootCmd.SetErr(errBuf)
+	rootCmd.SetArgs(args)
 
-	if err := cmd.Execute(); err != nil {
-		handleError(cmd, err)
+	if err := rootCmd.Execute(); err != nil {
+		handleError(rootCmd, err)
 	}
 
 	return outBuf.String(), errBuf.String()

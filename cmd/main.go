@@ -75,11 +75,6 @@ func envInlineHandler(key string, cmd *cobra.Command) error {
 	return nil
 }
 
-// GetRootCmd returns the root cobra command for testing.
-func GetRootCmd() *cobra.Command {
-	return rootCmd
-}
-
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		handleError(rootCmd, err)
