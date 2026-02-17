@@ -48,11 +48,22 @@
 - Plugin system (event hooks, secret providers, custom commands)
 - Encryption/decryption benchmarks
 - CI/CD coverage reporting with threshold enforcement
-- **Test Coverage:** application 72.7%, crypto 75.8%, sentinel 73.7%, store 83.2%, vault 47.9%, cmd 37.9%
+- **Released:** v0.5.0
+
+## v0.6.0 — Access Control (Complete)
+- UUID-based profile isolation (`ScopedVault`)
+- Vault seal/unseal for temporary lockdown
+- Version history lockdown (metadata-only, rollback-only, 30-day retention)
+
+## v0.7.0 — Interactive TUI (Complete)
+- Interactive TUI mode with bubbletea/lipgloss/bubbles
+- Dashboard, profile browser, secrets table view (Key/Description/Created/Updated)
+- Secret form for creating secrets and profiles
+- **Released:** v0.7.0
+- **Test Coverage:** store 95.7%, sentinel 78.6%, crypto 75.8%, vault 75.9%, application 72.7%, cmd 71.3%, tui 50.5%
 
 ## v1.0.0 — Production Ready (Planned)
 - Full test coverage (80%+ all packages)
 - Documentation complete
-- Interactive TUI mode (bubbletea)
 - CI/CD pipeline (release workflow done; expand test/build coverage)
 - Release automation with goreleaser (done)

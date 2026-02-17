@@ -82,7 +82,7 @@
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** MOSTLY DONE — store 95.7%, sentinel 78.6%, crypto 75.8%, vault 74.0%, application 72.7%, cmd 69.3%. Remaining gaps bounded by TPM branches, platform-specific code, and error paths requiring mocking.
+- **Status:** MOSTLY DONE — store 95.7%, sentinel 78.6%, crypto 75.8%, vault 75.9%, application 72.7%, cmd 71.3%, tui 50.5%. Remaining gaps bounded by TPM branches, platform-specific code, and vault-dependent TUI paths requiring mocking.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands

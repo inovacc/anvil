@@ -136,9 +136,12 @@
 - Config stored as `plugins.json` alongside vault DB (no schema migration)
 - Hooks auto-fire on `Set`, `Get`, `Delete` operations via integrated `PluginManager`
 
+### Interactive TUI
+- **Status:** Completed (v0.7.0)
+- `vault tui` command with dashboard, profile browser, and secrets table view
+- Built with bubbletea/lipgloss/bubbles (table component for secrets with Key/Description/Created/Updated columns)
+- Keyboard-driven navigation: dashboard → profiles → secrets → secret form
+
 ## Proposed
 
-### Interactive TUI
-- **Status:** Proposed
-- Terminal UI for browsing and managing secrets
-- Built with bubbletea
+_No proposed features at this time._

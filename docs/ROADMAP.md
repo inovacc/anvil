@@ -101,7 +101,8 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 | internal/store | 95.7% | Excellent |
 | internal/sentinel | 78.6% | Good — bounded by error path mocking |
 | internal/crypto | 75.8% | Good — bounded by TPM branches |
-| pkg/vault | 74.0% | Good — bounded by TPM + platform branches |
+| pkg/vault | 75.9% | Good — bounded by TPM + platform branches |
 | internal/application | 72.7% | Good — bounded by platform-specific paths |
-| cmd | 69.3% | 40+ integration tests; bounded by slow crypto ops |
+| cmd | 71.3% | 40+ integration tests; bounded by slow crypto ops |
+| internal/tui | 50.5% | Fair — pure logic tested, vault-dependent paths need mocking |
 | internal/store/sqlc | N/A | Generated code |

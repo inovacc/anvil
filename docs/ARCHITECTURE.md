@@ -26,6 +26,7 @@ graph TB
         Sentinel["sentinel/"]
         Store["store/"]
         App["application/"]
+        TUI["tui/"]
     end
 
     subgraph External["External"]
@@ -43,6 +44,8 @@ graph TB
     VaultCmd --> EnvCmd
     VaultCmd --> ProfileCmd
     VaultCmd --> Vault
+    VaultCmd --> TUI
+    TUI --> Vault
     EnvCmd --> EnvOps
     Vault --> Crypto
     Vault --> Store
@@ -87,6 +90,11 @@ graph LR
     vault --> backup["backup"]
     vault --> share["share"]
     vault --> docker["docker"]
+    vault --> tui["tui"]
+    vault --> gather["gather"]
+    vault --> rollback["rollback"]
+    vault --> seal["seal"]
+    vault --> unseal["unseal"]
 
     env --> password["password"]
     env --> release["release"]
@@ -130,7 +138,10 @@ graph TD
     sqlc["internal/store/sqlc/"]
     sealbox["sealbox<br/>(external)"]
 
+    tui_pkg["internal/tui/"]
     cmd --> vault
+    cmd --> tui_pkg
+    tui_pkg --> vault
     vault --> store
     vault --> crypto
     vault --> sentinel
