@@ -30,6 +30,18 @@ type VaultAuditLog struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type VaultKey struct {
+	ID                  int64     `json:"id"`
+	Name                string    `json:"name"`
+	Algorithm           string    `json:"algorithm"`
+	EncryptedPrivateKey []byte    `json:"encrypted_private_key"`
+	Nonce               []byte    `json:"nonce"`
+	PublicKey           []byte    `json:"public_key"`
+	Fingerprint         string    `json:"fingerprint"`
+	Description         *string   `json:"description"`
+	CreatedAt           time.Time `json:"created_at"`
+}
+
 type VaultPassword struct {
 	ID           int64      `json:"id"`
 	PasswordHash []byte     `json:"password_hash"`

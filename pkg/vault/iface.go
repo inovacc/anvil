@@ -106,6 +106,21 @@ type VaultScoped interface {
 	Close() error
 }
 
+// VaultKeyManagement provides asymmetric key management operations.
+type VaultKeyManagement interface {
+	GenerateKey(name string, algorithm KeyAlgorithm, description string) (*KeyInfo, error)
+	ListKeys() ([]KeyInfo, error)
+	DeleteKey(name, algorithm string) error
+	ExportKeyPEM(name string, private bool) ([]byte, error)
+	ImportKeyPEM(name string, pemData []byte, description string) (*KeyInfo, error)
+}
+
+// VaultSigner provides digital signing and verification operations.
+type VaultSigner interface {
+	Sign(keyName string, data []byte) (*SignResult, error)
+	Verify(keyName string, data []byte, signatureB64 string) (*VerifyResult, error)
+}
+
 // VaultRecovery provides BIP-39 mnemonic recovery operations.
 type VaultRecovery interface {
 	ShowRecoveryPhrase() (string, error)
@@ -130,6 +145,8 @@ var (
 	_ VaultBackup      = (*Vault)(nil)
 	_ VaultSeal        = (*Vault)(nil)
 	_ VaultAppRegistry = (*Vault)(nil)
-	_ VaultRecovery    = (*Vault)(nil)
-	_ VaultIdentity    = (*Vault)(nil)
+	_ VaultRecovery       = (*Vault)(nil)
+	_ VaultIdentity       = (*Vault)(nil)
+	_ VaultKeyManagement  = (*Vault)(nil)
+	_ VaultSigner         = (*Vault)(nil)
 )

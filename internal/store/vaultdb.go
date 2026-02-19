@@ -669,6 +669,101 @@ func (s *Store) DeleteRecovery() error {
 	return s.queries.DeleteRecovery(context.Background())
 }
 
+// === Key operations ===
+
+// InsertKey stores an asymmetric key pair.
+func (s *Store) InsertKey(name, algorithm string, encryptedPrivateKey, nonce, publicKey []byte, fingerprint, description string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.InsertKey(context.Background(), sqlc.InsertKeyParams{
+		Name:                name,
+		Algorithm:           algorithm,
+		EncryptedPrivateKey: encryptedPrivateKey,
+		Nonce:               nonce,
+		PublicKey:            publicKey,
+		Fingerprint:         fingerprint,
+		Description:         &description,
+	})
+}
+
+// GetKey retrieves a key by name and algorithm.
+func (s *Store) GetKey(name, algorithm string) (sqlc.VaultKey, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetKey(context.Background(), sqlc.GetKeyParams{
+		Name:      name,
+		Algorithm: algorithm,
+	})
+}
+
+// GetKeyByName retrieves a key by name (any algorithm).
+func (s *Store) GetKeyByName(name string) (sqlc.VaultKey, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.GetKeyByName(context.Background(), name)
+}
+
+// ListKeys returns all asymmetric keys.
+func (s *Store) ListKeys() ([]sqlc.VaultKey, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListKeys(context.Background())
+}
+
+// DeleteKey deletes a key by name and algorithm.
+func (s *Store) DeleteKey(name, algorithm string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeleteKey(context.Background(), sqlc.DeleteKeyParams{
+		Name:      name,
+		Algorithm: algorithm,
+	})
+}
+
+// DeleteKeyByName deletes all keys with the given name.
+func (s *Store) DeleteKeyByName(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.queries.DeleteKeyByName(context.Background(), name)
+}
+
+// KeyExists checks if a key exists by name and algorithm.
+func (s *Store) KeyExists(name, algorithm string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count, err := s.queries.KeyExists(context.Background(), sqlc.KeyExistsParams{
+		Name:      name,
+		Algorithm: algorithm,
+	})
+
+	return count > 0, err
+}
+
+// KeyExistsByName checks if a key exists by name (any algorithm).
+func (s *Store) KeyExistsByName(name string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count, err := s.queries.KeyExistsByName(context.Background(), name)
+
+	return count > 0, err
+}
+
+// ListAllKeys returns all keys (used during key rotation).
+func (s *Store) ListAllKeys() ([]sqlc.VaultKey, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.queries.ListAllKeys(context.Background())
+}
+
 // === Rotation operations ===
 
 // ListAllSecrets returns all secrets across all profiles.

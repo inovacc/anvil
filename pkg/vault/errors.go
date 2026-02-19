@@ -110,6 +110,29 @@ var (
 		Hint:    "Provide a valid 24-word BIP-39 mnemonic",
 	}
 
+	// ErrKeyNotFound is returned when an asymmetric key does not exist.
+	ErrKeyNotFound = &UserError{
+		Message: "key not found",
+		Hint:    "Run 'anvil key list' to see available keys",
+	}
+
+	// ErrKeyAlreadyExists is returned when trying to create a key that already exists.
+	ErrKeyAlreadyExists = &UserError{
+		Message: "key already exists",
+		Hint:    "Choose a different name or delete the existing key",
+	}
+
+	// ErrUnsupportedAlgorithm is returned for an unsupported key algorithm.
+	ErrUnsupportedAlgorithm = &UserError{
+		Message: "unsupported algorithm",
+		Hint:    "Supported algorithms: ed25519, ecdsa-p256",
+	}
+
+	// ErrSignatureInvalid is returned when signature verification fails.
+	ErrSignatureInvalid = &UserError{
+		Message: "invalid signature",
+	}
+
 	// ErrRecoveryMismatch is returned when the mnemonic does not match the vault.
 	ErrRecoveryMismatch = &UserError{
 		Message: "recovery phrase does not match this vault",

@@ -82,6 +82,37 @@ type AppInfo struct {
 	LastAccessedAt time.Time `json:"last_accessed_at"`
 }
 
+// KeyAlgorithm represents a supported asymmetric key algorithm.
+type KeyAlgorithm = string
+
+const (
+	AlgorithmEd25519   KeyAlgorithm = "ed25519"
+	AlgorithmECDSAP256 KeyAlgorithm = "ecdsa-p256"
+)
+
+// KeyInfo contains asymmetric key metadata.
+type KeyInfo struct {
+	Name        string    `json:"name"`
+	Algorithm   string    `json:"algorithm"`
+	Fingerprint string    `json:"fingerprint"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// SignResult contains the output of a sign operation.
+type SignResult struct {
+	Signature string `json:"signature"`
+	KeyName   string `json:"key_name"`
+	Algorithm string `json:"algorithm"`
+}
+
+// VerifyResult contains the output of a verify operation.
+type VerifyResult struct {
+	Valid     bool   `json:"valid"`
+	KeyName   string `json:"key_name"`
+	Algorithm string `json:"algorithm"`
+}
+
 // EnvReleaseOptions configures env release sessions.
 type EnvReleaseOptions struct {
 	ProfileName string

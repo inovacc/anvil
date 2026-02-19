@@ -125,6 +125,37 @@ func (v *Vault) rotateKeyTx(newKey []byte) (int64, string, error) {
 		}
 	}
 
+	// Re-encrypt all asymmetric keys.
+	keys, err := qtx.ListAllKeys(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, "", fmt.Errorf("list keys: %w", err)
+	}
+
+	for _, k := range keys {
+		privKey, err := crypto.Decrypt(v.masterKey, k.EncryptedPrivateKey, k.Nonce)
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, "", fmt.Errorf("decrypt key %q: %w", k.Name, err)
+		}
+
+		newCiphertext, newNonce, err := crypto.Encrypt(newKey, privKey)
+		crypto.ZeroBytes(privKey)
+
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, "", fmt.Errorf("re-encrypt key %q: %w", k.Name, err)
+		}
+
+		_, err = tx.ExecContext(ctx,
+			`UPDATE vault_keys SET encrypted_private_key = ?, nonce = ? WHERE id = ?`,
+			newCiphertext, newNonce, k.ID)
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, "", fmt.Errorf("update key %q: %w", k.Name, err)
+		}
+	}
+
 	// Get current sealed key for version bump.
 	sk, err := qtx.GetSealedKey(ctx)
 	if err != nil {
