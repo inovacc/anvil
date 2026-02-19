@@ -112,6 +112,11 @@ type VaultRecovery interface {
 	HasRecovery() (bool, error)
 }
 
+// VaultIdentity provides installation identity operations.
+type VaultIdentity interface {
+	InstallationID() (string, error)
+}
+
 // Compile-time interface satisfaction checks.
 var (
 	_ VaultReader      = (*Vault)(nil)
@@ -126,4 +131,5 @@ var (
 	_ VaultSeal        = (*Vault)(nil)
 	_ VaultAppRegistry = (*Vault)(nil)
 	_ VaultRecovery    = (*Vault)(nil)
+	_ VaultIdentity    = (*Vault)(nil)
 )
