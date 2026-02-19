@@ -7,6 +7,7 @@ machine.
 
 - **TPM 2.0 Hardware-Backed Sealing** — Master key sealed to TPM hardware when available, software HKDF fallback
   otherwise
+- **BIP-39 Mnemonic Recovery** — 24-word recovery phrase generated at init for vault recovery on new machines
 - **Machine-Bound Encryption** — AES-256-GCM with HKDF-SHA256, non-portable by design
 - **Profile Management** — Organize secrets into named profiles with default selection
 - **Secret CRUD** — Set, get, delete, list, export, and import encrypted secrets
@@ -23,8 +24,11 @@ machine.
   denied export)
 - **Vault Seal/Unseal** — Temporarily lock all vault operations with `vault seal` / `vault unseal`
 - **Version Lockdown** — Archived versions are metadata-only with 30-day retention; accessible only via rollback
+- **Per-App Isolated Vaults** — Register external apps with dedicated vault databases and scoped access
+- **Machine-Bound Installation ID** — Deterministic `SHA-256(machine_id_hash || sealed_data)` identifier queryable via
+  `anvil id`
 - **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`,
-  `VaultPassword`, `VaultScoped`) for external consumers
+  `VaultPassword`, `VaultScoped`, `VaultRecovery`, `VaultIdentity`) for external consumers
 - **Password-Gated Env Release** — Time-limited secret access with bcrypt password gate
 - **Multi-Format Export** — JSON, env, bash export, and PowerShell formats
 - **Inline Secret Access** — Single secret retrieval via `--env-inline` flag
@@ -194,7 +198,8 @@ func NewService(reader vault.VaultReader) *Service {
 ```
 
 Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (
-password ops), `VaultScoped` (isolated single-profile access), `VaultSeal` (seal/unseal).
+password ops), `VaultScoped` (isolated single-profile access), `VaultSeal` (seal/unseal), `VaultRecovery` (mnemonic recovery),
+`VaultIdentity` (machine-bound installation ID).
 
 ## CLI Tools
 
@@ -253,6 +258,8 @@ anvil
 │   │   ├── hook-remove   Remove a hook
 │   │   ├── provider-add  Add a secret provider
 │   │   └── provider-remove Remove a secret provider
+│   ├── recover           Recover vault using 24-word mnemonic
+│   ├── recovery-phrase   Show the vault recovery phrase
 │   ├── seal              Temporarily lock the vault
 │   ├── unseal            Unlock a sealed vault
 │   ├── share
@@ -262,6 +269,7 @@ anvil
 │       ├── export        Write secrets as individual files
 │       ├── clean         Remove exported secret files
 │       └── compose       Generate Docker Compose YAML snippet
+├── id                    Show machine-bound installation ID
 ├── cmdtree               Display command tree
 ├── aicontext             Generate AI-readable documentation
 └── completion            Shell completion scripts
@@ -277,13 +285,15 @@ anvil
 - **Time-limited sessions** with automatic expiry for env release
 - **Memory zeroing** — master key wiped from memory on vault close
 - Secrets are **never cached on disk** in plaintext
-- Database is **non-portable** — only works on the originating machine
+- Database is **non-portable** — only works on the originating machine (unless recovered via mnemonic)
+- **BIP-39 recovery phrase** — 24-word mnemonic shown at init allows vault recovery on new machines
 - `vault status` shows current seal method (`tpm` or `software`)
 
 ## Development
 
 ```bash
 task build          # Build to dist/
+task install        # Install locally via go install
 task test           # Run all tests with coverage
 task lint           # Run golangci-lint
 task check          # All quality checks (fmt, vet, lint, test)

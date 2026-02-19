@@ -18,7 +18,7 @@ graph TB
     subgraph Core["pkg/vault/ — Public API"]
         Vault["Vault"]
         EnvOps["Env Release"]
-        Ifaces["Interfaces<br/>VaultReader / VaultWriter<br/>VaultEnv / VaultPassword"]
+        Ifaces["Interfaces<br/>VaultReader / VaultWriter<br/>VaultEnv / VaultPassword / VaultIdentity"]
     end
 
     subgraph Internal["internal/"]
@@ -64,6 +64,7 @@ graph LR
     root["anvil"]
 
     root --> envInline["--env-inline KEY"]
+    root --> id["id"]
     root --> vault["vault"]
 
     vault --> init["init"]
@@ -93,6 +94,8 @@ graph LR
     vault --> tui["tui"]
     vault --> gather["gather"]
     vault --> rollback["rollback"]
+    vault --> recover["recover"]
+    vault --> recphrase["recovery-phrase"]
     vault --> seal["seal"]
     vault --> unseal["unseal"]
 
@@ -223,6 +226,26 @@ erDiagram
         int builtin "0 or 1"
         datetime created_at
         datetime updated_at
+    }
+
+    vault_recovery {
+        int id PK "CHECK (id = 1)"
+        blob mnemonic_hash "SHA-256 of BIP-39 mnemonic"
+        int enabled "0 or 1"
+        datetime created_at
+    }
+
+    vault_apps {
+        int id PK
+        text uuid UK "unique UUID"
+        text name UK "unique name"
+        text description
+        text service_id
+        text db_path
+        text status "active or disabled"
+        int secret_count
+        datetime created_at
+        datetime last_accessed_at
     }
 
     vault_profiles ||--o{ vault_secrets : "CASCADE delete"
@@ -591,6 +614,8 @@ graph LR
         SV["vault_secret_versions<br/>Archived secret values"]
         AL["vault_audit_log<br/>Action history"]
         TM["vault_templates<br/>Secret templates (JSON)"]
+        AP["vault_apps<br/>App registry"]
+        RC["vault_recovery<br/>BIP-39 mnemonic hash"]
     end
 
     DB --> SK

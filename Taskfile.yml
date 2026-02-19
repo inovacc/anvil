@@ -1,7 +1,7 @@
 version: 3
 
 vars:
-  MAIN_PACKAGE: .
+  MAIN_PACKAGE: ./cmd/anvil/
   COVERAGE_FILE: coverage.out
   GITHUB_OWNER:
     sh: echo "${GITHUB_OWNER:-dyammarcano}"
@@ -98,6 +98,12 @@ tasks:
       - go get -u ./...
       - go mod tidy
       - go mod verify
+
+  # === INSTALL TASKS ===
+  install:
+    desc: Install the application locally using go install
+    cmds:
+      - go install {{.MAIN_PACKAGE}}
 
   # === CLEANUP ===
   clean:

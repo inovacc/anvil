@@ -165,6 +165,31 @@
 - Built with bubbletea/lipgloss/bubbles (table component for secrets with Key/Description/Created/Updated columns)
 - Keyboard-driven navigation: dashboard → profiles → secrets → secret form
 
+### Per-App Isolated Vaults
+
+- **Status:** Completed (v0.8.0)
+- Register external apps with dedicated vault databases
+- UUID-based app identification, scoped secret access
+- `vault app register/list/remove/disable/enable` commands
+
+### BIP-39 Mnemonic Recovery
+
+- **Status:** Completed (v0.8.0)
+- 24-word BIP-39 recovery phrase generated during vault init
+- Allows vault master key recovery on a new machine if TPM dies or machine changes
+- `recover` command re-seals master key to current machine from mnemonic
+- `recovery-phrase` command displays the 24 words (requires password verification)
+- Only SHA-256 hash of mnemonic stored in DB — mnemonic never persisted
+
+### Machine-Bound Installation ID
+
+- **Status:** Completed (v0.8.x)
+- Deterministic `SHA-256(machine_id_hash || sealed_data)` identifier
+- Queryable via `anvil id` (supports `--json`)
+- Exposed in `pkg/vault` via `VaultIdentity` interface
+- No extra storage — computed from existing `vault_sealed_key` data
+- Changes on vault recovery to new machine (new machine ID + new sealed data)
+
 ## Proposed
 
 _No proposed features at this time._
