@@ -179,6 +179,21 @@ func printCompactMarkdown(w io.Writer, commands []aiCommandInfo) {
 	}
 }
 
+// visibleSubcommands returns non-hidden, non-help subcommands.
+func visibleSubcommands(cmd *cobra.Command) []*cobra.Command {
+	var result []*cobra.Command
+
+	for _, c := range cmd.Commands() {
+		if c.Hidden || c.Name() == "help" {
+			continue
+		}
+
+		result = append(result, c)
+	}
+
+	return result
+}
+
 func init() {
 	aicontextCmd.Flags().Bool("compact", false, "Shorter markdown output")
 	aicontextCmd.Flags().String("category", "", "Filter by command group (vault, env, profile)")

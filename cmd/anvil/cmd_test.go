@@ -739,13 +739,13 @@ func TestCmdTreeJSONCLI(t *testing.T) {
 
 	stdout, _ := execCmd(t, "cmdtree", "--json")
 
-	var entries []cmdTreeEntry
-	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {
+	var detail CommandDetail
+	if err := json.Unmarshal([]byte(stdout), &detail); err != nil {
 		t.Fatalf("cmdtree JSON parse: %v\noutput: %q", err, stdout)
 	}
 
-	if len(entries) < 10 {
-		t.Errorf("expected many commands, got %d", len(entries))
+	if len(detail.Subcommands) < 5 {
+		t.Errorf("expected many subcommands, got %d", len(detail.Subcommands))
 	}
 }
 

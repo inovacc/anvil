@@ -421,36 +421,34 @@ func TestVisibleSubcommands(t *testing.T) {
 	}
 }
 
-func TestFlattenCommands(t *testing.T) {
+func TestBuildCommandDetail(t *testing.T) {
 	parent := &cobra.Command{Use: "root", Short: "Root cmd"}
 	child := &cobra.Command{Use: "child", Short: "Child cmd"}
 	parent.AddCommand(child)
 
-	entries := flattenCommands(parent, "")
-	if len(entries) < 2 {
-		t.Errorf("expected at least 2 entries, got %d", len(entries))
+	detail := buildCommandDetail(parent)
+	if detail.Name != "root" {
+		t.Errorf("root name = %q, want 'root'", detail.Name)
 	}
 
-	if entries[0].Name != "root" {
-		t.Errorf("first entry = %q, want 'root'", entries[0].Name)
+	if len(detail.Subcommands) < 1 {
+		t.Errorf("expected at least 1 subcommand, got %d", len(detail.Subcommands))
 	}
 }
 
-func TestPrintTree(t *testing.T) {
+func TestBuildTree(t *testing.T) {
 	parent := &cobra.Command{Use: "root"}
-	child1 := &cobra.Command{Use: "alpha"}
-	child2 := &cobra.Command{Use: "beta"}
+	child1 := &cobra.Command{Use: "alpha", Short: "Alpha cmd"}
+	child2 := &cobra.Command{Use: "beta", Short: "Beta cmd"}
 	parent.AddCommand(child1, child2)
 
-	var buf bytes.Buffer
-	printTree(&buf, parent, "")
-	output := buf.String()
+	output := string(buildTree(parent))
 
 	if !strings.Contains(output, "alpha") || !strings.Contains(output, "beta") {
 		t.Errorf("expected alpha and beta in tree, got: %q", output)
 	}
 
-	if !strings.Contains(output, "├") || !strings.Contains(output, "└") {
+	if !strings.Contains(output, "+--") && !strings.Contains(output, "\\--") {
 		t.Errorf("expected tree connectors, got: %q", output)
 	}
 }
