@@ -30,8 +30,7 @@ task test:coverage  # Generate HTML coverage report
 ```bash
 task fmt            # Format code (go fmt + goimports)
 task vet            # Static analysis
-task lint           # golangci-lint
-task lint:fix       # Lint with auto-fix
+task lint           # golangci-lint (with --fix)
 task check          # All quality checks (fmt, vet, lint, test)
 ```
 
@@ -56,25 +55,34 @@ task release:check      # Validate goreleaser config
 ```
 anvil/
 ├── cmd/anvil/      # CLI commands (Cobra) — binary name: anvil
+│   ├── main.go     # Entry point, rootCmd, --json and --env-inline flags
+│   ├── register.go # Subcommand registration
 │   ├── output.go   # JSON/text output helper (outputResult, tableWriter)
 │   ├── errors.go   # User-friendly error formatting (handleError)
+│   ├── helpers.go  # Shared CLI helpers (readPassword)
 │   ├── cmdtree.go  # Command tree visualization
 │   ├── aicontext.go # AI context documentation generator
+│   ├── id.go       # Machine-bound installation ID command
+│   ├── vault_app.go # Per-app isolated vault commands
+│   ├── vault_recover.go # BIP-39 mnemonic recovery command
+│   ├── vault_recovery_phrase.go # Show recovery phrase command
 │   └── vault_gather.go # Recursive secret discovery from .env/JSON/YAML files
 ├── internal/       # Private application code
 │   ├── application/ # Application directory resolution (cross-platform)
-│   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID
+│   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID, BIP-39 mnemonic, installation ID
 │   ├── sentinel/   # Time-limited release session management (sealbox packed encrypt)
 │   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles — table views for all screens)
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
 ├── pkg/vault/      # Public vault API (types, interfaces, UserError, TPM-first init/open)
-│   ├── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword, VaultAudit, VaultVersioning, VaultKeyRotation interfaces
+│   ├── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword, VaultAudit, VaultVersioning, VaultKeyRotation, VaultRecovery, VaultIdentity interfaces
+│   ├── identity.go # Machine-bound installation ID (deterministic SHA-256)
 │   ├── audit.go    # Audit logging (best-effort, never blocks operations)
 │   ├── versions.go # Secret versioning and rollback
 │   ├── rotate.go   # Master key rotation with transactional re-encryption
 │   └── plugin.go   # Plugin system: event hooks and secret providers
+├── tests/pentest/  # Security penetration tests (crypto, auth, injection, access control)
 ├── docs/           # Documentation
 ├── Taskfile.yml    # Task runner configuration
 ├── .golangci.yml   # Linter configuration
@@ -87,12 +95,15 @@ anvil/
 
 | Package                              | Purpose                                                                         |
 |--------------------------------------|---------------------------------------------------------------------------------|
+| `github.com/tyler-smith/go-bip39`    | BIP-39 mnemonic generation and validation for vault recovery                    |
 | `github.com/inovacc/sealbox`         | TPM 2.0 hardware-backed key sealing, AES-256-GCM packed encrypt, memory zeroing |
 | `github.com/spf13/cobra`             | CLI framework                                                                   |
 | `github.com/charmbracelet/bubbletea` | TUI framework                                                                   |
 | `github.com/charmbracelet/bubbles`   | TUI components (table, textinput)                                               |
 | `github.com/charmbracelet/lipgloss`  | TUI styling                                                                     |
+| `github.com/google/uuid`             | UUID generation for profiles and app registration                               |
 | `golang.org/x/crypto`                | HKDF-SHA256, bcrypt                                                             |
+| `gopkg.in/yaml.v3`                   | YAML parsing for gather, templates, and config files                            |
 | `modernc.org/sqlite`                 | Pure Go SQLite (no CGO)                                                         |
 
 ## Security Architecture
@@ -138,6 +149,9 @@ Vault init tries TPM 2.0 first, falls back to software HKDF:
 - `migrations/003_seal_method.sql` — adds `seal_method` column to `vault_sealed_key`
 - `migrations/004_audit_log.sql` — audit log table
 - `migrations/005_secret_versions.sql` — secret version history table
+- `migrations/006_templates.sql` — templates table
+- `migrations/007_vault_apps.sql` — app registry table
+- `migrations/008_recovery.sql` — BIP-39 recovery verification table
 - Idempotent `ALTER TABLE` runs in `store.Open()` for pre-migration databases
 
 ### sqlc Workflow
@@ -173,6 +187,12 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
 - TPM tests use `t.Skip("TPM not available")` when `!sealbox.IsAvailable()`
 - `pkg/vault` is the public module boundary — never expose `internal/` types in its signatures
 - `pkg/vault/iface.go` has compile-time `var _ Interface = (*Vault)(nil)` checks — update when adding public methods
+- `InitWithRecovery()` replaces `Init()` in CLI — generates BIP-39 mnemonic from master key, stores hash in `vault_recovery`
+- `RecoverFromMnemonic()` is a package-level function (like `Init`) — converts mnemonic back to master key, re-seals to current machine
+- `ShowRecoveryPhrase()` requires an open vault — converts live master key to mnemonic via `bip39.NewMnemonic`
+- Only the SHA-256 hash of the mnemonic is stored in the DB — the mnemonic itself is never persisted
+- `InstallationID()` is deterministic: `SHA-256(machine_id_hash || sealed_data)` — no extra storage, computed from existing `vault_sealed_key` data
+- `anvil id` is a top-level command — opens vault, prints 64-char hex ID, supports `--json`
 - `toReleaseState()` in `env.go` converts internal `sentinel.ReleaseState` to public `vault.ReleaseState`
 - Audit logging is best-effort — `logAudit()` never returns errors, only logs via `slog.Error`
 - Secret versioning: `Set` archives previous value; `Delete` removes version history
