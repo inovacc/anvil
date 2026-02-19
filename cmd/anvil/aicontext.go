@@ -46,6 +46,7 @@ var aicontextCmd = &cobra.Command{
 				printFullMarkdown(w, commands)
 			}
 		})
+
 		return nil
 	},
 }

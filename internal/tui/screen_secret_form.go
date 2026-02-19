@@ -113,8 +113,8 @@ func (f secretFormModel) View(width int) string {
 	b.WriteString("\n\n")
 
 	for i, label := range []string{"Key", "Value", "Description"} {
-		b.WriteString(fmt.Sprintf("  %s\n", labelStyle.Render(label)))
-		b.WriteString(fmt.Sprintf("  %s\n\n", f.inputs[i].View()))
+		fmt.Fprintf(&b, "  %s\n", labelStyle.Render(label))
+		fmt.Fprintf(&b, "  %s\n\n", f.inputs[i].View())
 	}
 
 	if f.message != "" {

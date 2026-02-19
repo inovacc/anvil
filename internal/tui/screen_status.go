@@ -78,7 +78,7 @@ func (s statusModel) View(width int) string {
 	var info strings.Builder
 
 	row := func(label, value string) {
-		info.WriteString(fmt.Sprintf("  %s  %s\n", labelStyle.Width(14).Render(label), valueStyle.Render(value)))
+		fmt.Fprintf(&info, "  %s  %s\n", labelStyle.Width(14).Render(label), valueStyle.Render(value))
 	}
 
 	row("Database", st.DBPath)

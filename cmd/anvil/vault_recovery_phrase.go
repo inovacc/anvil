@@ -17,6 +17,7 @@ var vaultRecoveryPhraseCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		password, _ := cmd.Flags().GetString("password")
@@ -52,13 +53,16 @@ var vaultRecoveryPhraseCmd = &cobra.Command{
 		}{mnemonic, words}, func() {
 			w := cmd.OutOrStdout()
 			_, _ = fmt.Fprintln(w, "Recovery Phrase (24 words):")
+
 			_, _ = fmt.Fprintln(w, "")
 			for i, word := range words {
 				_, _ = fmt.Fprintf(w, "  %2d. %s\n", i+1, word)
 			}
+
 			_, _ = fmt.Fprintln(w, "")
 			_, _ = fmt.Fprintln(w, "WARNING: Store this phrase securely. Anyone with these words can recover your vault.")
 		})
+
 		return nil
 	},
 }

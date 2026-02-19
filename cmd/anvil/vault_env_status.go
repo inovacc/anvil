@@ -16,6 +16,7 @@ var vaultEnvStatusCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		state, err := v.EnvStatus()
@@ -37,12 +38,14 @@ var vaultEnvStatusCmd = &cobra.Command{
 				if state.Active {
 					return state.ExpiresAt.Format(time.RFC3339)
 				}
+
 				return ""
 			}(),
 			Remaining: func() string {
 				if state.Active {
 					return state.Remaining.Truncate(time.Second).String()
 				}
+
 				return ""
 			}(),
 		}, func() {
@@ -58,6 +61,7 @@ var vaultEnvStatusCmd = &cobra.Command{
 			_, _ = fmt.Fprintf(w, "Expires:   %s\n", state.ExpiresAt.Format(time.RFC3339))
 			_, _ = fmt.Fprintf(w, "Remaining: %s\n", state.Remaining.Truncate(time.Second))
 		})
+
 		return nil
 	},
 }

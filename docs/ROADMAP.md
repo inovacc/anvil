@@ -108,17 +108,27 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 - [x] CLI integration tests (`cmd/cmd_test.go` via `ANVIL_DB_PATH` env var)
 - [x] Encryption/decryption benchmarks
 
+### Phase 8: Recovery & App Isolation [COMPLETE]
+
+- [x] BIP-39 mnemonic recovery phrase (24-word) generated during vault init
+- [x] `recover` command: restore vault on new machine from mnemonic
+- [x] `recovery-phrase` command: show recovery words (password-gated)
+- [x] SHA-256 mnemonic hash stored in `vault_recovery` table (mnemonic never persisted)
+- [x] Per-app isolated vault databases (`vault app register/list/remove/disable/enable`)
+- [x] App-scoped vault access with dedicated SQLite databases
+
 ## Test Coverage
 
 **Target:** 80%
 
 | Package              | Coverage | Status                                                       |
 |----------------------|----------|--------------------------------------------------------------|
-| internal/store       | 95.7%    | Excellent                                                    |
+| internal/store       | 79.2%    | Good — near target                                           |
 | internal/sentinel    | 78.6%    | Good — bounded by error path mocking                         |
-| internal/crypto      | 75.8%    | Good — bounded by TPM branches                               |
-| pkg/vault            | 75.9%    | Good — bounded by TPM + platform branches                    |
+| internal/crypto      | 76.1%    | Good — bounded by TPM branches, mnemonic funcs covered       |
 | internal/application | 72.7%    | Good — bounded by platform-specific paths                    |
-| cmd                  | 71.3%    | 40+ integration tests; bounded by slow crypto ops            |
-| internal/tui         | 50.5%    | Fair — pure logic tested, vault-dependent paths need mocking |
-| internal/store/sqlc  | N/A      | Generated code                                               |
+| pkg/vault            | 68.8%    | Fair — bounded by TPM + platform branches + recovery code    |
+| cmd/anvil            | 67.0%    | Integration tests; TestAuditLogCLI failing                   |
+| internal/tui         | 42.9%    | Low — vault-dependent paths need mocking                     |
+| internal/store/sqlc  | 0.0%     | Generated code (excluded from target)                        |
+| **Total**            | **55.9%** | Below 80% target — sqlc generated code pulls down average   |

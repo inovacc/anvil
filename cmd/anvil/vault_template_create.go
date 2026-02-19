@@ -19,6 +19,7 @@ var vaultTemplateCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		data, err := os.ReadFile(args[0])
@@ -59,6 +60,7 @@ var vaultTemplateCreateCmd = &cobra.Command{
 		}{def.Name, fmt.Sprintf("Template %q created.", def.Name)}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Template %q created.\n", def.Name)
 		})
+
 		return nil
 	},
 }

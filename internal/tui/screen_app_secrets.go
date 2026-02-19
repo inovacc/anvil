@@ -75,6 +75,7 @@ func (s appSecretsModel) loadData() tea.Cmd {
 		if err != nil {
 			return appSecretsLoadedMsg{err: err}
 		}
+
 		defer func() { _ = av.Close() }()
 
 		secrets, err := av.List()
@@ -158,7 +159,7 @@ func (s appSecretsModel) View(width int) string {
 	b.WriteString("\n")
 
 	if s.revealKey != "" {
-		b.WriteString(fmt.Sprintf("  %s: %s\n", labelStyle.Render(s.revealKey), valueStyle.Render(s.revealValue)))
+		fmt.Fprintf(&b, "  %s: %s\n", labelStyle.Render(s.revealKey), valueStyle.Render(s.revealValue))
 	}
 
 	if s.message != "" {

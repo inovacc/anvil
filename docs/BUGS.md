@@ -2,7 +2,9 @@
 
 ## Open Bugs
 
-_No known bugs at this time._
+| Bug | Severity | Workaround |
+|-----|----------|------------|
+| `TestAuditLogCLI` fails — expects audit entry for `secret.set` but gets "No audit log entries" | Medium | Skip test or investigate audit log timing in integration tests |
 
 ## Resolved Bugs
 

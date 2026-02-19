@@ -13,7 +13,9 @@ func withVault(fn func(v *vault.Vault) tea.Msg) tea.Cmd {
 		if err != nil {
 			return vaultErrorMsg{err: err}
 		}
+
 		defer func() { _ = v.Close() }()
+
 		return fn(v)
 	}
 }

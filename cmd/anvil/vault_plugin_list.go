@@ -33,6 +33,7 @@ var vaultPluginListCmd = &cobra.Command{
 		if out.Hooks == nil {
 			out.Hooks = []vault.HookConfig{}
 		}
+
 		if out.Providers == nil {
 			out.Providers = []vault.ProviderConfig{}
 		}
@@ -44,6 +45,7 @@ var vaultPluginListCmd = &cobra.Command{
 			if len(cfg.Hooks) == 0 {
 				_, _ = fmt.Fprintln(w, "  (none)")
 			}
+
 			for _, h := range cfg.Hooks {
 				_, _ = fmt.Fprintf(w, "  [%s] %s %v\n", h.Event, h.Command, h.Args)
 			}
@@ -52,6 +54,7 @@ var vaultPluginListCmd = &cobra.Command{
 			if len(cfg.Providers) == 0 {
 				_, _ = fmt.Fprintln(w, "  (none)")
 			}
+
 			for _, p := range cfg.Providers {
 				_, _ = fmt.Fprintf(w, "  %s (prefix: %s) → %s\n", p.Name, p.Prefix, p.Command)
 			}

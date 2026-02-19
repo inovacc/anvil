@@ -21,6 +21,7 @@ var vaultPluginProviderRemoveCmd = &cobra.Command{
 		}
 
 		configPath := filepath.Join(filepath.Dir(dbPath), "plugins.json")
+
 		pm := vault.NewPluginManager(configPath)
 		if err := pm.RemoveProvider(name); err != nil {
 			return err

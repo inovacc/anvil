@@ -22,6 +22,7 @@ var vaultStatusCmd = &cobra.Command{
 				_, _ = fmt.Fprintln(w, "Vault is not initialized.")
 				_, _ = fmt.Fprintf(w, "Database path: %s\n", status.DBPath)
 				_, _ = fmt.Fprintln(w, "Run 'profile vault init' to initialize.")
+
 				return
 			}
 
@@ -31,11 +32,13 @@ var vaultStatusCmd = &cobra.Command{
 			_, _ = fmt.Fprintf(w, "  Profiles:     %d\n", status.ProfileCount)
 			_, _ = fmt.Fprintf(w, "  Secrets:      %d\n", status.SecretCount)
 			_, _ = fmt.Fprintf(w, "  Key version:  %d\n", status.KeyVersion)
+
 			_, _ = fmt.Fprintf(w, "  Seal method:  %s\n", status.SealMethod)
 			if !status.CreatedAt.IsZero() {
 				_, _ = fmt.Fprintf(w, "  Created:      %s\n", status.CreatedAt.Format("2006-01-02 15:04:05"))
 			}
 		})
+
 		return nil
 	},
 }

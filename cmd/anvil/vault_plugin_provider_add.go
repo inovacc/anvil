@@ -25,6 +25,7 @@ Example:
 		}
 
 		configPath := filepath.Join(filepath.Dir(dbPath), "plugins.json")
+
 		pm := vault.NewPluginManager(configPath)
 		if err := pm.AddProvider(name, command, prefix); err != nil {
 			return err

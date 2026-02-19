@@ -18,6 +18,7 @@ var vaultRecoverCmd = &cobra.Command{
 
 		if mnemonic == "" {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Enter your 24-word recovery phrase (all on one line):")
+
 			scanner := bufio.NewScanner(cmd.InOrStdin())
 			if scanner.Scan() {
 				mnemonic = strings.TrimSpace(scanner.Text())
@@ -39,6 +40,7 @@ var vaultRecoverCmd = &cobra.Command{
 			_, _ = fmt.Fprintln(w, "Vault recovered and re-sealed to this machine.")
 			_, _ = fmt.Fprintf(w, "Database: %s\n", vault.DefaultDBPath())
 		})
+
 		return nil
 	},
 }

@@ -21,6 +21,7 @@ var vaultImportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -41,6 +42,7 @@ var vaultImportCmd = &cobra.Command{
 		}{len(entries), fmt.Sprintf("Imported %d secrets.", len(entries))}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Imported %d secrets.\n", len(entries))
 		})
+
 		return nil
 	},
 }

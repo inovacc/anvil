@@ -17,6 +17,7 @@ var idCmd = &cobra.Command{
 			handleError(cmd, err)
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		id, err := v.InstallationID()

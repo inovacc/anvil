@@ -80,6 +80,19 @@
 - **Effort:** Medium
 - **Status:** DONE — archived versions show only version+timestamp, 30-day retention with auto-purge
 
+### Recovery & Portability
+
+- **Priority:** P1
+- **Description:** BIP-39 mnemonic recovery for vault master key
+- **Effort:** Medium
+- **Status:** DONE — `recover` and `recovery-phrase` commands; 24-word mnemonic generated at init, SHA-256 hash stored in
+  `vault_recovery` table
+
+- **Priority:** P1
+- **Description:** Per-app isolated vault databases
+- **Effort:** Large
+- **Status:** DONE — `vault app register/list/remove/disable/enable/open` commands; dedicated SQLite databases per app
+
 ### Sync
 
 - **Priority:** P3
@@ -91,9 +104,8 @@
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** MOSTLY DONE — store 95.7%, sentinel 78.6%, crypto 75.8%, vault 75.9%, application 72.7%, cmd 71.3%, tui
-  50.5%. Remaining gaps bounded by TPM branches, platform-specific code, and vault-dependent TUI paths requiring
-  mocking.
+- **Status:** IN PROGRESS — Total 55.9%. store 79.2%, sentinel 78.6%, crypto 76.1%, application 72.7%, vault 68.8%, cmd
+  67.0% (TestAuditLogCLI failing), tui 42.9%. Gaps: sqlc generated code (0%), TUI needs mocking, TPM/platform branches.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands

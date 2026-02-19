@@ -24,6 +24,7 @@ var cmdTreeCmd = &cobra.Command{
 			_, _ = fmt.Fprintln(w, rootCmd.Name())
 			printTree(w, rootCmd, "")
 		})
+
 		return nil
 	},
 }

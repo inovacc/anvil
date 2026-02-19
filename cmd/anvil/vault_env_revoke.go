@@ -15,6 +15,7 @@ var vaultEnvRevokeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.EnvRevoke(); err != nil {
@@ -26,6 +27,7 @@ var vaultEnvRevokeCmd = &cobra.Command{
 		}{"Release revoked."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Release revoked.")
 		})
+
 		return nil
 	},
 }

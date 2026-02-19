@@ -16,6 +16,7 @@ var vaultDeleteCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -30,6 +31,7 @@ var vaultDeleteCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Secret %q deleted.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Secret %q deleted.\n", args[0])
 		})
+
 		return nil
 	},
 }

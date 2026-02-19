@@ -16,6 +16,7 @@ var vaultGetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -31,6 +32,7 @@ var vaultGetCmd = &cobra.Command{
 		}{args[0], value}, func() {
 			_, _ = fmt.Fprint(cmd.OutOrStdout(), value)
 		})
+
 		return nil
 	},
 }

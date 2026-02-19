@@ -19,6 +19,7 @@ var appRegisterCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		name, _ := cmd.Flags().GetString("name")
@@ -46,6 +47,7 @@ var appListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		apps, err := v.ListApps()
@@ -83,6 +85,7 @@ var appInfoCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		info, err := v.GetApp(args[0])
@@ -119,6 +122,7 @@ var appRemoveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.RemoveApp(args[0]); err != nil {
@@ -144,6 +148,7 @@ var appDisableCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.DisableApp(args[0]); err != nil {
@@ -169,6 +174,7 @@ var appEnableCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.EnableApp(args[0]); err != nil {
@@ -194,6 +200,7 @@ var appSetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		description, _ := cmd.Flags().GetString("description")
@@ -202,6 +209,7 @@ var appSetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = av.Close() }()
 
 		if err := av.Set(args[1], args[2], description); err != nil {
@@ -228,12 +236,14 @@ var appGetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		av, err := v.OpenApp(args[0])
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = av.Close() }()
 
 		value, err := av.Get(args[1])
@@ -261,12 +271,14 @@ var appDeleteCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		av, err := v.OpenApp(args[0])
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = av.Close() }()
 
 		if err := av.Delete(args[1]); err != nil {
@@ -293,12 +305,14 @@ var appListSecretsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		av, err := v.OpenApp(args[0])
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = av.Close() }()
 
 		secrets, err := av.List()
@@ -336,12 +350,14 @@ var appExportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		av, err := v.OpenApp(args[0])
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = av.Close() }()
 
 		entries, err := av.Export()
@@ -378,12 +394,14 @@ var appImportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		av, err := v.OpenApp(args[0])
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = av.Close() }()
 
 		format, _ := cmd.Flags().GetString("format")

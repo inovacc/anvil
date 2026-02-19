@@ -287,6 +287,7 @@ func (m model) updateContent(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case screenAppSecrets:
 			m.currentScreen = screenApps
 			m.sidebar.moveCursorToScreen(screenApps)
+
 			return m, m.apps.loadData()
 		default:
 			m.focus = focusSidebar
@@ -1132,6 +1133,7 @@ func (m model) updateAppSecretsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						return appSecretRevealMsg{key: key, err: err}
 					}
+
 					defer func() { _ = av.Close() }()
 
 					val, err := av.Get(key)
@@ -1159,6 +1161,7 @@ func (m model) updateAppSecretsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					return appSecretActionMsg{err: err}
 				}
+
 				defer func() { _ = av.Close() }()
 
 				if err := av.Delete(key); err != nil {

@@ -21,6 +21,7 @@ Example:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		event := vault.HookEvent(args[0])
 		command := args[1]
+
 		var hookArgs []string
 		if len(args) > 2 {
 			hookArgs = args[2:]
@@ -32,6 +33,7 @@ Example:
 		}
 
 		configPath := filepath.Join(filepath.Dir(dbPath), "plugins.json")
+
 		pm := vault.NewPluginManager(configPath)
 		if err := pm.AddHook(event, command, hookArgs); err != nil {
 			return err

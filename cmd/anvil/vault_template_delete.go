@@ -16,6 +16,7 @@ var vaultTemplateDeleteCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.DeleteTemplate(args[0]); err != nil {
@@ -28,6 +29,7 @@ var vaultTemplateDeleteCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Template %q deleted.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Template %q deleted.\n", args[0])
 		})
+
 		return nil
 	},
 }

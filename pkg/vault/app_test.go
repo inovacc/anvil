@@ -100,6 +100,7 @@ func TestOpenAppSetGetDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenApp: %v", err)
 	}
+
 	defer func() { _ = av.Close() }()
 
 	if err := av.Set("DB_HOST", "localhost", "database host"); err != nil {
@@ -176,6 +177,7 @@ func TestOpenAppExportImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenApp: %v", err)
 	}
+
 	defer func() { _ = av2.Close() }()
 
 	if err := av2.Import(entries); err != nil {

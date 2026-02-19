@@ -15,6 +15,7 @@ var vaultTemplateListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		templates, err := v.ListTemplates()
@@ -34,9 +35,11 @@ var vaultTemplateListCmd = &cobra.Command{
 				if t.Builtin {
 					marker = "* "
 				}
+
 				_, _ = fmt.Fprintf(w, "%s%s (%d vars, %d secrets) - %s\n", marker, t.Name, t.VarCount, t.SecretCount, t.Description)
 			}
 		})
+
 		return nil
 	},
 }

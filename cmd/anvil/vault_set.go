@@ -16,6 +16,7 @@ var vaultSetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -31,6 +32,7 @@ var vaultSetCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Secret %q set.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Secret %q set.\n", args[0])
 		})
+
 		return nil
 	},
 }

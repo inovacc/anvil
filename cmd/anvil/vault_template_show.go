@@ -16,6 +16,7 @@ var vaultTemplateShowCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		def, err := v.GetTemplate(args[0])
@@ -25,6 +26,7 @@ var vaultTemplateShowCmd = &cobra.Command{
 
 		outputResult(cmd, def, func() {
 			w := cmd.OutOrStdout()
+
 			_, _ = fmt.Fprintf(w, "Template: %s\n", def.Name)
 			if def.Description != "" {
 				_, _ = fmt.Fprintf(w, "Description: %s\n", def.Description)
@@ -32,15 +34,18 @@ var vaultTemplateShowCmd = &cobra.Command{
 
 			if len(def.Variables) > 0 {
 				_, _ = fmt.Fprintln(w, "\nVariables:")
+
 				for _, v := range def.Variables {
 					req := ""
 					if v.Required {
 						req = " (required)"
 					}
+
 					def := ""
 					if v.Default != "" {
 						def = fmt.Sprintf(" [default: %s]", v.Default)
 					}
+
 					_, _ = fmt.Fprintf(w, "  %s%s%s - %s\n", v.Name, req, def, v.Description)
 				}
 			}
@@ -50,6 +55,7 @@ var vaultTemplateShowCmd = &cobra.Command{
 				_, _ = fmt.Fprintf(w, "  %s = %s\n", s.Key, s.Value)
 			}
 		})
+
 		return nil
 	},
 }

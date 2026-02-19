@@ -16,6 +16,7 @@ var vaultSealCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.Seal(); err != nil {
@@ -27,6 +28,7 @@ var vaultSealCmd = &cobra.Command{
 		}{"Vault sealed."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Vault sealed. All operations are locked until unsealed.")
 		})
+
 		return nil
 	},
 }
@@ -45,6 +47,7 @@ var vaultUnsealCmd = &cobra.Command{
 		}{"Vault unsealed."}, func() {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Vault unsealed. Operations restored.")
 		})
+
 		return nil
 	},
 }

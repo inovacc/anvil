@@ -17,6 +17,7 @@ var vaultHistoryCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -30,19 +31,23 @@ var vaultHistoryCmd = &cobra.Command{
 			outputResult(cmd, []vault.SecretVersion{}, func() {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No version history for %q.\n", args[0])
 			})
+
 			return nil
 		}
 
 		outputResult(cmd, versions, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Version history for %q (%d versions):\n\n", args[0], len(versions))
 			tw := tableWriter(cmd.OutOrStdout())
+
 			_, _ = fmt.Fprintln(tw, "VERSION\tCREATED")
 			for _, ver := range versions {
 				_, _ = fmt.Fprintf(tw, "v%d\t%s\n", ver.Version, ver.CreatedAt.Format("2006-01-02 15:04:05"))
 			}
+
 			_ = tw.Flush()
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nUse 'anvil vault rollback %s <version>' to restore.\n", args[0])
 		})
+
 		return nil
 	},
 }
@@ -56,6 +61,7 @@ var vaultRollbackCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -76,6 +82,7 @@ var vaultRollbackCmd = &cobra.Command{
 		}{args[0], version, fmt.Sprintf("Secret %q rolled back to version %d.", args[0], version)}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Secret %q rolled back to version %d.\n", args[0], version)
 		})
+
 		return nil
 	},
 }

@@ -69,7 +69,16 @@
 - Dashboard, profile browser, secrets table view (Key/Description/Created/Updated)
 - Secret form for creating secrets and profiles
 - **Released:** v0.7.0
-- **Test Coverage:** store 95.7%, sentinel 78.6%, crypto 75.8%, vault 75.9%, application 72.7%, cmd 71.3%, tui 50.5%
+
+## v0.8.0 — Recovery & App Isolation (Complete)
+
+- BIP-39 mnemonic recovery phrase (24-word) for vault master key recovery on new machines
+- `recover` and `recovery-phrase` CLI commands
+- Per-app isolated vault databases with `vault app` commands
+- `vault_recovery` table (migration 008) and `vault_apps` table (migration 007)
+- `VaultRecovery` interface with compile-time check
+- **Released:** v0.8.0, v0.8.1
+- **Test Coverage (total):** 55.9% — store 79.2%, sentinel 78.6%, crypto 76.1%, application 72.7%, vault 68.8%, cmd 67.0%, tui 42.9%
 
 ## v1.0.0 — Production Ready (Planned)
 

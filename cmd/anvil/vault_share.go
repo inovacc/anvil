@@ -23,12 +23,15 @@ var vaultShareExportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
+
 		passphrase, _ := cmd.Flags().GetString("passphrase")
 		if passphrase == "" {
 			var err error
+
 			passphrase, err = readPassword("Passphrase: ")
 			if err != nil {
 				return err
@@ -70,12 +73,15 @@ var vaultShareImportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
+
 		passphrase, _ := cmd.Flags().GetString("passphrase")
 		if passphrase == "" {
 			var err error
+
 			passphrase, err = readPassword("Passphrase: ")
 			if err != nil {
 				return err

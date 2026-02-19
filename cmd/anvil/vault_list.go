@@ -15,6 +15,7 @@ var vaultListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -33,11 +34,13 @@ var vaultListCmd = &cobra.Command{
 
 			tw := tableWriter(w)
 			_, _ = fmt.Fprintln(tw, "KEY\tDESCRIPTION\tCREATED\tUPDATED")
+
 			for _, s := range secrets {
 				updated := "-"
 				if !s.UpdatedAt.IsZero() {
 					updated = s.UpdatedAt.Format("2006-01-02 15:04:05")
 				}
+
 				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
 					s.Key,
 					s.Description,
@@ -45,8 +48,10 @@ var vaultListCmd = &cobra.Command{
 					updated,
 				)
 			}
+
 			_ = tw.Flush()
 		})
+
 		return nil
 	},
 }

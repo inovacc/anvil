@@ -21,6 +21,7 @@ var vaultProfileCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		description, _ := cmd.Flags().GetString("description")
@@ -36,6 +37,7 @@ var vaultProfileCreateCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Profile %q created.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Profile %q created.\n", args[0])
 		})
+
 		return nil
 	},
 }
@@ -48,6 +50,7 @@ var vaultProfileListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profiles, err := v.ListProfiles()
@@ -64,15 +67,18 @@ var vaultProfileListCmd = &cobra.Command{
 
 			tw := tableWriter(w)
 			_, _ = fmt.Fprintln(tw, "NAME\tDEFAULT\tSECRETS\tDESCRIPTION\tCREATED")
+
 			for _, p := range profiles {
 				def := ""
 				if p.IsDefault {
 					def = "*"
 				}
+
 				created := "-"
 				if !p.CreatedAt.IsZero() {
 					created = p.CreatedAt.Format("2006-01-02 15:04:05")
 				}
+
 				_, _ = fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n",
 					p.Name,
 					def,
@@ -81,8 +87,10 @@ var vaultProfileListCmd = &cobra.Command{
 					created,
 				)
 			}
+
 			_ = tw.Flush()
 		})
+
 		return nil
 	},
 }
@@ -96,6 +104,7 @@ var vaultProfileDeleteCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.DeleteProfile(args[0]); err != nil {
@@ -108,6 +117,7 @@ var vaultProfileDeleteCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Profile %q deleted.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Profile %q deleted.\n", args[0])
 		})
+
 		return nil
 	},
 }
@@ -121,6 +131,7 @@ var vaultProfileUseCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		if err := v.UseProfile(args[0]); err != nil {
@@ -133,6 +144,7 @@ var vaultProfileUseCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Now using profile %q.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Now using profile %q.\n", args[0])
 		})
+
 		return nil
 	},
 }

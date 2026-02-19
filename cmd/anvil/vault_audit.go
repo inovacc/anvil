@@ -15,6 +15,7 @@ var vaultAuditCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -39,6 +40,7 @@ var vaultAuditCmd = &cobra.Command{
 			}
 
 			tw := tableWriter(cmd.OutOrStdout())
+
 			_, _ = fmt.Fprintln(tw, "TIMESTAMP\tACTION\tPROFILE\tKEY\tDETAIL")
 			for _, e := range entries {
 				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
@@ -49,6 +51,7 @@ var vaultAuditCmd = &cobra.Command{
 					e.Detail,
 				)
 			}
+
 			_ = tw.Flush()
 		})
 

@@ -28,17 +28,20 @@ func TestMasterKeyToMnemonicRoundTrip(t *testing.T) {
 
 func TestMasterKeyToMnemonic24Words(t *testing.T) {
 	key := make([]byte, 32)
+
 	mnemonic, err := MasterKeyToMnemonic(key)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	words := 0
+
 	for _, c := range mnemonic {
 		if c == ' ' {
 			words++
 		}
 	}
+
 	words++ // last word has no trailing space
 
 	if words != 24 {
@@ -61,9 +64,9 @@ func TestMnemonicToMasterKeyInvalid(t *testing.T) {
 }
 
 func TestMnemonicHash(t *testing.T) {
-	h1 := MnemonicHash("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
-	h2 := MnemonicHash("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
-	h3 := MnemonicHash("zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong")
+	h1 := MnemonicHash("abandon about")
+	h2 := MnemonicHash("abandon about")
+	h3 := MnemonicHash("zoo wrong")
 
 	if !bytes.Equal(h1, h2) {
 		t.Fatal("same mnemonic should produce same hash")

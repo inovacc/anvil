@@ -17,6 +17,7 @@ var vaultEnvExportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -35,6 +36,7 @@ var vaultEnvExportCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("marshal json: %w", err)
 			}
+
 			_, _ = fmt.Fprintln(w, string(data))
 		case "env":
 			for _, e := range entries {

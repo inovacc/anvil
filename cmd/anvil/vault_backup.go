@@ -18,11 +18,13 @@ var vaultBackupCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		password, _ := cmd.Flags().GetString("password")
 		if password == "" {
 			var err error
+
 			password, err = readPassword("Password: ")
 			if err != nil {
 				return err
@@ -62,11 +64,13 @@ var vaultRestoreCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		password, _ := cmd.Flags().GetString("password")
 		if password == "" {
 			var err error
+
 			password, err = readPassword("Password: ")
 			if err != nil {
 				return err

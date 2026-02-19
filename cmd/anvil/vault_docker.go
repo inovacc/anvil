@@ -24,6 +24,7 @@ var vaultDockerExportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -71,6 +72,7 @@ var vaultDockerCleanCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
@@ -81,6 +83,7 @@ var vaultDockerCleanCmd = &cobra.Command{
 		}
 
 		dir := args[0]
+
 		var removed int
 
 		for _, s := range secrets {
@@ -115,6 +118,7 @@ var vaultDockerComposeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")

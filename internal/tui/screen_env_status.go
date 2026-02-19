@@ -96,10 +96,10 @@ func (e envStatusModel) View(width int) string {
 	} else {
 		b.WriteString(successStyle.Render("  Status: active"))
 		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("  Profile:   %s\n", e.state.ProfileName))
-		b.WriteString(fmt.Sprintf("  Session:   %s\n", e.state.SessionID))
-		b.WriteString(fmt.Sprintf("  Expires:   %s\n", e.state.ExpiresAt.Format(time.RFC3339)))
-		b.WriteString(fmt.Sprintf("  Remaining: %s\n", e.state.Remaining.Truncate(time.Second)))
+		fmt.Fprintf(&b, "  Profile:   %s\n", e.state.ProfileName)
+		fmt.Fprintf(&b, "  Session:   %s\n", e.state.SessionID)
+		fmt.Fprintf(&b, "  Expires:   %s\n", e.state.ExpiresAt.Format(time.RFC3339))
+		fmt.Fprintf(&b, "  Remaining: %s\n", e.state.Remaining.Truncate(time.Second))
 		b.WriteString("\n")
 	}
 

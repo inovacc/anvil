@@ -18,17 +18,20 @@ var vaultTemplateApplyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = v.Close() }()
 
 		profileName, _ := cmd.Flags().GetString("profile")
 		setFlags, _ := cmd.Flags().GetStringSlice("set")
 
 		vars := make(map[string]string)
+
 		for _, s := range setFlags {
 			key, value, ok := strings.Cut(s, "=")
 			if !ok {
 				return fmt.Errorf("invalid --set format %q, expected KEY=VALUE", s)
 			}
+
 			vars[key] = value
 		}
 
@@ -42,6 +45,7 @@ var vaultTemplateApplyCmd = &cobra.Command{
 		}{args[0], fmt.Sprintf("Template %q applied.", args[0])}, func() {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Template %q applied.\n", args[0])
 		})
+
 		return nil
 	},
 }

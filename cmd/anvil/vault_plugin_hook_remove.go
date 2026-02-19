@@ -22,6 +22,7 @@ var vaultPluginHookRemoveCmd = &cobra.Command{
 		}
 
 		configPath := filepath.Join(filepath.Dir(dbPath), "plugins.json")
+
 		pm := vault.NewPluginManager(configPath)
 		if err := pm.RemoveHook(event, command); err != nil {
 			return err

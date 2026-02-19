@@ -120,6 +120,7 @@ func (s *AppStore) List() ([]AppSecret, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
 	var secrets []AppSecret

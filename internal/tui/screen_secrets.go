@@ -150,7 +150,7 @@ func (s secretsModel) View(width int) string {
 	b.WriteString("\n")
 
 	if s.revealKey != "" {
-		b.WriteString(fmt.Sprintf("  %s: %s\n", labelStyle.Render(s.revealKey), valueStyle.Render(s.revealValue)))
+		fmt.Fprintf(&b, "  %s: %s\n", labelStyle.Render(s.revealKey), valueStyle.Render(s.revealValue))
 	}
 
 	if s.message != "" {

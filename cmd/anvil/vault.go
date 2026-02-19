@@ -14,7 +14,9 @@ var vaultCmd = &cobra.Command{
 		if len(args) == 0 {
 			return cmd.Help()
 		}
+
 		rootCmd.SetArgs(args)
+
 		return rootCmd.Execute()
 	},
 }
