@@ -13,12 +13,21 @@ graph TB
         VaultCmd["vault"]
         EnvCmd["env"]
         ProfileCmd["profile"]
+        KeyCmd["key"]
+        SignCmd["sign / verify"]
+        AppCmd["app"]
+        MCPCmd["mcp serve"]
+    end
+
+    subgraph MCPLayer["internal/mcpserver/"]
+        MCPServer["MCP Server<br/>17 tools, 1 resource"]
     end
 
     subgraph Core["pkg/vault/ — Public API"]
         Vault["Vault"]
         EnvOps["Env Release"]
-        Ifaces["Interfaces<br/>VaultReader / VaultWriter<br/>VaultEnv / VaultPassword / VaultIdentity"]
+        Ifaces["Interfaces<br/>VaultReader / VaultWriter<br/>VaultEnv / VaultPassword / VaultIdentity<br/>VaultKeyManagement / VaultSigner"]
+        KeyOps["Key Management<br/>& Signing"]
     end
 
     subgraph Internal["internal/"]
@@ -46,6 +55,15 @@ graph TB
     VaultCmd --> Vault
     VaultCmd --> TUI
     TUI --> Vault
+    Root --> KeyCmd
+    Root --> SignCmd
+    KeyCmd --> KeyOps
+    SignCmd --> KeyOps
+    Root --> AppCmd
+    Root --> MCPCmd
+    MCPCmd --> MCPServer
+    MCPServer --> Vault
+    KeyOps --> Crypto
     EnvCmd --> EnvOps
     Vault --> Crypto
     Vault --> Store
@@ -65,7 +83,33 @@ graph LR
 
     root --> envInline["--env-inline KEY"]
     root --> id["id"]
+    root --> key["key"]
+    root --> sign["sign"]
+    root --> verify["verify"]
+    root --> app["app"]
+    root --> mcp["mcp"]
     root --> vault["vault"]
+
+    app --> aregister["register"]
+    app --> alist["list"]
+    app --> ainfo["info"]
+    app --> aremove["remove"]
+    app --> adisable["disable"]
+    app --> aenable["enable"]
+    app --> aset["set"]
+    app --> aget["get"]
+    app --> adelete["delete"]
+    app --> alistsecrets["list-secrets"]
+    app --> aexport["export"]
+    app --> aimport["import"]
+
+    mcp --> mserve["serve"]
+
+    key --> kgenerate["generate"]
+    key --> klist["list"]
+    key --> kdelete["delete"]
+    key --> kexport["export"]
+    key --> kimport["import"]
 
     vault --> init["init"]
     vault --> status["status"]
@@ -142,7 +186,10 @@ graph TD
     sealbox["sealbox<br/>(external)"]
 
     tui_pkg["internal/tui/"]
+    mcpsrv["internal/mcpserver/"]
     cmd --> vault
+    cmd --> mcpsrv
+    mcpsrv --> vault
     cmd --> tui_pkg
     tui_pkg --> vault
     vault --> store
@@ -246,6 +293,18 @@ erDiagram
         int secret_count
         datetime created_at
         datetime last_accessed_at
+    }
+
+    vault_keys {
+        int id PK
+        text name "UNIQUE(name, algorithm)"
+        text algorithm "ed25519 or ecdsa-p256"
+        blob encrypted_private_key "AES-256-GCM"
+        blob nonce "GCM nonce"
+        blob public_key "plaintext (not secret)"
+        text fingerprint "SHA-256(pubkey)[:8] hex"
+        text description
+        datetime created_at
     }
 
     vault_profiles ||--o{ vault_secrets : "CASCADE delete"

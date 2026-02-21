@@ -93,6 +93,20 @@
 - **Effort:** Large
 - **Status:** DONE — `vault app register/list/remove/disable/enable/open` commands; dedicated SQLite databases per app
 
+### Cryptography
+
+- **Priority:** P1
+- **Description:** Asymmetric key management with Ed25519 and ECDSA P-256
+- **Effort:** Large
+- **Status:** DONE — `key generate/list/delete/export/import`, `sign`, `verify` commands; encrypted private key storage in `vault_keys` table; PKCS8/PKIX PEM format; `VaultKeyManagement` and `VaultSigner` interfaces
+
+### MCP Integration
+
+- **Priority:** P1
+- **Description:** MCP server exposing vault operations as tools (secrets CRUD, key management, signing, audit, env export) via Go SDK
+- **Effort:** Large
+- **Status:** DONE — `anvil mcp serve` command; 17 tools (secret CRUD, profiles, keys, signing, audit, status, installation ID) and 1 resource (`anvil://status`); in-memory transport tests
+
 ### Sync
 
 - **Priority:** P3
@@ -104,8 +118,7 @@
 - **Priority:** P1
 - **Description:** Increase test coverage to 80%+ across all packages
 - **Effort:** Medium
-- **Status:** IN PROGRESS — Total 55.9%. store 79.2%, sentinel 78.6%, crypto 76.1%, application 72.7%, vault 68.8%, cmd
-  67.0% (TestAuditLogCLI failing), tui 42.9%. Gaps: sqlc generated code (0%), TUI needs mocking, TPM/platform branches.
+- **Status:** IN PROGRESS — Total 60.7%. output 81.8%, mcpserver 80.7%, cmd 80.0%, vault 79.5%, sentinel 78.6%, crypto 76.2%, application 72.7%, store 71.9%, tui 42.9%. Gaps: sqlc generated code (0%), TUI needs mocking, TPM/platform branches.
 
 - **Priority:** P2
 - **Description:** Add integration tests for CLI commands

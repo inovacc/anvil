@@ -27,6 +27,7 @@ var verifyCmd = &cobra.Command{
 		sigFile, _ := cmd.Flags().GetString("signature-file")
 
 		var data []byte
+
 		switch {
 		case filePath != "":
 			data, err = os.ReadFile(filePath)

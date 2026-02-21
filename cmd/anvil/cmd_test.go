@@ -206,7 +206,8 @@ func TestAuditLogCLI(t *testing.T) {
 	}
 
 	// Audit log should contain the set action.
-	stdout, stderr := execCmd(t, "vault", "audit")
+	// Explicitly clear -p to avoid flag leakage from other tests.
+	stdout, stderr := execCmd(t, "vault", "audit", "-p", "")
 	if stderr != "" {
 		t.Fatalf("audit error: %s", stderr)
 	}
@@ -216,7 +217,7 @@ func TestAuditLogCLI(t *testing.T) {
 	}
 
 	// JSON output.
-	stdout, _ = execCmd(t, "vault", "audit", "--json")
+	stdout, _ = execCmd(t, "vault", "audit", "-p", "", "--json")
 
 	var entries []map[string]any
 	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {

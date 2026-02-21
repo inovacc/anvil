@@ -117,18 +117,42 @@ Violating this rule means users lose access to their encrypted secrets. **There 
 - [x] Per-app isolated vault databases (`vault app register/list/remove/disable/enable`)
 - [x] App-scoped vault access with dedicated SQLite databases
 
+### Phase 9: Asymmetric Key Management [COMPLETE]
+
+- [x] Ed25519 and ECDSA P-256 key pair generation
+- [x] Encrypted private key storage in `vault_keys` table (migration 009)
+- [x] Key CRUD: generate, list, delete, export (PEM), import (PEM)
+- [x] Digital signing (`sign` command) with base64 output
+- [x] Signature verification (`verify` command) with exit code 0/1
+- [x] PKCS8/PKIX PEM format for interoperability with openssl
+- [x] Key rotation re-encrypts asymmetric private keys
+- [x] `VaultKeyManagement` and `VaultSigner` interfaces with compile-time checks
+- [x] Penetration tests for key management security (`tests/pentest/asymmetric_test.go`)
+
+### Phase 10: MCP Server [COMPLETE]
+
+- [x] MCP server exposing vault operations as tools (get/set/delete/list secrets, profiles, env)
+- [x] Key management tools (generate, list, delete, export)
+- [x] Signing and verification tools
+- [x] Audit log tool with profile filtering
+- [x] Resource endpoint for vault status (`anvil://status`)
+- [x] Stdio transport for CLI integration (`anvil mcp serve`)
+- [x] In-memory transport integration tests (17 tools, 1 resource)
+
 ## Test Coverage
 
 **Target:** 80%
 
 | Package              | Coverage | Status                                                       |
 |----------------------|----------|--------------------------------------------------------------|
-| internal/store       | 79.2%    | Good — near target                                           |
+| internal/output      | 81.8%    | Good — above target                                          |
+| internal/mcpserver   | 80.7%    | Good — above target                                          |
+| cmd/anvil            | 80.0%    | Good — at target                                             |
+| pkg/vault            | 79.5%    | Good — near target, bounded by TPM + platform branches       |
 | internal/sentinel    | 78.6%    | Good — bounded by error path mocking                         |
-| internal/crypto      | 76.1%    | Good — bounded by TPM branches, mnemonic funcs covered       |
+| internal/crypto      | 76.2%    | Good — bounded by TPM branches, mnemonic funcs covered       |
 | internal/application | 72.7%    | Good — bounded by platform-specific paths                    |
-| pkg/vault            | 68.8%    | Fair — bounded by TPM + platform branches + recovery code    |
-| cmd/anvil            | 67.0%    | Integration tests; TestAuditLogCLI failing                   |
+| internal/store       | 71.9%    | Good — near target                                           |
 | internal/tui         | 42.9%    | Low — vault-dependent paths need mocking                     |
 | internal/store/sqlc  | 0.0%     | Generated code (excluded from target)                        |
-| **Total**            | **55.9%** | Below 80% target — sqlc generated code pulls down average   |
+| **Total**            | **60.7%** | Below 80% target — sqlc generated code pulls down average   |

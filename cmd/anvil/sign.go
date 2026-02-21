@@ -25,6 +25,7 @@ var signCmd = &cobra.Command{
 		output, _ := cmd.Flags().GetString("output")
 
 		var data []byte
+
 		switch {
 		case filePath != "":
 			data, err = os.ReadFile(filePath)

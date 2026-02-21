@@ -63,20 +63,33 @@ anvil/
 │   ├── cmdtree.go  # Command tree visualization
 │   ├── aicontext.go # AI context documentation generator
 │   ├── id.go       # Machine-bound installation ID command
+│   ├── key.go      # Parent key command
+│   ├── key_generate.go # key generate <name> [--algorithm] [--description]
+│   ├── key_list.go  # key list (tabwriter output)
+│   ├── key_delete.go # key delete <name> [--algorithm]
+│   ├── key_export.go # key export <name> [--private] [--output]
+│   ├── key_import.go # key import <name> <pem-file>
+│   ├── sign.go     # sign --key <name> (--file | --string) [-o output]
+│   ├── verify.go   # verify --key <name> (--file | --string) (--signature | --signature-file)
 │   ├── vault_app.go # Per-app isolated vault commands
+│   ├── vault_app_cmds.go # App subcommands (register, list, info, set, get, delete, export, import)
+│   ├── mcp.go      # MCP server command (anvil mcp — stdio transport)
 │   ├── vault_recover.go # BIP-39 mnemonic recovery command
 │   ├── vault_recovery_phrase.go # Show recovery phrase command
 │   └── vault_gather.go # Recursive secret discovery from .env/JSON/YAML files
 ├── internal/       # Private application code
 │   ├── application/ # Application directory resolution (cross-platform)
-│   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID, BIP-39 mnemonic, installation ID
+│   ├── crypto/     # AES-256-GCM encryption, HKDF key derivation, TPM sealing, machine ID, BIP-39 mnemonic, installation ID, Ed25519/ECDSA-P256 asymmetric crypto
+│   ├── mcpserver/  # MCP server (tools + resources backed by pkg/vault)
 │   ├── sentinel/   # Time-limited release session management (sealbox packed encrypt)
 │   ├── tui/        # Interactive TUI (bubbletea/lipgloss/bubbles — table views for all screens)
 │   └── store/      # SQLite database store (mutex-protected ops)
 │       ├── sqlc/   # Generated query code (sqlc generate)
 │       └── vaultdb.go # Database operations wrapper
 ├── pkg/vault/      # Public vault API (types, interfaces, UserError, TPM-first init/open)
-│   ├── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword, VaultAudit, VaultVersioning, VaultKeyRotation, VaultRecovery, VaultIdentity interfaces
+│   ├── iface.go    # VaultReader, VaultWriter, VaultEnv, VaultPassword, VaultAudit, VaultVersioning, VaultKeyRotation, VaultRecovery, VaultIdentity, VaultKeyManagement, VaultSigner interfaces
+│   ├── keys.go     # Asymmetric key management (GenerateKey, ListKeys, DeleteKey, ExportKeyPEM, ImportKeyPEM)
+│   ├── sign.go     # Digital signing and verification (Sign, Verify)
 │   ├── identity.go # Machine-bound installation ID (deterministic SHA-256)
 │   ├── audit.go    # Audit logging (best-effort, never blocks operations)
 │   ├── versions.go # Secret versioning and rollback
@@ -105,6 +118,7 @@ anvil/
 | `golang.org/x/crypto`                | HKDF-SHA256, bcrypt                                                             |
 | `gopkg.in/yaml.v3`                   | YAML parsing for gather, templates, and config files                            |
 | `modernc.org/sqlite`                 | Pure Go SQLite (no CGO)                                                         |
+| `github.com/modelcontextprotocol/go-sdk` | MCP server SDK (tools, resources, stdio/in-memory transports)               |
 
 ## Security Architecture
 
@@ -152,6 +166,7 @@ Vault init tries TPM 2.0 first, falls back to software HKDF:
 - `migrations/006_templates.sql` — templates table
 - `migrations/007_vault_apps.sql` — app registry table
 - `migrations/008_recovery.sql` — BIP-39 recovery verification table
+- `migrations/009_vault_keys.sql` — Asymmetric key storage table (name, algorithm, encrypted private key, public key, fingerprint)
 - Idempotent `ALTER TABLE` runs in `store.Open()` for pre-migration databases
 
 ### sqlc Workflow
@@ -207,3 +222,15 @@ Regenerate after changing any `.sql` file. Generated code is in `internal/store/
   secret-pattern keys (password, token, api_key, etc.); interactive by default, `--yes -p <profile>` for non-interactive
 - Sentinel `defaultCacheDir()` respects `ANVIL_DB_PATH` env var — ensures test isolation for sentinel files
 - Integration tests reset `--json` persistent flag in `execCmd()` to prevent state leakage between tests
+- Asymmetric keys: Ed25519 (default) and ECDSA P-256; private keys AES-256-GCM encrypted in `vault_keys` table; public keys stored unencrypted for verification without decryption
+- `Sign` outputs base64-encoded signature; `Verify` returns `VerifyResult.Valid` bool, CLI exits 1 on invalid
+- Key rotation re-encrypts `vault_keys` private keys alongside secrets in `rotateKeyTx()`
+- PEM export/import uses PKCS8 (private) and PKIX (public) standard formats, interoperable with openssl
+- `key generate`, `key list`, `key delete`, `key export`, `key import` are subcommands of `key` parent command
+- `sign` and `verify` are top-level commands (not under `vault`)
+- MCP server: `anvil mcp` starts stdio JSON-RPC server; `internal/mcpserver/server.go` creates server backed by `pkg/vault`
+- MCP tools: `secret_get/set/delete/list`, `profile_list/create/delete`, `key_generate/list/delete/export`, `sign`, `verify`, `audit_log`, `vault_status`, `installation_id`
+- MCP resources: `anvil://status` (vault status JSON)
+- MCP tool handlers use typed input structs with `jsonschema` tags; return typed output structs (SDK auto-marshals)
+- MCP tests use `mcp.NewInMemoryTransports()` with real vault (temp DB + `ANVIL_SKIP_TPM=1`)
+- Excluded from MCP: password ops, key rotation, backup/restore, recovery phrase, seal/unseal, env release (security-sensitive)

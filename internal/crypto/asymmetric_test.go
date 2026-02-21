@@ -22,17 +22,22 @@ func TestGenerateKeyPair(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if len(kp.PrivateKey) == 0 {
 				t.Fatal("empty private key")
 			}
+
 			if len(kp.PublicKey) == 0 {
 				t.Fatal("empty public key")
 			}
+
 			if kp.Algorithm != tt.algorithm {
 				t.Fatalf("algorithm mismatch: got %s, want %s", kp.Algorithm, tt.algorithm)
 			}
@@ -70,6 +75,7 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("verify: %v", err)
 			}
+
 			if !valid {
 				t.Fatal("signature should be valid")
 			}
@@ -77,10 +83,12 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 			// Tamper with data
 			tampered := append([]byte{}, tt.data...)
 			tampered = append(tampered, 0xFF)
+
 			valid, err = Verify(kp.PublicKey, tt.algorithm, tampered, sig)
 			if err != nil {
 				t.Fatalf("verify tampered: %v", err)
 			}
+
 			if valid {
 				t.Fatal("tampered data should not verify")
 			}
@@ -123,13 +131,16 @@ func TestPEMRoundTrip(t *testing.T) {
 			}
 
 			pemData := MarshalPrivateKeyPEM(kp.PrivateKey)
+
 			keyBytes, isPrivate, alg, err := ParsePEMKey(pemData)
 			if err != nil {
 				t.Fatalf("parse PEM: %v", err)
 			}
+
 			if !isPrivate {
 				t.Fatal("should be private")
 			}
+
 			if alg != tt.algorithm {
 				t.Fatalf("algorithm: got %s, want %s", alg, tt.algorithm)
 			}
@@ -139,10 +150,12 @@ func TestPEMRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("sign: %v", err)
 			}
+
 			valid, err := Verify(kp.PublicKey, alg, []byte("test"), sig)
 			if err != nil {
 				t.Fatalf("verify: %v", err)
 			}
+
 			if !valid {
 				t.Fatal("should verify")
 			}
@@ -155,13 +168,16 @@ func TestPEMRoundTrip(t *testing.T) {
 			}
 
 			pemData := MarshalPublicKeyPEM(kp.PublicKey)
+
 			keyBytes, isPrivate, alg, err := ParsePEMKey(pemData)
 			if err != nil {
 				t.Fatalf("parse PEM: %v", err)
 			}
+
 			if isPrivate {
 				t.Fatal("should be public")
 			}
+
 			if alg != tt.algorithm {
 				t.Fatalf("algorithm: got %s, want %s", alg, tt.algorithm)
 			}
@@ -171,10 +187,12 @@ func TestPEMRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("sign: %v", err)
 			}
+
 			valid, err := Verify(keyBytes, alg, []byte("test"), sig)
 			if err != nil {
 				t.Fatalf("verify: %v", err)
 			}
+
 			if !valid {
 				t.Fatal("should verify")
 			}
@@ -213,6 +231,7 @@ func TestExtractPublicKeyFromPrivate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			if !valid {
 				t.Fatal("should verify with extracted public key")
 			}

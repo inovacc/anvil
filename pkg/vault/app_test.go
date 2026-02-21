@@ -1,7 +1,10 @@
 package vault_test
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/inovacc/anvil/pkg/vault"
 )
 
 func TestRegisterAndListApps(t *testing.T) {
@@ -287,5 +290,114 @@ func TestAppSecretCountUpdate(t *testing.T) {
 
 	if info.SecretCount != 2 {
 		t.Errorf("secret_count = %d, want 2", info.SecretCount)
+	}
+}
+
+func TestRotateKeyWithAppSecrets(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("rotpass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	// Register app and add secrets.
+	_, err := v.RegisterApp("rotapp", "rotation test", "svc-rot")
+	if err != nil {
+		t.Fatalf("RegisterApp: %v", err)
+	}
+
+	av, err := v.OpenApp("rotapp")
+	if err != nil {
+		t.Fatalf("OpenApp: %v", err)
+	}
+
+	if err := av.Set("APP_SECRET", "appval", "app secret"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	if err := av.Set("APP_KEY", "keyval", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	_ = av.Close()
+
+	// Rotate key — should re-encrypt app secrets via rotateAppSecrets.
+	if err := v.RotateKey("rotpass"); err != nil {
+		t.Fatalf("RotateKey: %v", err)
+	}
+
+	// App secrets still readable after rotation.
+	av, err = v.OpenApp("rotapp")
+	if err != nil {
+		t.Fatalf("OpenApp after rotation: %v", err)
+	}
+
+	defer func() { _ = av.Close() }()
+
+	val, err := av.Get("APP_SECRET")
+	if err != nil {
+		t.Fatalf("Get APP_SECRET after rotation: %v", err)
+	}
+
+	if val != "appval" {
+		t.Errorf("got %q, want appval", val)
+	}
+
+	val, err = av.Get("APP_KEY")
+	if err != nil {
+		t.Fatalf("Get APP_KEY after rotation: %v", err)
+	}
+
+	if val != "keyval" {
+		t.Errorf("got %q, want keyval", val)
+	}
+}
+
+func TestAppDeleteNonexistent(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.RegisterApp("delapp", "", "")
+	if err != nil {
+		t.Fatalf("RegisterApp: %v", err)
+	}
+
+	av, err := v.OpenApp("delapp")
+	if err != nil {
+		t.Fatalf("OpenApp: %v", err)
+	}
+
+	defer func() { _ = av.Close() }()
+
+	err = av.Delete("NOPE")
+	if !errors.Is(err, vault.ErrSecretNotFound) {
+		t.Errorf("expected ErrSecretNotFound, got %v", err)
+	}
+}
+
+func TestAppNilClose(t *testing.T) {
+	var av *vault.AppVault
+	if err := av.Close(); err != nil {
+		t.Errorf("Close nil AppVault: %v", err)
+	}
+}
+
+func TestRemoveAppNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.RemoveApp("nonexistent")
+	if err == nil {
+		t.Fatal("expected error removing nonexistent app")
+	}
+}
+
+func TestDisableEnableNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.DisableApp("nonexistent"); err == nil {
+		t.Fatal("expected error disabling nonexistent app")
+	}
+
+	if err := v.EnableApp("nonexistent"); err == nil {
+		t.Fatal("expected error enabling nonexistent app")
 	}
 }

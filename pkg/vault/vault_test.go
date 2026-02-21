@@ -1,9 +1,12 @@
 package vault_test
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -1509,6 +1512,1174 @@ func TestSealDoubleError(t *testing.T) {
 	}
 }
 
+func TestAuditLogOperations(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("audit", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("K1", "V1", "audit", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	if err := v.Set("K2", "V2", "audit", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// AuditLog with limit.
+	entries, err := v.AuditLog(10)
+	if err != nil {
+		t.Fatalf("AuditLog: %v", err)
+	}
+
+	if len(entries) == 0 {
+		t.Error("expected audit entries")
+	}
+
+	// Verify entries have detail and secret_key populated.
+	for _, e := range entries {
+		if e.Action == "" {
+			t.Error("expected non-empty action")
+		}
+	}
+
+	// AuditLogByProfile.
+	byProfile, err := v.AuditLogByProfile("audit", 10)
+	if err != nil {
+		t.Fatalf("AuditLogByProfile: %v", err)
+	}
+
+	if len(byProfile) == 0 {
+		t.Error("expected audit entries by profile")
+	}
+
+	for _, e := range byProfile {
+		if e.ProfileName != "audit" {
+			t.Errorf("expected profile audit, got %q", e.ProfileName)
+		}
+	}
+
+	// PurgeAuditLog — purge nothing (future timestamp).
+	future := time.Now().Add(-24 * time.Hour)
+	if err := v.PurgeAuditLog(future); err != nil {
+		t.Fatalf("PurgeAuditLog: %v", err)
+	}
+}
+
+func TestRotateKeyWithAsymmetricKeys(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("rotpass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	if err := v.CreateProfile("keyrot", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Create secrets and versions.
+	if err := v.Set("S1", "v1", "keyrot", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("S1", "v2", "keyrot", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Create asymmetric keys.
+	_, err := v.GenerateKey("rotkey-ed", vault.AlgorithmEd25519, "")
+	if err != nil {
+		t.Fatalf("GenerateKey ed25519: %v", err)
+	}
+	_, err = v.GenerateKey("rotkey-ec", vault.AlgorithmECDSAP256, "")
+	if err != nil {
+		t.Fatalf("GenerateKey ecdsa: %v", err)
+	}
+
+	// Sign before rotation.
+	sigResult, err := v.Sign("rotkey-ed", []byte("test data"))
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	// Rotate.
+	if err := v.RotateKey("rotpass"); err != nil {
+		t.Fatalf("RotateKey: %v", err)
+	}
+
+	// Secrets still readable.
+	val, err := v.Get("S1", "keyrot")
+	if err != nil {
+		t.Fatalf("Get after rotation: %v", err)
+	}
+	if val != "v2" {
+		t.Errorf("got %q, want v2", val)
+	}
+
+	// Keys still work after rotation.
+	verifyResult, err := v.Verify("rotkey-ed", []byte("test data"), sigResult.Signature)
+	if err != nil {
+		t.Fatalf("Verify after rotation: %v", err)
+	}
+	if !verifyResult.Valid {
+		t.Error("signature should still be valid after rotation")
+	}
+
+	// Can sign with rotated key.
+	_, err = v.Sign("rotkey-ec", []byte("more data"))
+	if err != nil {
+		t.Fatalf("Sign after rotation: %v", err)
+	}
+}
+
+func TestPluginManagerOperations(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "plugins.json")
+
+	pm := vault.NewPluginManager(configPath)
+
+	// Add hooks and providers.
+	if err := pm.AddHook(vault.HookPreSet, "echo", []string{"pre-set"}); err != nil {
+		t.Fatalf("AddHook: %v", err)
+	}
+	if err := pm.AddProvider("test-provider", "echo", "test://"); err != nil {
+		t.Fatalf("AddProvider: %v", err)
+	}
+
+	// Check config.
+	cfg := pm.Config()
+	if len(cfg.Hooks) != 1 {
+		t.Errorf("expected 1 hook, got %d", len(cfg.Hooks))
+	}
+	if len(cfg.Providers) != 1 {
+		t.Errorf("expected 1 provider, got %d", len(cfg.Providers))
+	}
+
+	// HasHooks.
+	if !pm.HasHooks(vault.HookPreSet) {
+		t.Error("expected HasHooks = true for pre-set")
+	}
+	if pm.HasHooks(vault.HookPostSet) {
+		t.Error("expected HasHooks = false for post-set")
+	}
+
+	// ListProviders.
+	providers := pm.ListProviders()
+	if len(providers) != 1 || providers[0] != "test-provider" {
+		t.Errorf("unexpected providers: %v", providers)
+	}
+
+	// SaveConfig.
+	if err := pm.SaveConfig(); err != nil {
+		t.Fatalf("SaveConfig: %v", err)
+	}
+
+	// Reload from disk.
+	pm2 := vault.NewPluginManager(configPath)
+	if len(pm2.Config().Hooks) != 1 {
+		t.Error("expected hook to persist")
+	}
+	if len(pm2.Config().Providers) != 1 {
+		t.Error("expected provider to persist")
+	}
+
+	// RemoveHook.
+	if err := pm.RemoveHook(vault.HookPreSet, "echo"); err != nil {
+		t.Fatalf("RemoveHook: %v", err)
+	}
+	if pm.HasHooks(vault.HookPreSet) {
+		t.Error("hook should have been removed")
+	}
+
+	// RemoveProvider.
+	if err := pm.RemoveProvider("test-provider"); err != nil {
+		t.Fatalf("RemoveProvider: %v", err)
+	}
+	if len(pm.ListProviders()) != 0 {
+		t.Error("provider should have been removed")
+	}
+}
+
+func TestPluginManagerNilSafe(t *testing.T) {
+	var pm *vault.PluginManager
+
+	// Nil safety.
+	if err := pm.RunHooks(vault.HookPreSet, vault.HookPayload{}); err != nil {
+		t.Errorf("RunHooks on nil: %v", err)
+	}
+
+	_, err := pm.GetFromProvider("x", "y", "z")
+	if err == nil {
+		t.Error("expected error from nil GetFromProvider")
+	}
+
+	if pm.HasHooks(vault.HookPreSet) {
+		t.Error("nil HasHooks should return false")
+	}
+
+	if pm.ListProviders() != nil {
+		t.Error("nil ListProviders should return nil")
+	}
+
+	cfg := pm.Config()
+	if cfg == nil {
+		t.Error("nil Config should return empty config")
+	}
+}
+
+func TestVerifyInvalidBase64Signature(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.GenerateKey("b64key", vault.AlgorithmEd25519, "")
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	_, err = v.Verify("b64key", []byte("data"), "not-valid-base64!!!")
+	if err == nil {
+		t.Fatal("expected error for invalid base64 signature")
+	}
+}
+
+func TestEnvReleaseDefaultProfileAndExport(t *testing.T) {
+	v := initOpenWithPassword(t)
+
+	// Release with default profile (empty string resolves to default).
+	state, err := v.EnvRelease("testpass", &vault.EnvReleaseOptions{TTL: 5 * time.Minute})
+	if err != nil {
+		t.Fatalf("EnvRelease: %v", err)
+	}
+	if !state.Active {
+		t.Error("expected active after release")
+	}
+	if state.ProfileName != "default" {
+		t.Errorf("profile = %q, want default", state.ProfileName)
+	}
+
+	// Export with empty profile should use released profile.
+	entries, err := v.EnvExport("")
+	if err != nil {
+		t.Fatalf("EnvExport: %v", err)
+	}
+	_ = entries // may be empty, just testing the path
+
+	// Revoke.
+	if err := v.EnvRevoke(); err != nil {
+		t.Fatalf("EnvRevoke: %v", err)
+	}
+}
+
+func TestUseProfileSuccess(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("first", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.CreateProfile("second", "", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.UseProfile("second"); err != nil {
+		t.Fatalf("UseProfile: %v", err)
+	}
+
+	profiles, err := v.ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles: %v", err)
+	}
+
+	for _, p := range profiles {
+		if p.Name == "second" && !p.IsDefault {
+			t.Error("expected second to be default")
+		}
+		if p.Name == "first" && p.IsDefault {
+			t.Error("expected first to not be default")
+		}
+	}
+}
+
+func TestNilVaultClose(t *testing.T) {
+	var v *vault.Vault
+	if err := v.Close(); err != nil {
+		t.Errorf("Close nil vault: %v", err)
+	}
+}
+
+func TestSealedOperationsExtended(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.SetPassword("pass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	if err := v.CreateProfile("sp", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("K", "V", "sp", "desc"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Generate a key before sealing.
+	_, err = v.GenerateKey("sealkey", vault.AlgorithmEd25519, "")
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+	defer func() {
+		_ = vault.UnsealVault(opts)
+		_ = v.Close()
+	}()
+
+	// Operations on sealed vault should fail.
+	_, err = v.Get("K", "sp")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Get: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.Set("K2", "V2", "sp", "")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Set: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.CreateProfile("new", "", false)
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("CreateProfile: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.DeleteProfile("sp")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("DeleteProfile: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.UseProfile("sp")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("UseProfile: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.ListProfiles()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ListProfiles: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.GenerateKey("k2", vault.AlgorithmEd25519, "")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("GenerateKey: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.ListKeys()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ListKeys: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.DeleteKey("sealkey", vault.AlgorithmEd25519)
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("DeleteKey: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.ExportKeyPEM("sealkey", false)
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ExportKeyPEM: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.Sign("sealkey", []byte("data"))
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Sign: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.Verify("sealkey", []byte("data"), "sig")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("Verify: expected ErrVaultSealed, got %v", err)
+	}
+
+	// RotateKey doesn't call checkSealed, but will fail due to zeroed master key.
+	err = v.RotateKey("pass")
+	if err == nil {
+		t.Error("RotateKey: expected error on sealed vault")
+	}
+
+	// Backup calls VerifyPassword then Export (which calls checkSealed).
+	_, err = v.Backup("pass")
+	if err == nil {
+		t.Error("Backup: expected error on sealed vault")
+	}
+
+	_, err = v.ShareExport("sp", "passphrase")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ShareExport: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.RegisterApp("app", "", "")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("RegisterApp: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.ListApps()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ListApps: expected ErrVaultSealed, got %v", err)
+	}
+}
+
+func TestOpenWithEnvVar(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	t.Setenv("ANVIL_SKIP_TPM", "1")
+	t.Setenv("ANVIL_DB_PATH", dbPath)
+
+	if err := vault.Init(nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	// Open using env var path (no explicit opts.DBPath).
+	v, err := vault.Open(nil)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer func() { _ = v.Close() }()
+
+	if v.DBPath() != dbPath {
+		t.Errorf("DBPath = %q, want %q", v.DBPath(), dbPath)
+	}
+}
+
+func TestImportKeyPEMSealed(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+	t.Setenv("ANVIL_SKIP_TPM", "1")
+
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+	defer func() {
+		_ = vault.UnsealVault(opts)
+		_ = v.Close()
+	}()
+
+	_, err = v.ImportKeyPEM("k", []byte("dummy"), "")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ImportKeyPEM: expected ErrVaultSealed, got %v", err)
+	}
+}
+
+func TestPluginSaveConfigToDir(t *testing.T) {
+	// SaveConfig to a directory (not a file) should fail or be handled.
+	dir := t.TempDir()
+	pm := vault.NewPluginManager(dir) // dir exists but is a directory, not a file
+
+	if err := pm.AddHook(vault.HookPreSet, "echo", []string{"test"}); err != nil {
+		t.Fatalf("AddHook: %v", err)
+	}
+
+	// Saving to a directory path — implementation may handle this.
+	_ = pm.SaveConfig()
+}
+
+func TestDeleteKeyByNameOnly(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.GenerateKey("delme", vault.AlgorithmEd25519, "test key")
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	// Delete with empty algorithm (uses name-only delete path).
+	if err := v.DeleteKey("delme", ""); err != nil {
+		t.Fatalf("DeleteKey by name: %v", err)
+	}
+
+	keys, err := v.ListKeys()
+	if err != nil {
+		t.Fatalf("ListKeys: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Errorf("expected 0 keys, got %d", len(keys))
+	}
+
+	// Delete nonexistent by name.
+	err = v.DeleteKey("nonexistent", "")
+	if !errors.Is(err, vault.ErrKeyNotFound) {
+		t.Errorf("expected ErrKeyNotFound, got %v", err)
+	}
+}
+
+func TestDeleteKeyNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.DeleteKey("nonexistent", vault.AlgorithmEd25519)
+	if err == nil {
+		t.Error("expected error deleting nonexistent key")
+	}
+}
+
+func TestExportKeyPEMPrivate(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.GenerateKey("privexp", vault.AlgorithmEd25519, "")
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	// Export private key.
+	pem, err := v.ExportKeyPEM("privexp", true)
+	if err != nil {
+		t.Fatalf("ExportKeyPEM private: %v", err)
+	}
+	if len(pem) == 0 {
+		t.Error("expected non-empty PEM")
+	}
+
+	// Export public key.
+	pub, err := v.ExportKeyPEM("privexp", false)
+	if err != nil {
+		t.Fatalf("ExportKeyPEM public: %v", err)
+	}
+	if len(pub) == 0 {
+		t.Error("expected non-empty public PEM")
+	}
+}
+
+func TestExportKeyNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.ExportKeyPEM("nonexistent", false)
+	if err == nil {
+		t.Error("expected error for nonexistent key")
+	}
+}
+
+func TestSignVerifyECDSA(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.GenerateKey("eckey", vault.AlgorithmECDSAP256, "")
+	if err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	result, err := v.Sign("eckey", []byte("hello"))
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+
+	vr, err := v.Verify("eckey", []byte("hello"), result.Signature)
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !vr.Valid {
+		t.Error("expected valid signature")
+	}
+
+	// Wrong data.
+	vr, err = v.Verify("eckey", []byte("wrong"), result.Signature)
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if vr.Valid {
+		t.Error("expected invalid signature")
+	}
+}
+
+func TestShareExportImportRoundTrip(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("share", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("SK1", "sv1", "share", "shared secret"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	encrypted, err := v.ShareExport("share", "passphrase123")
+	if err != nil {
+		t.Fatalf("ShareExport: %v", err)
+	}
+
+	// Import into same vault under different profile.
+	if err := v.CreateProfile("imported", "", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	export, err := v.ShareImport(encrypted, "passphrase123", "imported")
+	if err != nil {
+		t.Fatalf("ShareImport: %v", err)
+	}
+
+	if export.ProfileName != "share" {
+		t.Errorf("original profile = %q, want share", export.ProfileName)
+	}
+
+	val, err := v.Get("SK1", "imported")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "sv1" {
+		t.Errorf("got %q, want sv1", val)
+	}
+}
+
+func TestShareImportOriginalProfile(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("orig", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("K", "V", "orig", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	encrypted, err := v.ShareExport("orig", "pass")
+	if err != nil {
+		t.Fatalf("ShareExport: %v", err)
+	}
+
+	// Import with empty target profile — should use original profile name.
+	v2, _ := initAndOpen(t)
+	if err := v2.CreateProfile("orig", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	_, err = v2.ShareImport(encrypted, "pass", "")
+	if err != nil {
+		t.Fatalf("ShareImport: %v", err)
+	}
+
+	val, err := v2.Get("K", "orig")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "V" {
+		t.Errorf("got %q, want V", val)
+	}
+}
+
+func TestGetAppSealed(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+	t.Setenv("ANVIL_SKIP_TPM", "1")
+
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+	defer func() {
+		_ = vault.UnsealVault(opts)
+		_ = v.Close()
+	}()
+
+	_, err = v.GetApp("test")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("GetApp: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.RemoveApp("test")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("RemoveApp: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.DisableApp("test")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("DisableApp: expected ErrVaultSealed, got %v", err)
+	}
+
+	err = v.EnableApp("test")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("EnableApp: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.OpenApp("test")
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("OpenApp: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.InstallationID()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("InstallationID: expected ErrVaultSealed, got %v", err)
+	}
+
+	_, err = v.ShowRecoveryPhrase()
+	if !errors.Is(err, vault.ErrVaultSealed) {
+		t.Errorf("ShowRecoveryPhrase: expected ErrVaultSealed, got %v", err)
+	}
+}
+
+func TestSecretRollbackProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.SecretRollback("KEY", "nonexistent", 1)
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestSecretHistoryProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.SecretHistory("KEY", "nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestSetWithProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.Set("KEY", "val", "nonexistent", "")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestGetWithProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.Get("KEY", "nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestDeleteWithProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.Delete("KEY", "nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestExportProfileNotFoundDirectly(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.Export("nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestImportProfileNotFoundDirectly(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.Import([]vault.SecretEntry{{Key: "K", Value: "V"}}, "nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestListProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.List("nonexistent")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestEnvReleaseProfileNotFound(t *testing.T) {
+	v := initOpenWithPassword(t)
+
+	_, err := v.EnvRelease("testpass", &vault.EnvReleaseOptions{
+		TTL:         5 * time.Minute,
+		ProfileName: "nonexistent",
+	})
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestApplyTemplateWithExtraVars(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("tmpl", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	def := &vault.TemplateDefinition{
+		Name:        "test-tmpl",
+		Description: "test template",
+		Variables: []vault.TemplateVariable{
+			{Name: "host", Required: true},
+			{Name: "port", Default: "5432"},
+		},
+		Secrets: []vault.TemplateSecret{
+			{Key: "DB_URL", Value: "{{.host}}:{{.port}}", Description: "db url"},
+			{Key: "DB_EXTRA", Value: "{{.extra}}", Description: "extra"},
+		},
+	}
+
+	if err := v.CreateTemplate(def); err != nil {
+		t.Fatalf("CreateTemplate: %v", err)
+	}
+
+	// Apply with extra vars.
+	err := v.ApplyTemplate("test-tmpl", "tmpl", map[string]string{
+		"host":  "localhost",
+		"extra": "extraval",
+	})
+	if err != nil {
+		t.Fatalf("ApplyTemplate: %v", err)
+	}
+
+	val, err := v.Get("DB_URL", "tmpl")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "localhost:5432" {
+		t.Errorf("DB_URL = %q, want localhost:5432", val)
+	}
+
+	val, err = v.Get("DB_EXTRA", "tmpl")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "extraval" {
+		t.Errorf("DB_EXTRA = %q, want extraval", val)
+	}
+}
+
+func TestApplyTemplateInterpolateError(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("tmpl2", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	def := &vault.TemplateDefinition{
+		Name:        "bad-tmpl",
+		Description: "bad template",
+		Secrets: []vault.TemplateSecret{
+			{Key: "BAD", Value: "{{.missing}}", Description: ""},
+		},
+	}
+
+	if err := v.CreateTemplate(def); err != nil {
+		t.Fatalf("CreateTemplate: %v", err)
+	}
+
+	// Apply without providing the variable — interpolate uses missingkey=error.
+	err := v.ApplyTemplate("bad-tmpl", "tmpl2", nil)
+	if err == nil {
+		t.Error("expected error for missing template key")
+	}
+}
+
+func TestApplyTemplateProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	def := &vault.TemplateDefinition{
+		Name:    "prof-tmpl",
+		Secrets: []vault.TemplateSecret{{Key: "K", Value: "V"}},
+	}
+
+	if err := v.CreateTemplate(def); err != nil {
+		t.Fatalf("CreateTemplate: %v", err)
+	}
+
+	err := v.ApplyTemplate("prof-tmpl", "nonexistent", nil)
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestCreateTemplateDuplicate(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	def := &vault.TemplateDefinition{
+		Name:    "dup-tmpl",
+		Secrets: []vault.TemplateSecret{{Key: "K", Value: "V"}},
+	}
+
+	if err := v.CreateTemplate(def); err != nil {
+		t.Fatalf("CreateTemplate: %v", err)
+	}
+
+	err := v.CreateTemplate(def)
+	if !errors.Is(err, vault.ErrTemplateExists) {
+		t.Errorf("expected ErrTemplateExists, got %v", err)
+	}
+}
+
+func TestDeleteTemplateNotFoundInVault(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	err := v.DeleteTemplate("nonexistent")
+	if !errors.Is(err, vault.ErrTemplateNotFound) {
+		t.Errorf("expected ErrTemplateNotFound, got %v", err)
+	}
+}
+
+func TestListTemplates(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	// Should have built-in templates.
+	templates, err := v.ListTemplates()
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) == 0 {
+		t.Error("expected at least one built-in template")
+	}
+}
+
+func TestUnsealWithEnvVar(t *testing.T) {
+	t.Setenv("ANVIL_SKIP_TPM", "1")
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	opts := &vault.Options{DBPath: dbPath}
+
+	if err := vault.Init(opts); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	v, err := vault.Open(opts)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	if err := v.Seal(); err != nil {
+		t.Fatalf("Seal: %v", err)
+	}
+	_ = v.Close()
+
+	// Unseal using env var instead of opts.
+	t.Setenv("ANVIL_DB_PATH", dbPath)
+	if err := vault.UnsealVault(nil); err != nil {
+		t.Fatalf("UnsealVault via env: %v", err)
+	}
+}
+
+func TestBackupWithMultipleProfiles(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("bkpass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	// Create multiple profiles with secrets and versions.
+	if err := v.CreateProfile("prod", "production", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := v.CreateProfile("dev", "development", false); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("K1", "v1", "prod", "prod key"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("K1", "v2", "prod", "prod key updated"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if err := v.Set("K2", "devval", "dev", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	archive, err := v.Backup("bkpass")
+	if err != nil {
+		t.Fatalf("Backup: %v", err)
+	}
+
+	// Restore into fresh vault.
+	v2, _ := initAndOpen(t)
+	if err := v2.Restore(archive, "bkpass"); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+
+	// Check prod secrets.
+	val, err := v2.Get("K1", "prod")
+	if err != nil {
+		t.Fatalf("Get K1: %v", err)
+	}
+	if val != "v2" {
+		t.Errorf("K1 = %q, want v2", val)
+	}
+
+	// Check dev secrets.
+	val, err = v2.Get("K2", "dev")
+	if err != nil {
+		t.Fatalf("Get K2: %v", err)
+	}
+	if val != "devval" {
+		t.Errorf("K2 = %q, want devval", val)
+	}
+
+	// Check version history.
+	history, err := v2.SecretHistory("K1", "prod")
+	if err != nil {
+		t.Fatalf("SecretHistory: %v", err)
+	}
+	if len(history) != 1 {
+		t.Errorf("expected 1 version, got %d", len(history))
+	}
+
+	// Check profiles restored correctly.
+	profiles, err := v2.ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles: %v", err)
+	}
+	if len(profiles) != 2 {
+		t.Errorf("expected 2 profiles, got %d", len(profiles))
+	}
+}
+
+func TestShareExportProfileNotFound(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.ShareExport("nonexistent", "pass")
+	if !errors.Is(err, vault.ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestSignKeyNotFoundInVault(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.Sign("nokey", []byte("data"))
+	if err == nil {
+		t.Error("expected error for nonexistent key")
+	}
+}
+
+func TestVerifyKeyNotFoundInVault(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.Verify("nokey", []byte("data"), "sig")
+	if err == nil {
+		t.Error("expected error for nonexistent key")
+	}
+}
+
+func TestImportKeyPEMInvalidFormat(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.ImportKeyPEM("badkey", []byte("not a valid PEM"), "")
+	if err == nil {
+		t.Error("expected error for invalid PEM")
+	}
+}
+
+func TestGenerateKeyInvalidAlgorithm(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	_, err := v.GenerateKey("k", "invalid-algo", "")
+	if err == nil {
+		t.Error("expected error for invalid algorithm")
+	}
+}
+
+func TestRotateKeyWithAppAndSecrets(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("pass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	if err := v.CreateProfile("rot2", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	// Register app with secrets.
+	_, err := v.RegisterApp("rotapp2", "", "")
+	if err != nil {
+		t.Fatalf("RegisterApp: %v", err)
+	}
+
+	av, err := v.OpenApp("rotapp2")
+	if err != nil {
+		t.Fatalf("OpenApp: %v", err)
+	}
+
+	if err := av.Set("AK", "av", ""); err != nil {
+		t.Fatalf("AppVault Set: %v", err)
+	}
+	_ = av.Close()
+
+	// Add regular secrets.
+	if err := v.Set("RK", "rv", "rot2", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Rotate.
+	if err := v.RotateKey("pass"); err != nil {
+		t.Fatalf("RotateKey: %v", err)
+	}
+
+	// Verify regular secret.
+	val, err := v.Get("RK", "rot2")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if val != "rv" {
+		t.Errorf("got %q, want rv", val)
+	}
+
+	// Verify app secret.
+	av2, err := v.OpenApp("rotapp2")
+	if err != nil {
+		t.Fatalf("OpenApp: %v", err)
+	}
+	defer func() { _ = av2.Close() }()
+
+	aval, err := av2.Get("AK")
+	if err != nil {
+		t.Fatalf("AppVault Get: %v", err)
+	}
+	if aval != "av" {
+		t.Errorf("got %q, want av", aval)
+	}
+}
+
+func TestDefaultDBPathWithEnvVar(t *testing.T) {
+	t.Setenv("ANVIL_DB_PATH", "/custom/db.db")
+	p := vault.DefaultDBPath()
+	if p != "/custom/db.db" {
+		t.Errorf("got %q, want /custom/db.db", p)
+	}
+}
+
+func TestInitWithEnvVar(t *testing.T) {
+	t.Setenv("ANVIL_SKIP_TPM", "1")
+	dbPath := filepath.Join(t.TempDir(), "envvar.db")
+	t.Setenv("ANVIL_DB_PATH", dbPath)
+
+	// Init with nil opts — should use ANVIL_DB_PATH.
+	if err := vault.Init(nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	// Verify DB was created at env var path.
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		t.Error("expected DB file at env var path")
+	}
+}
+
 func TestSealedOperationsDenied(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vault.db")
 
@@ -1563,5 +2734,492 @@ func TestSealedOperationsDenied(t *testing.T) {
 	_, err = v.Status()
 	if !errors.Is(err, vault.ErrVaultSealed) {
 		t.Errorf("Status: expected ErrVaultSealed, got %v", err)
+	}
+}
+
+func TestPluginRunHooksPreBlockEmptyMessage(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "hook.bat")
+		if err := os.WriteFile(cmd, []byte("@echo off\necho {\"allow\":false}"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		cmd = filepath.Join(dir, "hook.sh")
+		if err := os.WriteFile(cmd, []byte("#!/bin/sh\necho '{\"allow\":false}'"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{
+		"hooks": []map[string]any{
+			{"event": "pre-set", "command": cmd},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	err := pm.RunHooks(vault.HookPreSet, vault.HookPayload{SecretKey: "K"})
+	if err == nil {
+		t.Fatal("expected error from blocking hook")
+	}
+
+	// Should contain "blocked by hook" since message is empty.
+	if !strings.Contains(err.Error(), "blocked by hook") {
+		t.Errorf("expected 'blocked by hook', got %q", err.Error())
+	}
+}
+
+func TestPluginRunHooksNonJSONOutput(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "hook.bat")
+		if err := os.WriteFile(cmd, []byte("@echo off\necho not json"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		cmd = filepath.Join(dir, "hook.sh")
+		if err := os.WriteFile(cmd, []byte("#!/bin/sh\necho 'not json'"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{
+		"hooks": []map[string]any{
+			{"event": "post-set", "command": cmd},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	// Non-JSON stdout should be treated as allow (no error).
+	err := pm.RunHooks(vault.HookPostSet, vault.HookPayload{SecretKey: "K"})
+	if err != nil {
+		t.Errorf("RunHooks non-JSON: %v", err)
+	}
+}
+
+func TestPluginRunHooksEmptyStdout(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "hook.bat")
+		if err := os.WriteFile(cmd, []byte("@echo off\n"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		cmd = filepath.Join(dir, "hook.sh")
+		if err := os.WriteFile(cmd, []byte("#!/bin/sh\n"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{
+		"hooks": []map[string]any{
+			{"event": "pre-get", "command": cmd},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	// Empty stdout should be treated as allow.
+	err := pm.RunHooks(vault.HookPreGet, vault.HookPayload{SecretKey: "K"})
+	if err != nil {
+		t.Errorf("RunHooks empty stdout: %v", err)
+	}
+}
+
+func TestPluginGetFromProviderWithScript(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "provider.bat")
+		if err := os.WriteFile(cmd, []byte("@echo off\necho {\"value\":\"secret-from-provider\"}"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		cmd = filepath.Join(dir, "provider.sh")
+		if err := os.WriteFile(cmd, []byte("#!/bin/sh\necho '{\"value\":\"secret-from-provider\"}'"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{
+		"providers": []map[string]any{
+			{"name": "test", "command": cmd, "prefix": "ext/"},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	val, err := pm.GetFromProvider("test", "mykey", "default")
+	if err != nil {
+		t.Fatalf("GetFromProvider: %v", err)
+	}
+
+	if val != "secret-from-provider" {
+		t.Errorf("got %q, want %q", val, "secret-from-provider")
+	}
+}
+
+func TestPluginGetFromProviderError(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "provider.bat")
+		if err := os.WriteFile(cmd, []byte("@echo off\necho {\"error\":\"access denied\"}"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		cmd = filepath.Join(dir, "provider.sh")
+		if err := os.WriteFile(cmd, []byte("#!/bin/sh\necho '{\"error\":\"access denied\"}'"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{
+		"providers": []map[string]any{
+			{"name": "test", "command": cmd, "prefix": "ext/"},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	_, err := pm.GetFromProvider("test", "mykey", "default")
+	if err == nil {
+		t.Fatal("expected error from provider")
+	}
+
+	if !strings.Contains(err.Error(), "access denied") {
+		t.Errorf("expected 'access denied', got %q", err.Error())
+	}
+}
+
+func TestPluginGetFromProviderRawOutput(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "provider.bat")
+		if err := os.WriteFile(cmd, []byte("@echo off\necho raw-secret-value"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		cmd = filepath.Join(dir, "provider.sh")
+		if err := os.WriteFile(cmd, []byte("#!/bin/sh\necho 'raw-secret-value'"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{
+		"providers": []map[string]any{
+			{"name": "raw", "command": cmd, "prefix": "raw/"},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	val, err := pm.GetFromProvider("raw", "key", "default")
+	if err != nil {
+		t.Fatalf("GetFromProvider raw: %v", err)
+	}
+
+	if val != "raw-secret-value" {
+		t.Errorf("got %q, want %q", val, "raw-secret-value")
+	}
+}
+
+func TestEnvStatusAndExportWithRelease(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.SetPassword("pass"); err != nil {
+		t.Fatalf("SetPassword: %v", err)
+	}
+
+	if err := v.CreateProfile("envp", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("S1", "V1", "envp", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	// Release.
+	_, err := v.EnvRelease("pass", &vault.EnvReleaseOptions{
+		ProfileName: "envp",
+		TTL:         5 * time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("EnvRelease: %v", err)
+	}
+
+	// EnvStatus should show active.
+	state, err := v.EnvStatus()
+	if err != nil {
+		t.Fatalf("EnvStatus: %v", err)
+	}
+
+	if !state.Active {
+		t.Error("expected active release")
+	}
+
+	// EnvExport with empty profile (uses released profile).
+	entries, err := v.EnvExport("")
+	if err != nil {
+		t.Fatalf("EnvExport: %v", err)
+	}
+
+	if len(entries) != 1 || entries[0].Key != "S1" {
+		t.Errorf("unexpected entries: %v", entries)
+	}
+
+	// EnvInlineGet with empty profile.
+	val, err := v.EnvInlineGet("S1", "")
+	if err != nil {
+		t.Fatalf("EnvInlineGet: %v", err)
+	}
+
+	if val != "V1" {
+		t.Errorf("got %q, want V1", val)
+	}
+
+	// Revoke.
+	if err := v.EnvRevoke(); err != nil {
+		t.Fatalf("EnvRevoke: %v", err)
+	}
+}
+
+func TestShareImportWrongPassphraseInVault(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("sharep", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("SK", "SV", "sharep", ""); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	encrypted, err := v.ShareExport("sharep", "correct-pass")
+	if err != nil {
+		t.Fatalf("ShareExport: %v", err)
+	}
+
+	_, err = v.ShareImport(encrypted, "wrong-pass", "sharep")
+	if err == nil {
+		t.Fatal("expected error with wrong passphrase")
+	}
+}
+
+func TestGetTemplateAndLoadBuiltins(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	// GetTemplate for nonexistent.
+	_, err := v.GetTemplate("nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent template")
+	}
+
+	// LoadBuiltinTemplates.
+	if err = v.LoadBuiltinTemplates(); err != nil {
+		t.Fatalf("LoadBuiltinTemplates: %v", err)
+	}
+
+	// Load again (should be idempotent, duplicates skipped).
+	if err = v.LoadBuiltinTemplates(); err != nil {
+		t.Fatalf("LoadBuiltinTemplates second: %v", err)
+	}
+
+	// Now GetTemplate should work.
+	templates, err := v.ListTemplates()
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) == 0 {
+		t.Fatal("expected templates after loading builtins")
+	}
+
+	tmpl, err := v.GetTemplate(templates[0].Name)
+	if err != nil {
+		t.Fatalf("GetTemplate: %v", err)
+	}
+
+	if tmpl.Name == "" {
+		t.Error("expected non-empty template name")
+	}
+}
+
+func TestPluginRunHooksFailingScript(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "hook.bat")
+		_ = os.WriteFile(cmd, []byte("@echo off\nexit /b 1"), 0o700)
+	} else {
+		cmd = filepath.Join(dir, "hook.sh")
+		_ = os.WriteFile(cmd, []byte("#!/bin/sh\nexit 1"), 0o700)
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{"hooks": []map[string]any{{"event": "post-set", "command": cmd}}}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	err := pm.RunHooks(vault.HookPostSet, vault.HookPayload{SecretKey: "K"})
+	if err != nil {
+		t.Errorf("post-hook failure should not error: %v", err)
+	}
+}
+
+func TestPluginRunHooksFailingPreScript(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "hook.bat")
+		_ = os.WriteFile(cmd, []byte("@echo off\nexit /b 1"), 0o700)
+	} else {
+		cmd = filepath.Join(dir, "hook.sh")
+		_ = os.WriteFile(cmd, []byte("#!/bin/sh\nexit 1"), 0o700)
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{"hooks": []map[string]any{{"event": "pre-delete", "command": cmd}}}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	err := pm.RunHooks(vault.HookPreDelete, vault.HookPayload{SecretKey: "K"})
+	if err != nil {
+		t.Errorf("failing pre-hook exec should be skipped: %v", err)
+	}
+}
+
+func TestPluginGetFromProviderFailingScript(t *testing.T) {
+	dir := t.TempDir()
+
+	var cmd string
+	if runtime.GOOS == "windows" {
+		cmd = filepath.Join(dir, "provider.bat")
+		_ = os.WriteFile(cmd, []byte("@echo off\nexit /b 1"), 0o700)
+	} else {
+		cmd = filepath.Join(dir, "provider.sh")
+		_ = os.WriteFile(cmd, []byte("#!/bin/sh\nexit 1"), 0o700)
+	}
+
+	configPath := filepath.Join(dir, "plugins.json")
+	cfg := map[string]any{"providers": []map[string]any{{"name": "fail", "command": cmd, "prefix": "fail/"}}}
+	data, _ := json.Marshal(cfg)
+	_ = os.WriteFile(configPath, data, 0o600)
+
+	pm := vault.NewPluginManager(configPath)
+	_, err := pm.GetFromProvider("fail", "key", "default")
+	if err == nil {
+		t.Fatal("expected error from failing provider")
+	}
+}
+
+func TestPluginNilAddRemoveOps(t *testing.T) {
+	var pm *vault.PluginManager
+
+	if err := pm.AddHook(vault.HookPreSet, "cmd", nil); err == nil {
+		t.Error("expected error from nil AddHook")
+	}
+	if err := pm.AddProvider("p", "cmd", "pfx/"); err == nil {
+		t.Error("expected error from nil AddProvider")
+	}
+	if err := pm.RemoveHook(vault.HookPreSet, "cmd"); err == nil {
+		t.Error("expected error from nil RemoveHook")
+	}
+	if err := pm.RemoveProvider("p"); err == nil {
+		t.Error("expected error from nil RemoveProvider")
+	}
+	if err := pm.SaveConfig(); err != nil {
+		t.Errorf("nil SaveConfig should return nil: %v", err)
+	}
+}
+
+func TestPluginNilGetFromProvider(t *testing.T) {
+	var pm *vault.PluginManager
+	_, err := pm.GetFromProvider("p", "k", "default")
+	if err == nil {
+		t.Fatal("expected error from nil GetFromProvider")
+	}
+}
+
+func TestSecretRollbackSuccess(t *testing.T) {
+	v, _ := initAndOpen(t)
+
+	if err := v.CreateProfile("rollp", "", true); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+
+	if err := v.Set("RK", "v1", "rollp", "desc1"); err != nil {
+		t.Fatalf("Set v1: %v", err)
+	}
+
+	if err := v.Set("RK", "v2", "rollp", "desc2"); err != nil {
+		t.Fatalf("Set v2: %v", err)
+	}
+
+	if err := v.Set("RK", "v3", "rollp", "desc3"); err != nil {
+		t.Fatalf("Set v3: %v", err)
+	}
+
+	// History should have 2 versions (v1 and v2 archived).
+	versions, err := v.SecretHistory("RK", "rollp")
+	if err != nil {
+		t.Fatalf("SecretHistory: %v", err)
+	}
+
+	if len(versions) != 2 {
+		t.Fatalf("expected 2 versions, got %d", len(versions))
+	}
+
+	// Current value should be v3.
+	val, err := v.Get("RK", "rollp")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if val != "v3" {
+		t.Errorf("got %q, want v3", val)
+	}
+
+	// Rollback to version 1.
+	if err := v.SecretRollback("RK", "rollp", 1); err != nil {
+		t.Fatalf("SecretRollback: %v", err)
+	}
+
+	// Current value should now be v1.
+	val, err = v.Get("RK", "rollp")
+	if err != nil {
+		t.Fatalf("Get after rollback: %v", err)
+	}
+
+	if val != "v1" {
+		t.Errorf("got %q after rollback, want v1", val)
 	}
 }

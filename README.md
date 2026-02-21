@@ -25,6 +25,10 @@ machine.
 - **Vault Seal/Unseal** — Temporarily lock all vault operations with `vault seal` / `vault unseal`
 - **Version Lockdown** — Archived versions are metadata-only with 30-day retention; accessible only via rollback
 - **Per-App Isolated Vaults** — Register external apps with dedicated vault databases and scoped access
+- **Asymmetric Key Management** — Generate, list, delete, export, and import Ed25519 and ECDSA P-256 key pairs stored
+  encrypted in the vault
+- **Digital Signing & Verification** — Sign files or strings with vault-stored keys; verify signatures with exit code
+  feedback
 - **Machine-Bound Installation ID** — Deterministic `SHA-256(machine_id_hash || sealed_data)` identifier queryable via
   `anvil id`
 - **Public Go API** — Clean `pkg/vault` module with interfaces (`VaultReader`, `VaultWriter`, `VaultEnv`,
@@ -36,6 +40,7 @@ machine.
 - **Interactive TUI** — Terminal UI for browsing profiles and managing secrets (`vault tui`)
 - **User-Friendly Errors** — Clean error messages with actionable hints, no usage dump on errors
 - **Memory Safety** — Master key zeroed on vault close via `sealbox.SecureZero`
+- **MCP Server** — Expose vault operations as MCP tools for AI agent integration (`anvil mcp serve`)
 - **Cross-Platform** — Windows (TPM via TBS), Linux (TPM via `/dev/tpmrm0`), macOS (software fallback)
 
 ## Installation
@@ -199,7 +204,7 @@ func NewService(reader vault.VaultReader) *Service {
 
 Available interfaces: `VaultReader` (read-only), `VaultWriter` (read+write), `VaultEnv` (env release), `VaultPassword` (
 password ops), `VaultScoped` (isolated single-profile access), `VaultSeal` (seal/unseal), `VaultRecovery` (mnemonic recovery),
-`VaultIdentity` (machine-bound installation ID).
+`VaultIdentity` (machine-bound installation ID), `VaultKeyManagement` (asymmetric key CRUD), `VaultSigner` (sign/verify).
 
 ## CLI Tools
 
@@ -269,10 +274,56 @@ anvil
 │       ├── export        Write secrets as individual files
 │       ├── clean         Remove exported secret files
 │       └── compose       Generate Docker Compose YAML snippet
+├── app
+│   ├── register          Register a new app with isolated vault
+│   ├── list              List registered apps
+│   ├── info <app>        Show app details
+│   ├── remove <app>      Remove an app
+│   ├── disable <app>     Disable an app
+│   ├── enable <app>      Enable a disabled app
+│   ├── set <app> <k> <v> Set a secret in an app vault
+│   ├── get <app> <key>   Get a secret from an app vault
+│   ├── delete <app> <k>  Delete a secret from an app vault
+│   ├── list-secrets <app> List secrets in an app vault
+│   ├── export <app>      Export app secrets
+│   └── import <app> <f>  Import secrets into an app vault
+├── mcp
+│   └── serve             Start MCP server on stdio
+├── key
+│   ├── generate          Generate a new key pair (Ed25519 or ECDSA P-256)
+│   ├── list              List all stored keys
+│   ├── delete            Delete a key pair
+│   ├── export            Export key in PEM format (public or private)
+│   └── import            Import a key from PEM file
+├── sign                  Sign data with a vault key
+├── verify                Verify a signature
 ├── id                    Show machine-bound installation ID
 ├── cmdtree               Display command tree
 ├── aicontext             Generate AI-readable documentation
 └── completion            Shell completion scripts
+```
+
+## Key Management & Signing
+
+```bash
+# Generate a key pair (Ed25519 default)
+anvil key generate mykey
+anvil key generate mykey2 --algorithm ecdsa-p256
+
+# List keys
+anvil key list
+
+# Sign a file or string
+anvil sign --key mykey --file README.md -o sig.txt
+anvil sign --key mykey --string "hello world"
+
+# Verify a signature
+anvil verify --key mykey --file README.md --signature-file sig.txt
+anvil verify --key mykey --string "hello world" --signature <base64>
+
+# Export/import PEM keys
+anvil key export mykey --private -o mykey.pem
+anvil key import imported-key mykey.pem
 ```
 
 ## Security

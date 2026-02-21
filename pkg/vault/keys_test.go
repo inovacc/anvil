@@ -50,17 +50,22 @@ func TestGenerateKey(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if info.Name != tt.keyName {
 				t.Fatalf("name: got %s, want %s", info.Name, tt.keyName)
 			}
+
 			if info.Algorithm != tt.algorithm {
 				t.Fatalf("algorithm: got %s, want %s", info.Algorithm, tt.algorithm)
 			}
+
 			if info.Fingerprint == "" {
 				t.Fatal("empty fingerprint")
 			}
@@ -75,6 +80,7 @@ func TestListKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(keys) != 0 {
 		t.Fatalf("expected 0 keys, got %d", len(keys))
 	}
@@ -86,6 +92,7 @@ func TestListKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(keys) != 2 {
 		t.Fatalf("expected 2 keys, got %d", len(keys))
 	}
@@ -131,6 +138,7 @@ func TestExportImportKeyPEM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(pubPEM) == 0 {
 		t.Fatal("empty public PEM")
 	}
@@ -140,6 +148,7 @@ func TestExportImportKeyPEM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(privPEM) == 0 {
 		t.Fatal("empty private PEM")
 	}
@@ -149,6 +158,7 @@ func TestExportImportKeyPEM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if info.Algorithm != AlgorithmEd25519 {
 		t.Fatalf("algorithm: got %s, want ed25519", info.Algorithm)
 	}
@@ -203,6 +213,7 @@ func TestImportKeyFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if info.Algorithm != AlgorithmECDSAP256 {
 		t.Fatalf("algorithm: got %s, want ecdsa-p256", info.Algorithm)
 	}

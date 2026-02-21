@@ -66,14 +66,16 @@ var cmdtreeCmd = &cobra.Command{
 		var tree bytes.Buffer
 
 		tree.WriteString("# Command Tree\n\n```\n")
+
 		if cmdtreeBrief || !cmdtreeVerbose {
 			tree.Write(buildTree(rootCmd))
 		} else {
 			tree.Write(buildVerboseTree(rootCmd))
 		}
-		tree.WriteString("```\n")
 
+		tree.WriteString("```\n")
 		cmd.Println(tree.String())
+
 		return nil
 	},
 }
@@ -89,7 +91,7 @@ func init() {
 func buildTree(root *cobra.Command) []byte {
 	var buf bytes.Buffer
 
-	_, _ = buf.WriteString(fmt.Sprintf("%s\n", root.Use))
+	_, _ = fmt.Fprintf(&buf, "%s\n", root.Use)
 	printCommands(&buf, root.Commands(), "")
 
 	return buf.Bytes()
@@ -98,7 +100,7 @@ func buildTree(root *cobra.Command) []byte {
 func buildVerboseTree(root *cobra.Command) []byte {
 	var buf bytes.Buffer
 
-	_, _ = buf.WriteString(fmt.Sprintf("%s\n", root.Use))
+	_, _ = fmt.Fprintf(&buf, "%s\n", root.Use)
 	printVerboseCommands(&buf, root.Commands(), "")
 
 	return buf.Bytes()
@@ -279,8 +281,8 @@ func printSingleCommand(cobraCmd *cobra.Command, root *cobra.Command, cmdName st
 
 	var buf bytes.Buffer
 
-	_, _ = buf.WriteString(fmt.Sprintf("# %s\n\n", target.Name()))
-	_, _ = buf.WriteString(fmt.Sprintf("Usage: %s\n\n", target.UseLine()))
+	_, _ = fmt.Fprintf(&buf, "# %s\n\n", target.Name())
+	_, _ = fmt.Fprintf(&buf, "Usage: %s\n\n", target.UseLine())
 
 	desc := target.Short
 	if target.Long != "" {
@@ -288,7 +290,7 @@ func printSingleCommand(cobraCmd *cobra.Command, root *cobra.Command, cmdName st
 	}
 
 	if desc != "" {
-		_, _ = buf.WriteString(fmt.Sprintf("Description: %s\n\n", desc))
+		_, _ = fmt.Fprintf(&buf, "Description: %s\n\n", desc)
 	}
 
 	flags := collectFlags(target)

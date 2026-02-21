@@ -232,6 +232,8 @@ func (f *Formatter) FormatName() string {
 		return "json"
 	case FormatTable:
 		return "table"
+	case FormatText:
+		return "text"
 	default:
 		return "text"
 	}

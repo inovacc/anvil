@@ -190,6 +190,34 @@
 - No extra storage — computed from existing `vault_sealed_key` data
 - Changes on vault recovery to new machine (new machine ID + new sealed data)
 
+### Asymmetric Key Management
+
+- **Status:** Completed (v0.9.0)
+- Ed25519 (default) and ECDSA P-256 key pair generation and storage
+- Private keys encrypted with vault master key (AES-256-GCM) in `vault_keys` table
+- Public keys stored unencrypted for verification without decryption
+- `key generate/list/delete/export/import` commands
+- PEM export/import using PKCS8 (private) and PKIX (public) standard formats
+- SHA-256 fingerprint (first 8 bytes hex) for key identification
+
+### Digital Signing & Verification
+
+- **Status:** Completed (v0.9.0)
+- `sign --key <name> (--file | --string)` — outputs base64-encoded signature
+- `verify --key <name> (--file | --string) (--signature | --signature-file)` — exits 0 (valid) or 1 (invalid)
+- Supports both Ed25519 and ECDSA P-256 algorithms
+- File output via `-o` flag for signatures
+- `VaultKeyManagement` and `VaultSigner` interfaces for programmatic access
+
+### MCP Server Integration
+
+- **Status:** Completed (v0.10.0)
+- MCP server exposing vault operations as 17 tools via Go SDK (`github.com/modelcontextprotocol/go-sdk/mcp`)
+- Tools: `secret_get`, `secret_set`, `secret_delete`, `secret_list`, `profile_list`, `profile_create`, `profile_delete`, `key_generate`, `key_list`, `key_delete`, `key_export`, `sign`, `verify`, `audit_log`, `vault_status`, `installation_id`
+- Resource: `anvil://status` — vault status as JSON
+- Stdio transport for CLI integration (`anvil mcp serve`)
+- In-memory transport for testing
+
 ## Proposed
 
 _No proposed features at this time._

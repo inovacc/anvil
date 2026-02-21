@@ -21,6 +21,7 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			keyName := "key-" + tt.name
+
 			_, err := v.GenerateKey(keyName, tt.algorithm, "")
 			if err != nil {
 				t.Fatalf("generate key: %v", err)
@@ -30,9 +31,11 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("sign: %v", err)
 			}
+
 			if result.Signature == "" {
 				t.Fatal("empty signature")
 			}
+
 			if result.KeyName != keyName {
 				t.Fatalf("key name: got %s, want %s", result.KeyName, keyName)
 			}
@@ -41,6 +44,7 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("verify: %v", err)
 			}
+
 			if !verifyResult.Valid {
 				t.Fatal("signature should be valid")
 			}
@@ -48,10 +52,12 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 			// Tampered data
 			tampered := append([]byte{}, tt.data...)
 			tampered = append(tampered, 0xFF)
+
 			verifyResult, err = v.Verify(keyName, tampered, result.Signature)
 			if err != nil {
 				t.Fatalf("verify tampered: %v", err)
 			}
+
 			if verifyResult.Valid {
 				t.Fatal("tampered data should not verify")
 			}
@@ -86,6 +92,7 @@ func TestVerifyBadSignature(t *testing.T) {
 	if err != nil {
 		t.Fatalf("verify should not error for invalid sig: %v", err)
 	}
+
 	if result.Valid {
 		t.Fatal("invalid signature should not verify")
 	}
@@ -103,6 +110,7 @@ func TestSignVerifyCrossKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if verifyResult.Valid {
 		t.Fatal("cross-key verification should fail")
 	}

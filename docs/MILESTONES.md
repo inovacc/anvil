@@ -80,6 +80,27 @@
 - **Released:** v0.8.0, v0.8.1
 - **Test Coverage (total):** 55.9% — store 79.2%, sentinel 78.6%, crypto 76.1%, application 72.7%, vault 68.8%, cmd 67.0%, tui 42.9%
 
+## v0.9.0 — Asymmetric Key Management (Complete)
+
+- Ed25519 and ECDSA P-256 key pair generation, encrypted storage in vault
+- Key CRUD: `key generate/list/delete/export/import` commands
+- Digital signing and verification: `sign` and `verify` top-level commands
+- PKCS8/PKIX PEM format for openssl interoperability
+- `vault_keys` table (migration 009) with encrypted private keys
+- Key rotation re-encrypts asymmetric private keys alongside secrets
+- `VaultKeyManagement` and `VaultSigner` interfaces with compile-time checks
+- Penetration tests for asymmetric key security
+- **Test Coverage (total):** 60.7% — output 81.8%, mcpserver 80.7%, cmd 80.0%, vault 79.5%, sentinel 78.6%, crypto 76.2%, application 72.7%, store 71.9%, tui 42.9%
+
+## v0.10.0 — MCP Server (Complete)
+
+- MCP server exposing vault operations as 17 tools via `github.com/modelcontextprotocol/go-sdk/mcp`
+- Tools: secret CRUD, profile management, key management, signing/verification, audit log, vault status, installation ID
+- Resource: `anvil://status` (vault status as JSON)
+- Stdio transport for CLI integration (`anvil mcp serve`)
+- In-memory transport integration tests
+- **Test Coverage (total):** 60.7% — output 81.8%, mcpserver 80.7%, cmd 80.0%, vault 79.5%, sentinel 78.6%, crypto 76.2%, application 72.7%, store 71.9%, tui 42.9%
+
 ## v1.0.0 — Production Ready (Planned)
 
 - Full test coverage (80%+ all packages)
